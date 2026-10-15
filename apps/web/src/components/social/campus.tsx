@@ -69,11 +69,18 @@ export function CampusExplore({
             { href: "/events", label: "Acara", icon: CalendarDays },
             { href: "/requests", label: "Permintaan", icon: UserRoundPlus },
           ].map(({ href, label, icon: Icon }) => (
+            href !== "/requests" ? (
+              <button key={href} type="button" disabled className="flex min-h-16 flex-col items-start justify-center gap-2 rounded-2xl border border-[var(--border)] px-3 py-3 text-left text-xs sm:flex-row sm:items-center sm:text-sm">
+                <Icon size={18} strokeWidth={1.6} className="shrink-0 text-[var(--muted)]" />
+                <span><span className="block font-medium">{label}</span><span className="mt-1 block text-[11px] font-normal text-[var(--muted)]">Segera hadir</span></span>
+              </button>
+            ) : (
             <Link key={href} href={href} className="group flex min-h-16 flex-col items-start justify-center gap-2 rounded-2xl border border-[var(--border)] px-3 py-3 text-xs font-medium transition-colors hover:bg-[var(--soft)] sm:flex-row sm:items-center sm:justify-start sm:text-sm">
               <Icon size={18} strokeWidth={1.6} className="shrink-0 text-[var(--muted)]" />
               {label}
               <ArrowUpRight size={13} className="ml-auto hidden text-[var(--muted)] sm:block" />
             </Link>
+            )
           ))}
         </div>
       </header>

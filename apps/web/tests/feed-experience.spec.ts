@@ -304,7 +304,9 @@ test("explore stays readable across sizes and supports topic search and people",
     for (const theme of ["light", "dark"]) {
       await page.evaluate((theme) => document.documentElement.dataset.theme = theme, theme);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      await expect(page.getByRole("link", { name: "Komunitas", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Komunitas Segera hadir", exact: true })).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Acara Segera hadir", exact: true })).toBeDisabled();
+      await expect(page.getByRole("link", { name: "Permintaan", exact: true })).toBeVisible();
       await page.screenshot({ path: path.resolve(process.cwd(), `../../docs/testing/screenshots/explore-${width}-${theme}.png`), fullPage: true, animations: "disabled" });
     }
   }
