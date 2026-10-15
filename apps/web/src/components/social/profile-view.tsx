@@ -189,13 +189,13 @@ export function ProfileView({ username }: { username?: string }) {
               <>
                 <Link
                   href="/profile/edit"
-                  className="inline-flex min-h-10 items-center rounded-xl border border-[var(--border)] px-5 text-sm font-semibold"
+                  className="inline-flex min-h-10 items-center whitespace-nowrap rounded-xl border border-[var(--border)] px-3 text-xs font-semibold sm:text-sm"
                 >
                   Edit profil
                 </Link>
                 <Button
                   variant="outline"
-                  className="min-h-10 flex-1"
+                  className="min-h-10 flex-1 whitespace-nowrap px-3 text-xs sm:text-sm"
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(
