@@ -21,8 +21,6 @@ import {
   Bell,
   MessageCircle,
   Plus,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Brand } from "./brand";
@@ -166,7 +164,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
         aria-label="Navigasi akun"
         className="desktop-sidebar fixed inset-y-0 left-0 z-30 hidden flex-col gap-3 px-4 py-4 md:flex"
       >
-        <div className="flex h-14 shrink-0 items-center px-2">
+        <div className="sidebar-header px-2">
           <div className="sidebar-wordmark">
             <Brand />
           </div>
@@ -177,6 +175,11 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
           >
             s.
           </Link>
+          <AccountMenu
+            onLogout={() => setConfirm(true)}
+            onToggleNavigation={() => setCollapsed((value) => !value)}
+            collapsed={collapsed}
+          />
         </div>
         <nav
           className="min-h-0 w-full flex-1 space-y-1 overflow-y-auto pt-3"
@@ -218,21 +221,6 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
         </nav>
-        <div className="flex shrink-0 items-center justify-center gap-1 pt-2">
-          <ThemeToggle />
-          <AccountMenu onLogout={() => setConfirm(true)} />
-        </div>
-        <button
-          className="sidebar-toggle icon-button mx-auto shrink-0 text-[var(--muted)]"
-          aria-label={collapsed ? "Perluas navigasi" : "Ringkas navigasi"}
-          onClick={() => setCollapsed((value) => !value)}
-        >
-          {collapsed ? (
-            <PanelLeftOpen size={19} />
-          ) : (
-            <PanelLeftClose size={19} />
-          )}
-        </button>
       </aside>
       <div className="mx-auto w-full min-w-0 max-w-[640px] pb-24">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/95 px-5 py-4 backdrop-blur-sm md:hidden">

@@ -2,21 +2,30 @@
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
 import {
-  MoreHorizontal,
+  Menu as MenuIcon,
   UserRound,
   Settings,
   Bookmark,
   ShieldCheck,
   LogOut,
+  PanelLeft,
 } from "lucide-react";
 import { useMe } from "@/lib/auth";
-export function AccountMenu({ onLogout }: { onLogout?: () => void }) {
+export function AccountMenu({
+  onLogout,
+  onToggleNavigation,
+  collapsed,
+}: {
+  onLogout?: () => void;
+  onToggleNavigation?: () => void;
+  collapsed?: boolean;
+}) {
   const { data: user } = useMe();
   return (
     <Menu.Root>
       <Menu.Trigger asChild>
         <button className="icon-button" aria-label="Menu akun">
-          <MoreHorizontal size={20} />
+          <MenuIcon size={20} />
         </button>
       </Menu.Trigger>
       <Menu.Portal>
@@ -81,6 +90,17 @@ export function AccountMenu({ onLogout }: { onLogout?: () => void }) {
               </Link>
             </Menu.Item>
           ))}
+          {onToggleNavigation && (
+            <div className="hidden xl:contents">
+            <Menu.Item
+              className="menu-choice gap-3"
+              onSelect={onToggleNavigation}
+            >
+              <PanelLeft size={17} />
+              {collapsed ? "Perluas navigasi" : "Ringkas navigasi"}
+            </Menu.Item>
+            </div>
+          )}
           {onLogout && (
             <>
               <Menu.Separator className="my-1 h-px bg-[var(--border)]" />

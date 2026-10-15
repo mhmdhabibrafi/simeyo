@@ -1,5 +1,7 @@
 # Changelog
 
+- Removed the scattered sidebar footer controls. A single menu now sits beside the wordmark; navigation collapse lives in that menu and theme selection remains in Settings.
+
 - Fixed the global focus rule overriding the composer textarea. Replaced its native audience select with a themed, keyboard-accessible radio menu; simplified the modal header and corrected follower-only visibility guidance.
 
 ### Consumer feed redesign and interaction fixes

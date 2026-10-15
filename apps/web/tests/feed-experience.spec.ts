@@ -179,6 +179,7 @@ test("centered feed, compact composer, keyboard tabs and menus work across sizes
     .filter({ visible: true });
   const box = await accountMenu.boundingBox();
   expect(box!.y + box!.height).toBeLessThanOrEqual(620);
+  expect(box!.y).toBeLessThan(100);
   await page
     .getByRole("button", { name: "Menu akun" })
     .filter({ visible: true })
@@ -186,7 +187,12 @@ test("centered feed, compact composer, keyboard tabs and menus work across sizes
   await expect(
     page.getByRole("menuitem", { name: "Tersimpan", exact: true }),
   ).toBeVisible();
-  await page.keyboard.press("Escape");
+  await page.getByRole("menuitem", { name: "Ringkas navigasi", exact: true }).click();
+  const sidebar = page.getByRole("complementary", { name: "Navigasi akun", exact: true });
+  expect((await sidebar.boundingBox())!.width).toBe(96);
+  await accountMenu.click();
+  await page.getByRole("menuitem", { name: "Perluas navigasi", exact: true }).click();
+  expect((await sidebar.boundingBox())!.width).toBe(240);
   const axe = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();
