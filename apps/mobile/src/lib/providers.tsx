@@ -36,22 +36,22 @@ type Session = {
 const SessionContext = createContext<Session | null>(null);
 export const light = {
   background: "#ffffff",
-  surface: "#f7f7fa",
-  text: "#17171b",
-  muted: "#686872",
-  border: "#e8e8ef",
-  accent: "#6342e8",
-  accentSoft: "#f0edff",
+  surface: "#f7f7f7",
+  text: "#171717",
+  muted: "#666666",
+  border: "#e5e5e5",
+  accent: "#171717",
+  accentSoft: "#eeeeee",
   danger: "#b42338",
 };
 export const dark = {
-  background: "#111113",
-  surface: "#1b1b20",
-  text: "#f4f4f6",
-  muted: "#aaaab7",
-  border: "#303039",
-  accent: "#b49cff",
-  accentSoft: "#292039",
+  background: "#101010",
+  surface: "#1b1b1b",
+  text: "#f5f5f5",
+  muted: "#aaaaaa",
+  border: "#303030",
+  accent: "#f5f5f5",
+  accentSoft: "#262626",
   danger: "#ff8fa0",
 };
 type Theme = {

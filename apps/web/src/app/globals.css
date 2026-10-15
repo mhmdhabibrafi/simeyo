@@ -2,15 +2,15 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #15151a;
+  --foreground: #171717;
   --surface: #fff;
-  --soft: #f8f9fc;
-  --muted: #71717a;
-  --border: #e9eaf0;
-  --accent: #6d4aff;
-  --accent-hover: #5b38eb;
+  --soft: #f7f7f7;
+  --muted: #6b6b6b;
+  --border: #e5e5e5;
+  --accent: #171717;
+  --accent-hover: #333333;
   --accent-foreground: #ffffff;
-  --avatar-foreground: #5b38eb;
+  --avatar-foreground: #333333;
 }
 
 @theme inline {
@@ -21,16 +21,16 @@
 }
 
 [data-theme="dark"] {
-  --background: #111115;
-  --surface: #17171d;
-  --soft: #202027;
-  --foreground: #f1f1f5;
-  --muted: #a4a4b1;
-  --border: #303039;
-  --accent: #927aff;
-  --accent-hover: #8065f5;
-  --accent-foreground: #15151a;
-  --avatar-foreground: #b8a8ff;
+  --background: #101010;
+  --surface: #171717;
+  --soft: #222222;
+  --foreground: #f5f5f5;
+  --muted: #a3a3a3;
+  --border: #303030;
+  --accent: #f5f5f5;
+  --accent-hover: #dedede;
+  --accent-foreground: #171717;
+  --avatar-foreground: #e5e5e5;
   color-scheme: dark;
 }
 
@@ -65,7 +65,7 @@ button:disabled {
   outline-offset: 4px;
 }
 ::selection {
-  background: #6d4aff33;
+  background: color-mix(in srgb, var(--foreground) 18%, transparent);
 }
 .skip-link {
   position: fixed;
@@ -73,7 +73,7 @@ button:disabled {
   left: 12px;
   top: -80px;
   background: var(--accent);
-  color: white;
+  color: var(--accent-foreground);
   padding: 12px 24px;
   border-radius: 12px;
 }
@@ -106,7 +106,7 @@ button:disabled {
 }
 .field:focus {
   border-color: var(--accent);
-  outline: 2px solid #6d4aff22;
+  outline: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
   outline-offset: 0;
 }
 .form-label {
@@ -130,7 +130,7 @@ button:disabled {
   color: var(--foreground);
 }
 .nav-item.active {
-  background: #6d4aff0c;
+  background: var(--soft);
   color: var(--accent);
   font-weight: 600;
 }

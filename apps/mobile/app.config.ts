@@ -27,7 +27,7 @@ const config: ExpoConfig = {
     package: "app.simeyo.mobile",
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
-      backgroundColor: "#7047ff",
+      backgroundColor: "#171717",
     },
     predictiveBackGestureEnabled: true,
     softwareKeyboardLayoutMode: "resize",
@@ -39,7 +39,7 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     ["expo-secure-store", { configureAndroidBackup: true }],
-    ["expo-notifications", { color: "#7047ff" }],
+    ["expo-notifications", { color: "#171717" }],
     [
       "expo-image-picker",
       {

@@ -2,6 +2,8 @@
 
 ## Unreleased — v0.4.0 work in progress
 
+- Replace purple branding with a monochrome light/dark palette across web and native themes, focus/navigation states, PWA metadata and generated icons. Preserve contrast on inverted buttons, hero artwork and native switches.
+
 - Install the owner-authorized web release candidate on the existing Mediasi server with dedicated PostgreSQL/media volumes, restricted application database role and verified Cloudflare origin TLS. Public HTTPS/security/mobile login rendering and internal owner login/worker/WebSocket checks passed. Explicitly suspend email-dependent endpoints until SMTP is configured; preserve existing server applications and ingress entries.
 
 - Add real private WSS gateway acceptance, isolated full browser regression, seeded sustained-load/query-plan/resource evidence and operational queue heartbeat checks (including stopped-worker detection/recovery).

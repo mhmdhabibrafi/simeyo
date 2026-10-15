@@ -76,7 +76,7 @@ export default function Home() {
             <div className="absolute inset-8 rounded-full border border-[var(--border)]" />
             <div className="absolute inset-20 rounded-full border border-[var(--border)]" />
             <div className="absolute inset-32 rounded-full bg-[var(--accent)]/5" />
-            <div className="relative -rotate-6 rounded-[36px] bg-[var(--accent)] p-12 text-white shadow-[0_24px_80px_#6d4aff35]">
+            <div className="relative -rotate-6 rounded-[36px] bg-[var(--accent)] p-12 text-[var(--accent-foreground)] shadow-[0_24px_80px_#00000020]">
               <MessageCircle size={110} strokeWidth={1.4} />
               <div className="mt-5 text-center text-3xl font-semibold tracking-tight">
                 halo, kampus.

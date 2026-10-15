@@ -196,7 +196,8 @@ export default function Settings() {
                     },
                   })
                 }
-                trackColor={{ true: colors.accent }}
+                trackColor={{ false: colors.border, true: colors.accent }}
+                thumbColor={colors.background}
               />
             </View>
           ))}
