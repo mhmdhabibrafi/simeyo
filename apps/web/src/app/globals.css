@@ -40,6 +40,23 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+.message-workspace { min-height: calc(100dvh - 160px); }
+.message-detail { flex-direction: column; height: calc(100dvh - 160px); }
+@media (min-width: 768px) {
+  .app-frame[data-messaging="true"] { padding-left: 0; }
+  .message-frame { margin-left: 96px; }
+  .message-workspace { min-height: 100dvh; }
+  .message-detail { height: 100dvh; }
+}
+@media (min-width: 1024px) {
+  .message-workspace { display: grid; grid-template-columns: 340px minmax(0, 1fr); height: 100dvh; }
+  .message-list { overflow-y: auto; border-right: 1px solid var(--border); }
+}
+@media (min-width: 1280px) {
+  .app-frame:not([data-collapsed="true"]) .message-frame { margin-left: 240px; }
+  .message-workspace { grid-template-columns: 360px minmax(0, 1fr); }
+}
+
 * {
   box-sizing: border-box;
 }

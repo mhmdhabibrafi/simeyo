@@ -5,7 +5,7 @@ on:
       suite:
         description: Browser acceptance scope
         type: choice
-        options: [full, account-security]
+        options: [full, account-security, communications]
         default: full
 permissions: {contents: read}
 jobs:
@@ -84,7 +84,11 @@ jobs:
           test "$ready" = true
           cd apps/web
           # Keep the real authentication throttle enabled; separate files by a full rate window.
-          if [ "$TEST_SUITE" = account-security ]; then set -- tests/account-security.spec.ts; else set -- tests/*.spec.ts; fi
+          case "$TEST_SUITE" in
+            account-security) set -- tests/account-security.spec.ts ;;
+            communications) set -- tests/communications.spec.ts ;;
+            *) set -- tests/*.spec.ts ;;
+          esac
           for file in "$@"; do
             npm run test:e2e -- "$file"
             sleep 61

@@ -2,6 +2,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Search, SquarePen, Send, ArrowLeft } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/dialog";
+import { userSchema } from "../../../../../packages/api-contracts/src";
 import {
   useInfiniteQuery,
   useMutation,
@@ -37,7 +40,10 @@ export function MessageButton({ userId }: { userId: number }) {
     </Button>
   );
 }
-export function Conversations() {
+export function Conversations({ selectedId }: { selectedId?: number }) {
+  const [search, setSearch] = useState("");
+  const [unread, setUnread] = useState(false);
+  const [composing, setComposing] = useState(false);
   const q = useInfiniteQuery({
     queryKey: ["conversations"],
     initialPageParam: null as string | null,
@@ -50,33 +56,48 @@ export function Conversations() {
     getNextPageParam: (p) => p.next_cursor,
     refetchInterval: 20000,
   });
+  const conversations = q.data?.pages.flatMap((p) => p.data).filter((c) =>
+    (!unread || c.unread_count > 0) &&
+    `${c.user.name} ${c.user.username}`.toLocaleLowerCase("id").includes(search.trim().toLocaleLowerCase("id")),
+  ) ?? [];
   return (
-    <>
-      <header className="border-b border-[var(--border)] px-6 py-5">
-        <h1 className="text-lg font-semibold">Pesan</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Percakapan pribadi dalam kampusmu.
-        </p>
-      </header>
-      <div className="divide-y divide-[var(--border)]">
-        {q.data?.pages
-          .flatMap((p) => p.data)
+    <div className="message-workspace">
+      <section aria-label="Daftar percakapan" className={`message-list min-w-0 ${selectedId ? "hidden lg:block" : ""}`}>
+        <header className="px-5 pb-4 pt-6">
+          <div className="mb-5 flex items-center justify-between">
+            <h1 className="text-xl font-semibold tracking-tight">Pesan</h1>
+            <button className="icon-button" aria-label="Buat pesan baru" onClick={() => setComposing(true)}><SquarePen size={21} /></button>
+          </div>
+          <label className="flex items-center gap-2 rounded-full bg-[var(--soft)] px-4 py-2.5">
+            <Search size={17} className="shrink-0 text-[var(--muted)]" />
+            <span className="sr-only">Cari percakapan</span>
+            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari percakapan" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+          </label>
+          <div className="mt-4 flex gap-2" aria-label="Filter pesan">
+            {[{ label: "Kotak masuk", value: false }, { label: "Belum dibaca", value: true }].map((filter) => (
+              <button key={filter.label} aria-pressed={unread === filter.value} onClick={() => setUnread(filter.value)} className={`min-h-9 rounded-full border border-[var(--border)] px-4 text-xs font-medium transition-colors ${unread === filter.value ? "bg-[var(--soft)]" : "text-[var(--muted)] hover:bg-[var(--soft)]"}`}>{filter.label}</button>
+            ))}
+          </div>
+        </header>
+      <div>
+        {conversations
           .map((c) => (
             <Link
               key={c.id}
               href={`/messages/${c.id}`}
-              className="flex items-center gap-3 px-6 py-5 hover:bg-[var(--surface)]"
+              aria-current={selectedId === c.id ? "page" : undefined}
+              className={`flex items-center gap-3 px-5 py-4 transition-colors hover:bg-[var(--soft)] ${selectedId === c.id ? "bg-[var(--soft)]" : ""}`}
             >
               <Avatar name={c.user.name} />
-              <div>
-                <p className="font-semibold">{c.user.name}</p>
-                <p className="text-sm text-[var(--muted)]">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{c.user.name}</p>
+                <p className="mt-1 truncate text-xs text-[var(--muted)]">
                   @{c.user.username}
                 </p>
               </div>
               {c.unread_count > 0 && (
-                <span className="ml-auto text-sm">
-                  {c.unread_count} belum dibaca
+                <span aria-label={`${c.unread_count} belum dibaca`} className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 text-[10px] font-semibold text-[var(--accent-foreground)]">
+                  {c.unread_count > 99 ? "99+" : c.unread_count}
                 </span>
               )}
             </Link>
@@ -90,9 +111,9 @@ export function Conversations() {
             <button onClick={() => q.refetch()}>Coba lagi</button>
           </p>
         )}
-        {q.data && !q.data.pages[0].data.length && (
-          <p className="text-sm text-[var(--muted)]">
-            Belum ada percakapan. Mulai melalui tombol Pesan pada profil teman.
+        {q.data && !conversations.length && (
+          <p className="py-5 text-center text-sm leading-6 text-[var(--muted)]">
+            {search ? "Tidak ada percakapan yang cocok." : unread ? "Semua pesan sudah dibaca." : "Belum ada percakapan."}
           </p>
         )}
         {q.hasNextPage && (
@@ -105,8 +126,57 @@ export function Conversations() {
           </Button>
         )}
       </div>
-    </>
+      </section>
+      <section aria-label="Percakapan" className={`message-detail min-w-0 ${selectedId ? "" : "hidden lg:flex"}`}>
+        {selectedId ? <MessageThread key={selectedId} id={selectedId} /> : (
+          <div className="flex flex-1 flex-col items-center justify-center px-8 py-16 text-center">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--soft)] text-[var(--muted)]"><Send size={32} strokeWidth={1.4} /></div>
+            <h2 className="text-lg font-semibold">Percakapan dimulai dari sini</h2>
+            <p className="mb-6 mt-2 max-w-xs text-sm leading-6 text-[var(--muted)]">Sapa teman kampus dan lanjutkan cerita lewat pesan pribadi.</p>
+            <Button onClick={() => setComposing(true)}>Pesan baru</Button>
+          </div>
+        )}
+      </section>
+      <NewMessage open={composing} onOpenChange={setComposing} />
+    </div>
   );
+}
+function NewMessage({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [term, setTerm] = useState("");
+  const [search, setSearch] = useState("");
+  const { data: me } = useMe();
+  const router = useRouter();
+  const client = useQueryClient();
+  const toast = useToast();
+  const q = useQuery({
+    queryKey: ["message-recipients", search], enabled: open,
+    queryFn: async () => {
+      const r = await api<{ data: unknown[] }>(`people?q=${encodeURIComponent(search)}`);
+      return r.data.map((person) => userSchema.parse(person)).filter((person) => person.id !== me?.id);
+    },
+  });
+  const start = useMutation({
+    mutationFn: (userId: number) => api<{ data: { id: number } }>("conversations", { method: "POST", body: JSON.stringify({ user_id: userId }) }),
+    onSuccess: (r) => { client.invalidateQueries({ queryKey: ["conversations"] }); onOpenChange(false); router.push(`/messages/${r.data.id}`); },
+    onError: (e) => toast(e.message),
+  });
+  return <ConfirmDialog open={open} onOpenChange={(value) => { if (!start.isPending) onOpenChange(value); }} title="Pesan baru" description="Pilih teman kampus untuk memulai percakapan.">
+    <form className="mb-3 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-2" onSubmit={(e) => { e.preventDefault(); setSearch(term.trim()); }}>
+      <Search size={18} className="ml-2 shrink-0 text-[var(--muted)]" />
+      <input aria-label="Cari penerima pesan" type="search" value={term} onChange={(e) => setTerm(e.target.value)} maxLength={80} placeholder="Nama atau username" className="min-h-10 min-w-0 flex-1 bg-transparent text-sm outline-none" />
+      <Button type="submit" variant="ghost" className="px-3">Cari</Button>
+    </form>
+    {q.isPending && <p role="status" className="py-6 text-sm text-[var(--muted)]">Mencari teman…</p>}
+    {q.isError && <p role="alert" className="py-6 text-sm">Daftar teman belum tersedia. <button className="underline" onClick={() => q.refetch()}>Coba lagi</button></p>}
+    <div className="max-h-80 space-y-1 overflow-y-auto">
+      {q.data?.map((person) => <button key={person.id} disabled={start.isPending} onClick={() => start.mutate(person.id)} className="flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-[var(--soft)] disabled:opacity-50">
+        <Avatar name={person.name} url={person.avatar_url} />
+        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{person.name}</span><span className="block truncate text-xs text-[var(--muted)]">@{person.username}</span></span>
+        <Send size={17} className="text-[var(--muted)]" />
+      </button>)}
+    </div>
+    {q.data?.length === 0 && <p className="py-8 text-center text-sm text-[var(--muted)]">Tidak ada teman yang cocok.</p>}
+  </ConfirmDialog>;
 }
 export function MessageThread({ id }: { id: number }) {
   const { data: me } = useMe();
@@ -150,16 +220,16 @@ export function MessageThread({ id }: { id: number }) {
   const messages =
     q.data?.pages.flatMap((p) => p.data).sort((a, b) => a.id - b.id) ?? [];
   return (
-    <>
-      <header className="border-b border-[var(--border)] px-6 py-5">
-        <Link href="/messages" className="text-sm text-[var(--muted)]">
-          ← Semua pesan
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="flex shrink-0 items-center gap-3 border-b border-[var(--border)] px-5 py-4">
+        <Link href="/messages" aria-label="Semua pesan" className="icon-button lg:hidden">
+          <ArrowLeft size={20} />
         </Link>
-        <h1 className="mt-3 text-lg font-semibold">
+        <h2 className="text-base font-semibold">
           {q.data?.pages[0].user.name ?? "Percakapan"}
-        </h1>
+        </h2>
       </header>
-      <div className="space-y-4 p-6">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5" role="log" aria-label="Riwayat pesan" aria-relevant="additions">
         {q.isError && (
           <p role="alert">
             Percakapan tidak tersedia atau kamu tidak memiliki akses.
@@ -182,12 +252,12 @@ export function MessageThread({ id }: { id: number }) {
             className={`flex ${m.sender_id === me?.id ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 ${m.sender_id === me?.id ? "bg-[var(--accent)]/10" : "bg-[var(--surface)]"}`}
+              className={`max-w-[85%] rounded-2xl px-4 py-3 ${m.sender_id === me?.id ? "bg-[var(--accent)] text-[var(--accent-foreground)]" : "bg-[var(--soft)]"}`}
             >
               <p className="whitespace-pre-wrap break-words text-sm">
                 {m.body}
               </p>
-              <time className="mt-2 block text-[10px] text-[var(--foreground)]">
+              <time className="mt-2 block text-[10px] opacity-70">
                 {new Date(m.created_at).toLocaleTimeString("id-ID", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -208,7 +278,7 @@ export function MessageThread({ id }: { id: number }) {
       </div>
       {q.data?.pages[0].can_send ? (
         <form
-          className="space-y-3 border-t border-[var(--border)] p-6"
+          className="shrink-0 space-y-3 border-t border-[var(--border)] p-4"
           onSubmit={(e) => {
             e.preventDefault();
             const client_id = draftId ?? crypto.randomUUID();
@@ -221,7 +291,8 @@ export function MessageThread({ id }: { id: number }) {
           </label>
           <textarea
             id="message-body"
-            className="input min-h-24 w-full resize-none"
+            className="min-h-16 w-full resize-none rounded-2xl bg-[var(--soft)] px-4 py-3 text-sm outline-none"
+            rows={2}
             value={body}
             disabled={m.isPending}
             maxLength={2000}
@@ -242,7 +313,7 @@ export function MessageThread({ id }: { id: number }) {
           </p>
         )
       )}
-    </>
+    </div>
   );
 }
 const labels: Record<string, string> = {

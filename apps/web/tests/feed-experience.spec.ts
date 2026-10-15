@@ -140,6 +140,51 @@ async function fixtures(page: Page) {
   });
 }
 
+test("messaging supports a split inbox, recipient selection and safe send retry on mobile", async ({ page }) => {
+  await fixtures(page);
+  const recipient = { ...user, id: 902, name: "Raka Pratama", username: "raka_pengujian" };
+  await page.route("**/api/v1/people?*", (route) => route.fulfill({ json: { data: [recipient], meta: { next_cursor: null, has_more: false } } }));
+  await page.route("**/api/v1/conversations", (route) => route.fulfill({ json: route.request().method() === "POST" ? { data: { id: 42 } } : { data: [{ id: 42, user: recipient, unread_count: 2 }], next_cursor: null } }));
+  let failSend = true;
+  let sent = false;
+  await page.route("**/api/v1/conversations/42/messages", async (route) => {
+    if (route.request().method() === "POST") {
+      if (failSend) { failSend = false; return route.fulfill({ status: 503, json: { message: "Pengiriman gagal." } }); }
+      sent = true;
+      return route.fulfill({ status: 201, json: { data: {} } });
+    }
+    return route.fulfill({ json: { data: sent ? [{ id: 1, conversation_id: 42, sender_id: user.id, client_id: "11111111-1111-4111-8111-111111111111", body: "Halo Raka!", created_at: "2026-10-15T10:00:00Z" }] : [], user: recipient, can_send: true, next_cursor: null } });
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/messages");
+  await expect(page.getByRole("heading", { name: "Percakapan dimulai dari sini" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Raka Pratama/ })).toBeVisible();
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((theme) => document.documentElement.dataset.theme = theme, theme);
+    await page.screenshot({ path: path.resolve(process.cwd(), `../../docs/testing/screenshots/messages-desktop-${theme}.png`), animations: "disabled" });
+  }
+  await page.getByLabel("Cari percakapan", { exact: true }).fill("tidak-cocok");
+  await expect(page.getByText("Tidak ada percakapan yang cocok.")).toBeVisible();
+  await page.getByLabel("Cari percakapan", { exact: true }).fill("");
+  await page.getByRole("button", { name: "Pesan baru", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /Raka Pratama/ }).click();
+  await expect(page).toHaveURL(/messages\/42$/);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect(page.getByRole("region", { name: "Daftar percakapan" })).not.toBeVisible();
+  await page.getByLabel("Tulis pesan", { exact: true }).fill("Halo Raka!");
+  await page.getByRole("button", { name: "Kirim pesan", exact: true }).click();
+  await expect(page.getByText("Pengiriman gagal.", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Tulis pesan", { exact: true })).toHaveValue("Halo Raka!");
+  await page.getByRole("button", { name: "Kirim pesan", exact: true }).click();
+  await expect(page.getByLabel("Tulis pesan", { exact: true })).toHaveValue("");
+  await expect(page.getByRole("log").getByText("Halo Raka!")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: path.resolve(process.cwd(), "../../docs/testing/screenshots/messages-mobile-dark.png") });
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await page.getByRole("link", { name: "Semua pesan", exact: true }).click();
+  await expect(page.getByLabel("Cari percakapan", { exact: true })).toBeVisible();
+});
+
 test("explore stays readable across sizes and supports topic search and people", async ({ page }) => {
   await fixtures(page);
   await page.goto("/explore");

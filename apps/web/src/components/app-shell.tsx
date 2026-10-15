@@ -158,7 +158,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
     }
   }
   return (
-    <div className="app-frame min-h-dvh w-full" data-collapsed={collapsed}>
+    <div className="app-frame min-h-dvh w-full" data-collapsed={collapsed} data-messaging={pathname.startsWith("/messages")}>
       {user.verified && <Realtime userId={user.id} />}
       <aside
         aria-label="Navigasi akun"
@@ -226,7 +226,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
           />
         </div>
       </aside>
-      <div className="mx-auto w-full min-w-0 max-w-[640px] pb-24">
+      <div className={pathname.startsWith("/messages") ? "message-frame min-w-0 pb-24 md:pb-0" : "mx-auto w-full min-w-0 max-w-[640px] pb-24"}>
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/95 px-5 py-4 backdrop-blur-sm md:hidden">
           <Brand />
           <div className="flex items-center">
@@ -249,7 +249,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
         </header>
         <main
           id="main"
-          className={`min-h-[calc(100dvh-8rem)] ${pathname === "/home" || pathname === "/profile" || /^\/u\/[^/]+$/.test(pathname) ? "" : "feed-surface md:mt-4"}`}
+          className={`min-h-[calc(100dvh-8rem)] ${pathname.startsWith("/messages") || pathname === "/home" || pathname === "/profile" || /^\/u\/[^/]+$/.test(pathname) ? "" : "feed-surface md:mt-4"}`}
         >
           {children}
         </main>
@@ -278,7 +278,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
           </Link>
         ))}
       </nav>
-      {user.verified && (
+      {user.verified && !pathname.startsWith("/messages") && (
         <button
           type="button"
           onClick={openComposer}

@@ -1,9 +1,9 @@
-import { MessageThread } from "@/components/social/communications";
+import { Conversations } from "@/components/social/communications";
 export default async function Page({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <MessageThread id={Number(id)} />;
+  return <Conversations selectedId={Number(id)} />;
 }

@@ -73,3 +73,6 @@ Native-mobile and v1.0.0 releases are not declared.
 
 - Refined Explore with compact campus shortcuts, selected navigation tabs, a contained search field and quieter topic/loading/error states.
 
+
+- Added a two-panel desktop inbox, mobile chat layout, unread/search filters and an API-backed new-message picker.
+

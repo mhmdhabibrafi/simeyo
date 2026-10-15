@@ -127,3 +127,7 @@ Latest cleanup: source 67fea8b deployed as consumer-67fea8b. Removed the home fe
 
 Explore redesign: compact heading, monochrome campus shortcuts, clearly selected tabs, contained search field, quieter topic section and loading/retry states. Web lint/type checking/build passed. Six existing UI tests passed; the new responsive Explore/topic-search/people/accessibility test passed separately (9.6 seconds) after correcting its fixture to include the required feed metadata. Desktop/mobile light/dark screenshots were visually inspected. These are fictional API fixtures; deployment verification follows separately.
 
+
+
+DM redesign: desktop split inbox/thread workspace, mobile list/chat navigation, conversation search, unread filter and API-backed recipient picker. Kept existing send/read/privacy rules and retry identifiers; failed sends preserve drafts. Web lint/type checking/build and eight local fixture UI tests passed (42.6 seconds), including send failure/retry and mobile accessibility. Screenshots inspected. Requests are not shown because the current API has no DM request workflow. Explore d146d4f is deployed and its public-assets test passed (8.5 seconds) with internal TLS/security/WSS checks. Resend key is private on server; domain screenshot shows Verified, but API currently returns 401, so email delivery remains disabled pending a valid key.
+
