@@ -23,9 +23,9 @@ Updated: 2026-10-15. The owner confirmed the application name **Simeyo** and aut
 | Mobile ESLint | Passed after browser-discovered rendering/accessibility fixes; final label-only adjustment also checked in the browser |
 | Mobile pure client/dependency tests | 6 passed |
 | Expo component browser acceptance | 1 passed / 1.4 minutes: native-scoped login, persisted post/like/profile, cross-account reads and dark theme |
-| GitHub authentication | Connected as mhmdhabibrafi; target repository was empty |
+| GitHub authentication | Connected as mhmdhabibrafi; initial push to origin/main succeeded (6bb47fa) |
 
-Earlier Phase 4 evidence: Expo Doctor passed 21/21 checks; Metro exported Android/iOS/web bundles. Export used reserved placeholder HTTPS origins for compilation only and does not demonstrate production API connectivity or installed-device behavior. The PWA test proved real service worker registration, manifest validity, private API/no-store handling, exclusion of user data from caches, offline navigation and reconnect. PWA acceptance repeated successfully after branding changes.
+Expo Doctor passed 21/21 checks. Metro Android/iOS/web export passed again after the Simeyo rename and browser fixes. Export used reserved placeholder HTTPS origins for compilation only and does not demonstrate production API connectivity or installed-device behavior. The PWA test proved real service worker registration, manifest validity, private API/no-store handling, exclusion of user data from caches, offline navigation and reconnect. PWA acceptance repeated successfully after branding changes.
 
 ## Database and security
 
@@ -47,4 +47,4 @@ Campus approval, institution boundaries, private audiences/community membership,
 
 Use README and MOBILE.md. Start local DB/API/web via `npm.cmd run dev:db`, `npm.cmd run dev:api`, `npm.cmd run dev:web`; realtime via `dev:reverb` and `dev:worker`. Credentials are ignored in local environments and must not be committed.
 
-Finish Expo browser acceptance (`npx.cmd --prefix apps/web playwright test --config apps/web/playwright.mobile.config.ts`), repeat mobile lint/typecheck after fixes and PWA acceptance (`node infrastructure/scripts/test-pwa.mjs`). Inspect actual fresh screenshots. Generate native configuration with Expo prebuild without deleting existing folders, then document/build only what available toolchains support. Continue production security/performance/load/backup checks, update documentation with actual evidence, and push reviewed source to the authorized repository. Preserve existing features/data; never mark untested release gates complete.
+Expo browser acceptance and repeat production PWA acceptance passed; actual native feed/dark settings screenshots were inspected. Android configuration was generated with Expo prebuild and checked; Gradle is blocked by absent Java. Next web typecheck now generates route types explicitly for clean checkouts; PHPUnit only lists the existing Feature suite. First GitHub run passed mobile and exposed these two clean-checkout configuration issues; fixes are being verified in a subsequent run. Continue production security/performance/load/backup checks, update documentation with actual evidence, and keep the authorized repository synchronized. Preserve existing features/data; never mark untested release gates complete.
