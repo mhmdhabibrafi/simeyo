@@ -241,6 +241,13 @@ export function MessageThread({ id }: { id: number }) {
     }
     previousLastId.current = lastId;
   }, [lastId]);
+  if (q.isError) {
+    return <div className="p-6">
+      <Link href="/messages" className="text-sm text-[var(--muted)]">← Semua pesan</Link>
+      <p role="alert" className="my-5 text-sm">Percakapan tidak tersedia atau kamu tidak memiliki akses.</p>
+      <Button variant="outline" onClick={() => q.refetch()}>Coba lagi</Button>
+    </div>;
+  }
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-3 border-b border-[var(--border)] px-5 py-4">
@@ -258,11 +265,6 @@ export function MessageThread({ id }: { id: number }) {
           if (atBottom.current) setNewMessages(false);
         }
       }} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5" role="log" aria-label="Riwayat pesan" aria-relevant="additions">
-        {q.isError && (
-          <p role="alert">
-            Percakapan tidak tersedia atau kamu tidak memiliki akses.
-          </p>
-        )}
         {q.isPending && <p role="status">Memuat pesan…</p>}
         {q.hasNextPage && (
           <Button

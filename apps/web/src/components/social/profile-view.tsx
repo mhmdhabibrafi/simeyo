@@ -56,6 +56,10 @@ export function ProfileView({ username }: { username?: string }) {
       await client.invalidateQueries({ queryKey: ["feed"] });
       toast(kind === "block" ? "Akun diblokir." : "Preferensi diperbarui.");
       if (kind === "block") {
+        for (const key of ["messages", "conversations", "notifications"]) {
+          await client.cancelQueries({ queryKey: [key] });
+          client.removeQueries({ queryKey: [key] });
+        }
         client.removeQueries({ queryKey: ["profile"] });
         client.invalidateQueries({ queryKey: ["people"] });
         router.replace("/explore");

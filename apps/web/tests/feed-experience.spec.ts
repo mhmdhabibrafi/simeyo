@@ -234,6 +234,21 @@ test("secondary pages fit mobile and community failures can be retried", async (
   }
 });
 
+test("revoked messaging access hides cached history and composer", async ({ page }) => {
+  await fixtures(page);
+  await page.clock.install();
+  let revoked = false;
+  await page.route("**/api/v1/conversations", route => route.fulfill({ json: { data: [], next_cursor: null } }));
+  await page.route("**/api/v1/conversations/42/messages", route => route.fulfill(revoked ? { status: 404, json: { message: "Not found" } } : { json: { data: [{ id: 1, conversation_id: 42, sender_id: 902, client_id: "11111111-1111-4111-8111-111111111111", body: "Pesan pribadi tersimpan", created_at: "2026-10-15T10:00:00Z" }], user: { id: 902, name: "Raka Pratama", username: "raka_pengujian" }, can_send: true, next_cursor: null } }));
+  await page.goto("/messages/42");
+  await expect(page.getByText("Pesan pribadi tersimpan", { exact: true })).toBeVisible();
+  revoked = true;
+  await page.clock.fastForward(15_001);
+  await expect(page.getByRole("alert").filter({ hasText: "Percakapan tidak tersedia" })).toBeVisible();
+  await expect(page.getByText("Pesan pribadi tersimpan", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Tulis pesan", { exact: true })).toHaveCount(0);
+});
+
 test("explore stays readable across sizes and supports topic search and people", async ({ page }) => {
   await fixtures(page);
   await page.goto("/explore");

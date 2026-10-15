@@ -5,7 +5,7 @@ on:
       suite:
         description: Browser acceptance scope
         type: choice
-        options: [full, account-security, communications]
+        options: [full, account-security, communications, privacy-messaging]
         default: full
 permissions: {contents: read}
 jobs:
@@ -87,6 +87,7 @@ jobs:
           case "$TEST_SUITE" in
             account-security) set -- tests/account-security.spec.ts ;;
             communications) set -- tests/communications.spec.ts ;;
+            privacy-messaging) set -- tests/communications.spec.ts tests/social.spec.ts ;;
             *) set -- tests/*.spec.ts ;;
           esac
           for file in "$@"; do
