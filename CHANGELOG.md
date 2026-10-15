@@ -76,3 +76,6 @@ Native-mobile and v1.0.0 releases are not declared.
 
 - Added a two-panel desktop inbox, mobile chat layout, unread/search filters and an API-backed new-message picker.
 
+
+- Enabled Resend API verification/recovery delivery after provider-simulator and Laravel notification acceptance. Real campus inbox delivery remains untested.
+
