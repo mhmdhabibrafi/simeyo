@@ -29,6 +29,12 @@ jobs:
         working-directory: apps/api
       - run: php vendor/phpunit/phpunit/phpunit
         working-directory: apps/api
+      - name: Verify isolated PostgreSQL backup and restore
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker cp infrastructure/scripts "$POSTGRES_CONTAINER:/tmp/simeyo-scripts"
+          docker exec -e CI=true -e PGDATABASE=ruang_test -e PGUSER=ruang_test -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" sh /tmp/simeyo-scripts/test-database-recovery.sh
   web:
     runs-on: ubuntu-latest
     steps:
@@ -42,6 +48,7 @@ jobs:
         working-directory: apps/web
       - run: node infrastructure/scripts/validate-config.mjs
       - run: npm run test:contracts
+      - run: node --test infrastructure/tests/benchmark.test.mjs
   mobile:
     runs-on: ubuntu-latest
     steps:
