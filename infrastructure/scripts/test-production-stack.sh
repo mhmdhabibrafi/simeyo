@@ -49,6 +49,7 @@ done
 [ "$ready" = true ] || { echo 'Production-shaped stack did not become healthy.' >&2; exit 1; }
 compose exec -T gateway nginx -t
 BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") NODE_EXTRA_CA_CERTS="$state/cert.pem" node infrastructure/scripts/verify-production-stack.mjs
+BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") node infrastructure/scripts/verify-production-realtime.mjs
 BENCH_ORIGIN=https://localhost:8443 BENCH_EMAIL=nadia@example.test BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") NODE_EXTRA_CA_CERTS="$state/cert.pem" node infrastructure/scripts/benchmark-local-api.mjs > "$state/api-sample.json"
 cat "$state/api-sample.json"
 echo 'Isolated production-shaped stack passed. No image publication or public deployment performed.'
