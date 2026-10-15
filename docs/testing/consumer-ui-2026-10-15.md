@@ -42,3 +42,7 @@ Explore redesign: compact heading, monochrome campus shortcuts, clearly selected
 
 DM redesign: desktop split inbox/thread workspace, mobile list/chat navigation, conversation search, unread filter and API-backed recipient picker. Kept existing send/read/privacy rules and retry identifiers; failed sends preserve drafts. Web lint/type checking/build and eight local fixture UI tests passed (42.6 seconds), including send failure/retry and mobile accessibility. Screenshots inspected. Requests are not shown because the current API has no DM request workflow. Explore d146d4f is deployed and its public-assets test passed (8.5 seconds) with internal TLS/security/WSS checks. Resend key is private on server; domain screenshot shows Verified, but API currently returns 401, so email delivery remains disabled pending a valid key.
 
+
+
+Messaging deployment checkpoint: a9a6430 public assets passed all eight fixture UI tests (54.5 seconds). Real-API DM CI run 38738244927 reached persisted sending, realtime and notifications but failed the final mobile accessibility check because the inbox heading was hidden. Fixed by keeping one accessible page heading outside the hidden list. Source a46aec7 built and deployed as consumer-a46aec7, recreating only web/gateway; public-assets DM test including full Axe checks passed (13.6 seconds). Trusted internal TLS/security/health and real WSS handshake passed again. Real API rerun 38738630237 is still running; do not mark it passed yet. Existing database, media, credentials and API/worker/Reverb containers were preserved.
+

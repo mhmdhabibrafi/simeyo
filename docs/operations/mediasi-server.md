@@ -42,3 +42,7 @@ UI source 34412db is deployed as `consumer-34412db`. API images were also built 
 
 Latest cleanup: source 67fea8b deployed as consumer-67fea8b. Removed the home feed explanation strip and duplicate profile menu entry. Web lint/type checking/build passed; all six public-assets UI tests passed with fictional API fixtures (19.9 seconds). Fresh screenshot inspected; trusted internal TLS/security/health and WSS handshake passed. Only web/gateway recreated, with data and credentials preserved. Latest standard CI remains pending; earlier 34412db full browser workflow 38734142021 completed successfully.
 
+
+
+Messaging deployment checkpoint: a9a6430 public assets passed all eight fixture UI tests (54.5 seconds). Real-API DM CI run 38738244927 reached persisted sending, realtime and notifications but failed the final mobile accessibility check because the inbox heading was hidden. Fixed by keeping one accessible page heading outside the hidden list. Source a46aec7 built and deployed as consumer-a46aec7, recreating only web/gateway; public-assets DM test including full Axe checks passed (13.6 seconds). Trusted internal TLS/security/health and real WSS handshake passed again. Real API rerun 38738630237 is still running; do not mark it passed yet. Existing database, media, credentials and API/worker/Reverb containers were preserved.
+
