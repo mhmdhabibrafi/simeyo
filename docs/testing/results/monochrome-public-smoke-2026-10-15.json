@@ -1,0 +1,30 @@
+{
+  "origin": "https://simeyo.mhmdhabibrafi.me",
+  "checkedAt": "2026-10-15T10:23:51.728Z",
+  "checks": {
+    "/": 200,
+    "/login": 200,
+    "/manifest.webmanifest": 200,
+    "/api/v1/health": 200,
+    "/api/v1/me": 401,
+    "/.env": 404,
+    "/index.php": 404,
+    "/sanctum/csrf-cookie": 204,
+    "/api/v1/auth/register": 503,
+    "/api/v1/auth/forgot-password": 503,
+    "/api/v1/auth/email/resend": 503,
+    "/api/v1/auth/login": 419,
+    "monochromeWorkerAndOfflineFallback": true,
+    "publicIconMatchesSource": true,
+    "monochromeLightAndDark": true,
+    "mobileLoginRendered": true,
+    "browserErrors": 0
+  },
+  "notTested": [
+    "production account login",
+    "SMTP delivery",
+    "physical-device push",
+    "off-host recovery"
+  ],
+  "dnsResolver": "Cloudflare DNS-over-HTTPS; explicit public DNS resolution"
+}
