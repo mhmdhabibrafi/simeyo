@@ -5,7 +5,9 @@ mkdir -p .local/android-ci
 state=$(CDPATH= cd .local/android-ci && pwd)
 sdk=${ANDROID_SDK_ROOT:-${ANDROID_HOME:?Android SDK is required}}
 export PATH="$sdk/platform-tools:$sdk/emulator:$sdk/cmdline-tools/latest/bin:$PATH"
-sdkmanager 'system-images;android-35;google_apis;x86_64' >/dev/null
+export ANDROID_AVD_HOME="${RUNNER_TEMP:?}/simeyo-avd"
+mkdir -p "$ANDROID_AVD_HOME"
+sdkmanager emulator 'system-images;android-35;google_apis;x86_64' >/dev/null
 echo no | avdmanager create avd --force --name simeyo_ci --package 'system-images;android-35;google_apis;x86_64' --device pixel_6 >/dev/null
 emulator -avd simeyo_ci -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect >"$state/emulator.log" 2>&1 &
 emulator_pid=$!
@@ -18,10 +20,11 @@ cleanup() {
 trap cleanup EXIT
 booted=false
 for attempt in $(seq 1 120); do
+  if ! kill -0 "$emulator_pid" 2>/dev/null; then tail -60 "$state/emulator.log"; echo 'Android emulator exited before boot.' >&2; exit 1; fi
   if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; then booted=true; break; fi
   sleep 2
 done
-[ "$booted" = true ] || { echo 'Android emulator boot timed out.' >&2; exit 1; }
+[ "$booted" = true ] || { tail -60 "$state/emulator.log"; echo 'Android emulator boot timed out.' >&2; exit 1; }
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
