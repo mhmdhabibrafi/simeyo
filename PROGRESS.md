@@ -143,3 +143,6 @@ DM final acceptance: a46aec7 communications browser run 38738630237 passed (real
 
 Maturity follow-up: added inbox last-message/time previews with batched database loading, shared/native contract compatibility, and chat scrolling that preserves the reader's position. Community/event loading, empty/retry states and notification unread indicators were refined. Local backend 79 tests / 522 assertions passed (13.39 seconds); 10 UI fixture tests passed (30.5 seconds), including scroll position and 320px secondary pages/accessibility; mobile type checking and 8 client/config tests passed. Web lint/build passed; screenshots inspected. Existing 401fa46 standard CI is confirmed successful, including isolated load/recovery. The user cannot perform real campus account/inbox acceptance yet, so it remains BELUM DIUJI. New-source CI/deployment follows after commit.
 
+
+Deployment checkpoint: maturity-578e8af is active after new images built and a private production database backup passed archive validation. Public-assets UI 10 tests passed (56.3 seconds); trusted internal TLS/security/WSS and worker probe passed. Test-only selector follow-up ff7ec14 scopes message assertions to the chat log. Full browser 38768254369 and standard 38768250362 remain running. Details: docs/testing/maturity-2026-10-15.md.
+
