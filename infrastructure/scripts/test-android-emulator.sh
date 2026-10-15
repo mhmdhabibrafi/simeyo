@@ -26,7 +26,7 @@ adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
 adb shell input keyevent 82
-adb install -r apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk >/dev/null
+adb install -r "${ANDROID_ACCEPTANCE_APK:-apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk}" >/dev/null
 (cd apps/api/public && php -S 0.0.0.0:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php) >"$state/api.log" 2>&1 &
 api_pid=$!
 (cd apps/mobile && npx expo start --localhost --port 8081) >"$state/metro.log" 2>&1 &

@@ -24,13 +24,13 @@ def nodes():
     return ET.fromstring(adb('shell', 'cat', '/sdcard/simeyo-window.xml')).iter('node')
 
 
-def find(label, timeout=60):
+def find(label, timeout=60, editable=False):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
         try:
             current = list(nodes())
             for node in current:
-                if label in (node.get('text'), node.get('content-desc')):
+                if label in (node.get('text'), node.get('content-desc')) and (not editable or node.get('class', '').endswith('EditText')):
                     return node
             # The first development-client launch can display its onboarding dialog.
             for node in current:
@@ -55,7 +55,7 @@ def tap(label):
 
 
 def enter(label, value):
-    tap(label)
+    tap_node(find(label, editable=True))
     # CI fixture values contain only adb input-safe characters; no shell interpolation.
     if not re.fullmatch(r'[A-Za-z0-9@._-]+', value):
         raise RuntimeError('Unsupported fixture input.')

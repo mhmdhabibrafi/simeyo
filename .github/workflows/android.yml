@@ -1,6 +1,12 @@
 name: Android development APK
-on: workflow_dispatch
-permissions: {contents: read}
+on:
+  workflow_dispatch:
+    inputs:
+      apk_run_id:
+        description: 'Optional existing development APK run ID for repeating emulator acceptance without rebuilding'
+        required: false
+        type: string
+permissions: {contents: read, actions: read}
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -26,6 +32,7 @@ jobs:
       DEMO_PASSWORD: Simeyo-ci-emulator-only-2026
       BROADCAST_CONNECTION: log
       EXPO_PUSH_ENABLED: 'false'
+      APK_RUN_ID: ${{ inputs.apk_run_id }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -51,14 +58,25 @@ jobs:
       - run: npx expo prebuild --platform android --no-clean --no-install
         working-directory: apps/mobile
       - name: Compile development client for ARM64 and emulator
+        if: inputs.apk_run_id == ''
         run: ./gradlew assembleDebug --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,x86_64
         working-directory: apps/mobile/android
       - uses: actions/upload-artifact@v7
+        if: inputs.apk_run_id == ''
         with:
           name: simeyo-android-development
           path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 3
+      - name: Reuse an explicitly selected development APK for acceptance
+        if: inputs.apk_run_id != ''
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          case "$APK_RUN_ID" in *[!0-9]*|'') echo 'Invalid APK run ID.' >&2; exit 1;; esac
+          mkdir -p .local/android-ci
+          gh run view "$APK_RUN_ID" --json headSha,url > .local/android-ci/apk-source.json
+          gh run download "$APK_RUN_ID" -n simeyo-android-development -D .local/android-apk
+          echo 'ANDROID_ACCEPTANCE_APK=.local/android-apk/app-debug.apk' >> "$GITHUB_ENV"
       - name: Exercise the installed app on Android
         run: sh infrastructure/scripts/test-android-emulator.sh
       - uses: actions/upload-artifact@v7
@@ -68,5 +86,6 @@ jobs:
           path: |
             .local/android-ci/*.png
             .local/android-ci/acceptance.json
+            .local/android-ci/apk-source.json
           if-no-files-found: warn
           retention-days: 3
