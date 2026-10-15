@@ -3,10 +3,11 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Check, Mail, ShieldCheck, Clock3 } from "lucide-react";
-import { useMe } from "@/lib/auth";
+import { useMe, useAuthOptions } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/providers";
+import { FirebaseSignIn } from "@/components/firebase-sign-in";
 type Verification = {
   id: number;
   state: string;
@@ -17,6 +18,7 @@ type Verification = {
 };
 export default function Page() {
   const { data: user } = useMe();
+  const policy = useAuthOptions(!!user && !user.email_verified);
   const client = useQueryClient();
   const toast = useToast();
   const [error, setError] = useState("");
@@ -84,6 +86,7 @@ export default function Page() {
           </div>
         </div>
         <section className="border-b border-[var(--border)] pb-6">
+          {!user.email_verified && <FirebaseSignIn />}
           <div className="flex items-center gap-3">
             <Mail size={20} />
             <h2 className="text-sm font-semibold">1. Verifikasi email</h2>
@@ -92,10 +95,12 @@ export default function Page() {
             )}
           </div>
           <p className="my-3 text-sm text-[var(--muted)]">{user.email}</p>
+          {!user.email_verified && policy.data?.email_delivery_enabled === false && <p role="status" className="mb-4 text-sm leading-6 text-[var(--muted)]">Layanan verifikasi email belum tersedia. Akunmu tetap belum terverifikasi; akses percakapan kampus belum dibuka.</p>}
+          {!user.email_verified && policy.isError && <p role="alert" className="mb-4 text-sm">Status layanan email belum dapat diperiksa. <button type="button" className="underline" onClick={() => policy.refetch()}>Coba lagi</button></p>}
           {!user.email_verified && (
             <Button
               variant="outline"
-              disabled={busy}
+              disabled={busy || !policy.data?.email_delivery_enabled}
               onClick={async () => {
                 setBusy(true);
                 try {

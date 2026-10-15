@@ -5,14 +5,13 @@ import Link from "next/link";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
 import { api, ApiError } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
-import { authenticationOptionsSchema } from "../../../../packages/api-contracts/src";
+import { useAuthOptions } from "@/lib/auth";
 function Form({ reset }: { reset: boolean }) {
   const params = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const policy = useQuery({ queryKey: ["auth-options"], enabled: !reset, queryFn: async () => authenticationOptionsSchema.parse((await api<{data: unknown}>("auth/options")).data) });
+  const policy = useAuthOptions(!reset);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);

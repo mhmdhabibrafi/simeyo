@@ -29,17 +29,25 @@ class AccountSecurityTest extends TestCase
         $this->postJson('/api/v1/auth/register', $rootDomain)->assertCreated()->assertJsonPath('data.verified', false)->assertJsonPath('data.can_review_verifications', false);
     }
 
-    public function test_disabled_delivery_rejects_email_actions_without_creating_accounts_or_sending_notifications(): void
+    public function test_registration_can_create_pending_accounts_without_email_delivery_or_campus_access(): void
     {
         Notification::fake();
         config(['registration.email_delivery_enabled' => false]);
-        $this->getJson('/api/v1/auth/options')->assertOk()->assertJsonPath('data.registration_enabled', false)->assertJsonPath('data.email_delivery_enabled', false);
-        $this->postJson('/api/v1/auth/register', $this->registration('campus@example.test'))->assertStatus(503);
-        $this->assertDatabaseCount('users', 0);
-        $u = User::factory()->create();
+        $this->getJson('/api/v1/auth/options')->assertOk()->assertJsonPath('data.registration_enabled', true)->assertJsonPath('data.email_delivery_enabled', false);
+        $this->postJson('/api/v1/auth/register', $this->registration('campus@example.test'))->assertCreated()->assertJsonPath('data.email_verified', false)->assertJsonPath('data.verified', false);
+        $u = User::firstOrFail();
+        $this->getJson('/api/v1/feed')->assertForbidden();
         $this->postJson('/api/v1/auth/forgot-password', ['email' => $u->email])->assertStatus(503);
         $this->actingAs($u)->postJson('/api/v1/auth/email/resend')->assertStatus(503);
         Notification::assertNothingSent();
+    }
+
+    public function test_operator_can_close_registration_without_creating_an_account(): void
+    {
+        config(['registration.enabled' => false]);
+        $this->getJson('/api/v1/auth/options')->assertOk()->assertJsonPath('data.registration_enabled', false);
+        $this->postJson('/api/v1/auth/register', $this->registration('campus@example.test'))->assertStatus(503);
+        $this->assertDatabaseCount('users', 0);
     }
 
     public function test_password_change_requires_correct_current_password_and_preserves_unrelated_accounts(): void

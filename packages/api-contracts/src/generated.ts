@@ -80,7 +80,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Public registration/delivery availability and exact allowed email domains; a matching domain never grants verification. */
+        /** @description Public registration/delivery availability, exact allowed email domains and optional public Firebase web configuration. Typed email alone never grants verification. */
         get: {
             parameters: {
                 query?: never;
@@ -90,7 +90,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Public registration/delivery availability and exact allowed email domains; a matching domain never grants verification. */
+                /** @description Public registration/delivery availability, exact allowed email domains and optional public Firebase web configuration. Typed email alone never grants verification. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -98,6 +98,12 @@ export interface paths {
                     content: {
                         "application/json": {
                             data: {
+                                firebase?: {
+                                    apiKey: string;
+                                    authDomain: string;
+                                    projectId: string;
+                                    appId: string;
+                                } | null;
                                 registration_enabled: boolean;
                                 email_delivery_enabled: boolean;
                                 email_domains: string[];
@@ -219,7 +225,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Email delivery or registration is unavailable */
+                /** @description Registration is closed by operator */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -258,6 +264,85 @@ export interface paths {
             };
             responses: {
                 /** @description Web cookie login; CSRF required */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["User"];
+                        };
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/firebase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Firebase Google ID token exchange; CSRF required. Verified exact campus domains receive approved membership without administrator rights. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        firebase_token: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Firebase Google ID token exchange; CSRF required. Verified exact campus domains receive approved membership without administrator rights. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -525,7 +610,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Email delivery or registration is unavailable */
+                /** @description Email delivery is unavailable */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -680,7 +765,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Email delivery or registration is unavailable */
+                /** @description Email delivery is unavailable */
                 503: {
                     headers: {
                         [name: string]: unknown;

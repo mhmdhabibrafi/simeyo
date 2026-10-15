@@ -60,3 +60,28 @@ test("unavailable registration and recovery explain availability and permitted d
   await expect(page.getByRole("status")).toContainText("Pemulihan melalui email belum tersedia");
   await expect(page.getByRole("button", { name: "Kirim tautan pemulihan" })).toBeDisabled();
 });
+
+test("Firebase Google option explains the exact campus domains", async ({ page }) => {
+  await page.route("**/api/v1/auth/options", route => route.fulfill({ json: { data: { registration_enabled: true, email_delivery_enabled: false, email_domains: ["students.uin-suska.ac.id", "uin-suska.ac.id"], firebase: { apiKey: "test-public-key", projectId: "simeyo-test", appId: "test-app", authDomain: "simeyo-test.firebaseapp.com" } } } }));
+  await page.goto("/login");
+  await expect(page.getByRole("button", { name: "Lanjutkan dengan Google kampus" })).toBeVisible();
+  await expect(page.getByText(/Email kampus diverifikasi melalui Google/)).toBeVisible();
+});
+
+test("campus registration remains pending and cannot read the campus feed", async ({ page }) => {
+  await page.route("**/api/v1/auth/options", route => route.fulfill({ json: { data: { registration_enabled: true, email_delivery_enabled: false, email_domains: ["students.uin-suska.ac.id", "uin-suska.ac.id"] } } }));
+  const username = `pending_${Date.now().toString(36)}`;
+  await page.goto("/register");
+  await expect(page.getByRole("status")).toContainText("Akun baru tetap belum terverifikasi");
+  await page.getByLabel("Nama lengkap", { exact: true }).fill("Pendaftar Pengujian");
+  await page.getByLabel("Username", { exact: true }).fill(username);
+  await page.getByLabel("Email", { exact: true }).fill(`${username}@students.uin-suska.ac.id`);
+  await page.getByLabel("Kata sandi", { exact: true }).fill("PendingCampusPassword123");
+  await page.getByLabel("Ulangi kata sandi", { exact: true }).fill("PendingCampusPassword123");
+  await page.getByRole("button", { name: "Buat akun" }).click();
+  await expect(page).toHaveURL(/\/verification$/);
+  await expect(page.getByRole("button", { name: "Kirim ulang tautan" })).toBeDisabled();
+  await expect(page.getByRole("status").filter({hasText: "Layanan verifikasi email belum tersedia"})).toBeVisible();
+  expect((await page.request.get("/api/v1/feed", { headers: { Origin: "http://localhost:3000" } })).status()).toBe(403);
+  await page.screenshot({ path: path.join(root, "docs/testing/screenshots/account-pending-verification.png"), fullPage: true });
+});

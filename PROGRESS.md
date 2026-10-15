@@ -1,5 +1,7 @@
 # Simeyo implementation progress
 
+Firebase Google SSO implementation (2026-10-15): web button, Laravel signed-token exchange and automatic exact-domain campus verification added; additive identity migration included. Production activation and real Google campus-account acceptance are pending. Firebase Console Google provider / authorized domain setup is being performed by the owner. Native Google sign-in remains pending.
+
 Updated: 2026-10-15. The owner confirmed the application name **Simeyo** and authorized publication to https://github.com/mhmdhabibrafi/simeyo. The repository folder, database names, Compose volume namespace and session/storage identifiers retain compatibility with the existing workspace.
 
 ## Milestones

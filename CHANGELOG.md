@@ -1,6 +1,14 @@
 # Changelog
 
+### Firebase campus sign-in (pending production acceptance)
+
+- Added Firebase Google web sign-in and Laravel session exchange with signed-token verification and exact campus domain allowlist. Student/staff membership metadata never grants administrator rights.
+- Added protected identity bindings, account suspension checks and credential invalidation when linking previously unverified password accounts.
+- Retained password login and pending registration; provider activation is explicit through API environment configuration. Real Google and native sign-in acceptance are not yet verified.
+
 ## Unreleased — v0.4.0 work in progress
+
+- Add authenticated password changes in web/native settings with current-credential checks, transactionally revoked device sessions/tokens/reset links, rotated current web session and audit records. Enforce configurable exact campus registration domains without granting verification; expose honest registration/email availability in public forms.
 
 - Replace purple branding with a monochrome light/dark palette across web and native themes, focus/navigation states, PWA metadata and generated icons. Preserve contrast on inverted buttons, hero artwork and native switches.
 

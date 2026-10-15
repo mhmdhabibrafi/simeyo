@@ -46,21 +46,43 @@ paths:
           description: Rate limited
   /auth/options:
     get:
-      description: Public registration/delivery availability and exact allowed email
-        domains; a matching domain never grants verification.
+      description: Public registration/delivery availability, exact allowed email
+        domains and optional public Firebase web configuration. Typed email
+        alone never grants verification.
       security: []
       responses:
         "200":
-          description: Public registration/delivery availability and exact allowed email
-            domains; a matching domain never grants verification.
+          description: Public registration/delivery availability, exact allowed email
+            domains and optional public Firebase web configuration. Typed email
+            alone never grants verification.
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   data:
+                    $schema: https://json-schema.org/draft/2020-12/schema
                     type: object
                     properties:
+                      firebase:
+                        anyOf:
+                          - type: object
+                            properties:
+                              apiKey:
+                                type: string
+                              authDomain:
+                                type: string
+                              projectId:
+                                type: string
+                              appId:
+                                type: string
+                            required:
+                              - apiKey
+                              - authDomain
+                              - projectId
+                              - appId
+                            additionalProperties: false
+                          - type: "null"
                       registration_enabled:
                         type: boolean
                       email_delivery_enabled:
@@ -73,6 +95,7 @@ paths:
                       - registration_enabled
                       - email_delivery_enabled
                       - email_domains
+                    additionalProperties: false
                 required:
                   - data
         "401":
@@ -146,7 +169,7 @@ paths:
         "429":
           description: Rate limited
         "503":
-          description: Email delivery or registration is unavailable
+          description: Registration is closed by operator
   /auth/login:
     post:
       description: Web cookie login; CSRF required
@@ -160,6 +183,61 @@ paths:
       responses:
         "200":
           description: Web cookie login; CSRF required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/firebase:
+    post:
+      description: Firebase Google ID token exchange; CSRF required. Verified exact
+        campus domains receive approved membership without administrator rights.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firebase_token:
+                  type: string
+                  maxLength: 16384
+              required:
+                - firebase_token
+      responses:
+        "200":
+          description: Firebase Google ID token exchange; CSRF required. Verified exact
+            campus domains receive approved membership without administrator
+            rights.
           content:
             application/json:
               schema:
@@ -321,7 +399,7 @@ paths:
         "429":
           description: Rate limited
         "503":
-          description: Email delivery or registration is unavailable
+          description: Email delivery is unavailable
   /auth/reset-password:
     post:
       description: Reset password and revoke sessions/tokens
@@ -406,7 +484,7 @@ paths:
         "429":
           description: Rate limited
         "503":
-          description: Email delivery or registration is unavailable
+          description: Email delivery is unavailable
   /auth/email/verify/{id}/{hash}:
     get:
       description: Logged-in owner and temporary signed URL required; redirect to onboarding

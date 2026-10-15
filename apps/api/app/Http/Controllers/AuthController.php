@@ -21,15 +21,16 @@ class AuthController extends Controller
     public function options()
     {
         return ['data' => [
-            'registration_enabled' => (bool) config('registration.enabled') && (bool) config('registration.email_delivery_enabled'),
+            'registration_enabled' => (bool) config('registration.enabled'),
             'email_delivery_enabled' => (bool) config('registration.email_delivery_enabled'),
             'email_domains' => config('registration.email_domains'),
+            'firebase' => config('firebase.enabled') ? ['apiKey' => config('firebase.api_key'), 'authDomain' => config('firebase.auth_domain'), 'projectId' => config('firebase.project_id'), 'appId' => config('firebase.app_id')] : null,
         ]];
     }
 
     public function register(Request $r)
     {
-        abort_unless(config('registration.enabled') && config('registration.email_delivery_enabled'), 503, 'Pendaftaran belum tersedia. Silakan coba kembali nanti.');
+        abort_unless(config('registration.enabled'), 503, 'Pendaftaran belum tersedia. Silakan coba kembali nanti.');
         $r->merge(['email' => Str::lower((string) $r->input('email')), 'username' => Str::lower((string) $r->input('username'))]);
         $data = $r->validate(['name' => 'required|string|max:80', 'username' => 'required|string|regex:/^[a-z0-9_]{3,24}$/|unique:users', 'email' => 'required|email|max:254|unique:users', 'password' => ['required', 'confirmed', PasswordRule::min(12)->mixedCase()->numbers()]]);
         $domains = config('registration.email_domains');
@@ -42,9 +43,12 @@ class AuthController extends Controller
 
             return $u;
         });
-        event(new Registered($u));
+        if (config('registration.email_delivery_enabled')) {
+            event(new Registered($u));
+        }
         Auth::login($u);
         $r->session()->regenerate();
+        $r->session()->put('password_hash_web', Auth::guard('web')->hashPasswordForCookie($u->getAuthPassword()));
 
         return (new UserResource($u->refresh()))->response()->setStatusCode(201);
     }

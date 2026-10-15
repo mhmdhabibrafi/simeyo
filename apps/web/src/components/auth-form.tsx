@@ -4,24 +4,22 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { authFormSchema, authenticationOptionsSchema } from "../../../../packages/api-contracts/src";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { authFormSchema } from "../../../../packages/api-contracts/src";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuthOptions } from "@/lib/auth";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Brand } from "./brand";
 import { ThemeToggle } from "./providers";
+import { FirebaseSignIn } from "./firebase-sign-in";
 import { api, ApiError } from "@/lib/api";
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const client = useQueryClient();
   const [show, setShow] = useState(false);
   const registerMode = mode === "register";
-  const policy = useQuery({
-    queryKey: ["auth-options"],
-    enabled: registerMode,
-    queryFn: async () => authenticationOptionsSchema.parse((await api<{data: unknown}>("auth/options")).data),
-  });
+  const policy = useAuthOptions(registerMode);
   const schema = authFormSchema(mode);
   type Fields = z.infer<typeof schema>;
   const {
@@ -91,10 +89,12 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               ? "Buat akun, verifikasi afiliasi, lalu mulai terhubung."
               : "Masuk untuk melanjutkan cerita kampusmu."}
           </p>
+          <FirebaseSignIn />
           <form onSubmit={submit} className="space-y-5" noValidate>
             {registerMode && <div className="rounded-xl border border-[var(--border)] p-4 text-sm leading-6">
               {policy.isPending ? <p role="status">Memeriksa ketersediaan pendaftaran…</p> : policy.isError ? <><p role="alert">Informasi pendaftaran belum dapat dimuat.</p><button type="button" onClick={() => policy.refetch()} className="mt-2 font-semibold underline">Coba lagi</button></> : <>
                 {!policy.data.registration_enabled && <p role="status">Pendaftaran belum dibuka. Kamu tetap dapat masuk jika sudah memiliki akun.</p>}
+                {policy.data.registration_enabled && !policy.data.email_delivery_enabled && <p role="status">Email verifikasi belum tersedia. Akun baru tetap belum terverifikasi dan belum dapat mengakses percakapan kampus.</p>}
                 {!!policy.data.email_domains.length && <p className="mt-2 text-[var(--muted)]">Email kampus: {policy.data.email_domains.map(domain => `@${domain}`).join(" atau ")}. Domain yang cocok tidak otomatis memverifikasi akun.</p>}
               </>}
             </div>}

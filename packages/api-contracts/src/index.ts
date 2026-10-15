@@ -2,6 +2,7 @@ import { z } from "zod";
 import type {components} from "./generated";
 
 export const authenticationOptionsSchema = z.object({
+  firebase: z.object({ apiKey: z.string(), authDomain: z.string(), projectId: z.string(), appId: z.string() }).nullable().optional(),
   registration_enabled: z.boolean(),
   email_delivery_enabled: z.boolean(),
   email_domains: z.array(z.string()),
