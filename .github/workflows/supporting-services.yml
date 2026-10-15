@@ -21,6 +21,7 @@ jobs:
       - name: Verify Redis persistence and supporting HTTP/S3 protocols
         run: |
           test "$(docker compose -p simeyo-support-ci exec -T redis redis-cli SET simeyo:ci:probe synthetic-roundtrip)" = OK
+          docker compose -p simeyo-support-ci restart redis
           test "$(docker compose -p simeyo-support-ci exec -T redis redis-cli GET simeyo:ci:probe)" = synthetic-roundtrip
           test "$(docker compose -p simeyo-support-ci exec -T redis redis-cli DEL simeyo:ci:probe)" = 1
           php infrastructure/scripts/verify-supporting-services.php
