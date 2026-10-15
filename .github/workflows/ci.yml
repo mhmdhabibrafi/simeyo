@@ -94,5 +94,6 @@ jobs:
             .local/production-ci/api-sample.json
             .local/production-ci/query-plan.json
             .local/production-ci/sustained-load.json
+            .local/production-ci/resources.jsonl
           if-no-files-found: warn
           retention-days: 3

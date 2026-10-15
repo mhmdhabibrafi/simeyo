@@ -32,7 +32,11 @@ MAIL_MAILER=log
 DEMO_PASSWORD=$(openssl rand -hex 18)
 EOF
 compose() { docker compose --env-file "$environment" -p simeyo-ci -f docker-compose.production.yml -f infrastructure/production/compose.ci.yml "$@"; }
-cleanup() { compose down --remove-orphans; }
+resource_pid=
+cleanup() {
+  [ -z "$resource_pid" ] || kill "$resource_pid" 2>/dev/null || true
+  compose down --remove-orphans
+}
 trap cleanup EXIT
 compose config --quiet
 compose build api web
@@ -59,6 +63,10 @@ BENCH_ORIGIN=https://localhost:8443 BENCH_EMAIL=nadia@example.test BENCH_PASSWOR
 cat "$state/api-sample.json"
 compose cp infrastructure/scripts/seed-production-load.php api:/tmp/seed-production-load.php
 compose exec -T -e CI=true -e GITHUB_ACTIONS=true api php /tmp/seed-production-load.php > "$state/query-plan.json"
+(while true; do docker stats --no-stream --format '{{json .}}' $(compose ps -q); sleep 5; done) > "$state/resources.jsonl" &
+resource_pid=$!
 BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") NODE_EXTRA_CA_CERTS="$state/cert.pem" node infrastructure/scripts/load-production-stack.mjs > "$state/sustained-load.json"
+kill "$resource_pid" 2>/dev/null || true
+resource_pid=
 cat "$state/sustained-load.json"
 echo 'Isolated production-shaped stack passed. No image publication or public deployment performed.'

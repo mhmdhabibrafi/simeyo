@@ -49,8 +49,9 @@ try {
     return { path, requests: rows.length, failed: rows.filter(row => row.status !== 200).length, statuses: [...new Set(rows.map(row => row.status))], p50_ms: Math.round(times[Math.ceil(times.length * .5) - 1] ?? 0), p95_ms: Math.round(times[Math.ceil(times.length * .95) - 1] ?? 0), max_ms: Math.round(times.at(-1) ?? 0) };
   });
   const failed = samples.filter(sample => sample.status !== 200).length;
-  const accepted = failed === 0 && endpoints.every(endpoint => endpoint.requests >= 10 && endpoint.p95_ms <= 2000);
-  console.log(JSON.stringify({ scope: '120-second isolated HTTPS/FPM CI read load, four fictional accounts; not public campus capacity certification', dataset: { users: 100, root_posts: 5000, replies: 500 }, duration_seconds: +seconds.toFixed(2), target_requests_per_second: targetRate, concurrency_limit: concurrency, requests: samples.length, actual_requests_per_second: +(samples.length / seconds).toFixed(2), failed, endpoint_p95_budget_ms: 2000, accepted, endpoints }, null, 2));
+  const minimumRequests = Math.floor(duration / 1000 * targetRate * .9);
+  const accepted = failed === 0 && samples.length >= minimumRequests && endpoints.every(endpoint => endpoint.requests >= 10 && endpoint.p95_ms <= 2000);
+  console.log(JSON.stringify({ scope: '120-second isolated HTTPS/FPM CI read load, four fictional accounts; not public campus capacity certification', dataset: { users: 100, root_posts: 5000, replies: 500 }, duration_seconds: +seconds.toFixed(2), target_requests_per_second: targetRate, concurrency_limit: concurrency, minimum_completed_requests: minimumRequests, requests: samples.length, actual_requests_per_second: +(samples.length / seconds).toFixed(2), failed, endpoint_p95_budget_ms: 2000, accepted, endpoints }, null, 2));
   assert.ok(accepted, 'Sustained CI read workload failed its explicit error/latency budget.');
 } finally {
   for (const token of tokens) {
