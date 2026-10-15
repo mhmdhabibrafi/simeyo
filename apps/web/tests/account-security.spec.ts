@@ -31,7 +31,7 @@ test("password rotation preserves current web login and revokes another browser 
     await page.getByLabel("Kata sandi baru", { exact: true }).fill("ReplacementPassword456");
     await page.getByLabel("Konfirmasi kata sandi baru", { exact: true }).fill("ReplacementPassword456");
     await page.getByRole("button", { name: "Simpan kata sandi" }).click();
-    await expect(page.getByRole("alert")).toContainText("Kata sandi saat ini tidak sesuai.");
+    await expect(page.getByRole("alert").filter({ hasText: "Kata sandi saat ini tidak sesuai." })).toBeVisible();
     await page.getByLabel("Kata sandi saat ini", { exact: true }).fill(password!);
     await page.getByRole("button", { name: "Simpan kata sandi" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Kata sandi diperbarui" })).toBeVisible();
