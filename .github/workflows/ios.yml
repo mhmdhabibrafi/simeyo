@@ -1,0 +1,60 @@
+name: iOS simulator build
+on: workflow_dispatch
+permissions: {contents: read}
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      EXPO_PUBLIC_API_URL: http://localhost:8000
+      EXPO_PUBLIC_WEB_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: xcodebuild -version
+      - run: npm ci --ignore-scripts
+      - run: npm ci
+        working-directory: apps/mobile
+      - run: npm run typecheck && npm run lint && npm test
+        working-directory: apps/mobile
+      - run: npx expo prebuild --platform ios --no-clean --no-install
+        working-directory: apps/mobile
+      - run: pod install
+        working-directory: apps/mobile/ios
+      - name: Compile simulator app without distribution signing
+        run: xcodebuild -workspace Simeyo.xcworkspace -scheme Simeyo -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ../../../.local/ios-ci/build CODE_SIGNING_ALLOWED=NO -quiet
+        working-directory: apps/mobile/ios
+      - name: Launch the installed simulator app and capture its initial screen
+        run: |
+          set -eu
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone")))')
+          xcrun simctl boot "$device"
+          xcrun simctl bootstatus "$device" -b
+          xcrun simctl install "$device" .local/ios-ci/build/Build/Products/Debug-iphonesimulator/Simeyo.app
+          (cd apps/mobile && npx expo start --localhost --port 8081) >.local/ios-ci/metro.log 2>&1 &
+          metro_pid=$!
+          trap 'kill "$metro_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in $(seq 1 90); do
+            if curl --silent --fail http://localhost:8081/status | grep -q packager-status:running; then ready=true; break; fi
+            sleep 2
+          done
+          [ "$ready" = true ]
+          xcrun simctl launch "$device" app.simeyo.mobile
+          xcrun simctl openurl "$device" 'exp+simeyo://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081'
+          sleep 45
+          xcrun simctl io "$device" screenshot .local/ios-ci/initial-screen.png
+          xcrun simctl spawn "$device" launchctl list | grep app.simeyo.mobile
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: simeyo-ios-simulator
+          path: |
+            .local/ios-ci/build/Build/Products/Debug-iphonesimulator/Simeyo.app
+            .local/ios-ci/initial-screen.png
+          if-no-files-found: warn
+          retention-days: 3
