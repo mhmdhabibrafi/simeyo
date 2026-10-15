@@ -1,5 +1,7 @@
 # Changelog
 
+- Correct missing shared form styling, bounded chat viewport sizing, nested navigation selection and mobile feed spacing. Use a mobile composer sheet with one full-width action row; clarify empty conversations and hide irrelevant read controls. Source 42c3c4d deployed; 12 local and 12 public-assets fixture UI checks passed. See docs/testing/layout-2026-10-16.md for scope and pending CI.
+
 - Removed the feed explanation strip and duplicate profile entry in the account menu. Profile remains available through the main desktop/mobile navigation.
 
 - Consolidated desktop account controls into one menu at the bottom-left of the sidebar, opening upward. Navigation collapse lives in that menu and theme selection remains in Settings.

@@ -2,6 +2,8 @@
 
 **Satu kampus. Banyak cerita.**
 
+Latest UI correction: consistent form fields, compact mobile spacing, a full-width composer toolbar and chat sizing that respects navigation. Source 42c3c4d is deployed; [layout evidence and verification limits](docs/testing/layout-2026-10-16.md).
+
 Current locally verified milestone: **v0.3.0 — campus experience**. The Expo/PWA v0.4.0 milestone and v1.0.0 production review remain in progress.
 
 The authorized server release candidate is available at **https://simeyo.mhmdhabibrafi.me**. There is no marketing landing page: `/` opens the feed and signed-out visitors continue to login. Firebase Google campus sign-in is deployed; real Google campus-account acceptance is pending Firebase Console setup/testing. Password registration creates pending accounts. Verification/recovery email is enabled through the Resend HTTPS API; provider simulator acceptance passed, while real campus inbox delivery remains untested. See [email evidence](docs/testing/resend-2026-10-15.md), [authentication](AUTHENTICATION.md) and [server operations and verified scope](docs/operations/mediasi-server.md); public availability does not mark v1.0.0 acceptance complete.
