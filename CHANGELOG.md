@@ -37,3 +37,7 @@
 - Add API/security tests, real browser workflows and development infrastructure/documentation.
 
 Native-mobile and v1.0.0 releases are not declared.
+# Unreleased continuation
+
+- Extend isolated PostgreSQL recovery CI with profile-linked private media archive/content checksums, Laravel encrypted push-device recovery using a retained key, and wrong-key rejection. Production recovery remains a separate acceptance gate.
+

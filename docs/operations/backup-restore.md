@@ -26,4 +26,6 @@ A database dump does not include uploaded media, object-store versions, applicat
 
 The CI drill restores actual application tables plus a fictional user/profile with Unicode content, verifies migration history, and exercises overwrite/nonempty/source and invalid-archive guards. Its databases are disposable CI databases; it does not connect to the operator's local or production data.
 
+The application recovery step additionally creates a fictional profile linked to a private PNG and an encrypted `PushDevice` token before dumping the database. It archives the fixture media in a restricted runner temporary directory, restores into a separate directory, and compares both archive and content SHA-256 hashes against the restored profile reference. Laravel must decrypt the restored database token with the retained CI `APP_KEY`; a different key must fail. No real push token or application key is written into the archive or logs. This checks application compatibility with retained keys, not recovery from a production secret manager, object-store version history, coordinated live snapshots or operator cutover. Those production drills remain outstanding.
+
 References: [PostgreSQL pg_dump](https://www.postgresql.org/docs/17/app-pgdump.html), [PostgreSQL pg_restore](https://www.postgresql.org/docs/17/app-pgrestore.html).

@@ -3,7 +3,7 @@ set -eu
 [ "${CI:-}" = true ] && [ "${PGDATABASE:-}" = ruang_test ] || { echo 'Recovery drill requires the isolated CI ruang_test database.' >&2; exit 1; }
 directory=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 archive="/tmp/simeyo-recovery-$(date +%s)-$$.dump"
-target="simeyo_restore_$(date +%s)_$$"
+target=simeyo_restore_application_ci
 psql --no-password -X -v ON_ERROR_STOP=1 <<'SQL'
 INSERT INTO users (name,email,password,username,created_at,updated_at) VALUES ('Recovery fixture','recovery@example.invalid','disabled-login-not-a-password-hash','recovery_fixture',now(),now());
 INSERT INTO user_profiles (user_id,bio,created_at,updated_at) SELECT id,'Pemulihan Simeyo — data uji kampus 🌱',now(),now() FROM users WHERE email='recovery@example.invalid';
