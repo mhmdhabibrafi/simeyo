@@ -418,8 +418,11 @@ export function Notifications() {
                     ? `/messages/${n.conversation_id}`
                     : n.post_id
                       ? `/thread/${n.post_id}`
-                      : `/u/${n.actor.username}`
+                      : n.kind === "verification"
+                        ? "/verification"
+                        : `/u/${n.actor.username}`
                 }
+                onClick={() => { if (!n.read_at) read.mutate(n.id); }}
                 className="text-sm"
               >
                 <strong>{n.actor.name}</strong>{" "}

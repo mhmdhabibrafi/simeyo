@@ -54,24 +54,54 @@ export function Composer({
   const [visibility, setVisibility] = useState(initialVisibility);
   const [images, setImages] = useState<Media[]>([]);
   const [busy, setBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(!compact);
   const file = useRef<HTMLInputElement>(null);
-  const dirty = !!body.trim() || images.length > 0;
+  const request = useRef<{ payload: string; id: string } | null>(null);
+  const dirty = !!body.trim() || images.length > 0 || pendingFiles.length > 0;
   useEffect(() => {
     onStateChange?.({ dirty, busy });
   }, [dirty, busy, onStateChange]);
-  async function upload(files: FileList | null) {
+  useEffect(() => {
+    if (!dirty && !busy) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, busy]);
+  async function upload(files: FileList | File[] | null) {
     if (!files || busy) return;
+    const selected = Array.from(files);
+    if (!selected.length) return;
     setExpanded(true);
-    if (files.length + images.length > 4) {
+    if (selected.length + images.length > 4) {
       setError("Maksimal 4 gambar.");
+      if (file.current) file.current.value = "";
+      return;
+    }
+    if (
+      selected.some(
+        (image) =>
+          !["image/jpeg", "image/png", "image/webp"].includes(image.type) ||
+          image.size > 4 * 1024 * 1024,
+      )
+    ) {
+      setError("Gunakan JPG, PNG, atau WebP, maksimal 4 MB per gambar.");
+      if (file.current) file.current.value = "";
       return;
     }
     setBusy(true);
+    setPendingFiles(selected);
     setError("");
     try {
-      for (const image of Array.from(files)) {
+      for (const [index, image] of selected.entries()) {
+        setUploadProgress(
+          `Mengunggah gambar ${index + 1} dari ${selected.length}…`,
+        );
         const data = new FormData();
         data.set("image", image);
         const r = await api<{ data: unknown }>("media/posts", {
@@ -79,6 +109,7 @@ export function Composer({
           body: data,
         });
         setImages((old) => [...old, mediaSchema.parse(r.data)]);
+        setPendingFiles(selected.slice(index + 1));
       }
     } catch (e) {
       setError(
@@ -88,26 +119,43 @@ export function Composer({
       );
     } finally {
       setBusy(false);
+      setUploadProgress("");
       if (file.current) file.current.value = "";
     }
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (
+      busy ||
+      pendingFiles.length ||
+      (!body.trim() && !images.length && !existingImageCount)
+    )
+      return;
     setBusy(true);
     setError("");
     try {
+      const draft = {
+        body,
+        visibility,
+        parent_id: parentId,
+        community_id: communityId,
+        quote_id: quoteId,
+        media_ids: images.map((i) => i.id),
+      };
+      const payload = JSON.stringify(draft);
+      if (!request.current || request.current.payload !== payload) {
+        request.current = { payload, id: crypto.randomUUID() };
+      }
       await api(editId ? `posts/${editId}` : "posts", {
         method: editId ? "PATCH" : "POST",
-        body: JSON.stringify({
-          body,
-          visibility,
-          parent_id: parentId,
-          community_id: communityId,
-          quote_id: quoteId,
-          media_ids: images.map((i) => i.id),
-        }),
+        body: editId
+          ? payload
+          : JSON.stringify({
+              ...draft,
+              client_id: request.current.id,
+            }),
       });
+      request.current = null;
       setBody("");
       setImages([]);
       if (compact) setExpanded(false);
@@ -129,9 +177,15 @@ export function Composer({
   }
   if (!user?.verified || !user.email_verified) return null;
   return (
-    <form onSubmit={submit} className={compact ? "px-5 py-5 sm:px-6" : "py-2"}>
+    <form
+      onSubmit={submit}
+      aria-busy={busy}
+      className={compact ? "px-5 py-5 sm:px-6" : "py-2"}
+    >
       <div className="grid grid-cols-[40px_minmax(0,1fr)] gap-x-3">
-        <div className="row-span-2 self-start"><Avatar name={user.name} url={user.avatar_url} size={40} /></div>
+        <div className="row-span-2 self-start">
+          <Avatar name={user.name} url={user.avatar_url} size={40} />
+        </div>
         <div className="contents">
           {!compact && (
             <p className="col-start-2 mb-1 text-sm font-semibold">
@@ -205,6 +259,9 @@ export function Composer({
                       type="file"
                       ref={file}
                       multiple
+                      disabled={
+                        busy || pendingFiles.length > 0 || images.length >= 4
+                      }
                       accept="image/jpeg,image/png,image/webp"
                       onChange={(e) => upload(e.target.files)}
                       aria-label="Lampirkan gambar"
@@ -213,7 +270,9 @@ export function Composer({
                       type="button"
                       className="icon-button text-[var(--muted)]"
                       aria-label="Tambah gambar"
-                      disabled={busy}
+                      disabled={
+                        busy || pendingFiles.length > 0 || images.length >= 4
+                      }
                       onClick={() => file.current?.click()}
                     >
                       <ImagePlus size={20} />
@@ -304,11 +363,14 @@ export function Composer({
                   className="min-h-10 px-4"
                   disabled={
                     busy ||
+                    pendingFiles.length > 0 ||
                     (!body.trim() && !images.length && !existingImageCount)
                   }
                 >
                   {busy
-                    ? "Menyimpan…"
+                    ? uploadProgress
+                      ? "Mengunggah…"
+                      : "Menyimpan…"
                     : editId
                       ? "Simpan"
                       : parentId
@@ -316,6 +378,41 @@ export function Composer({
                         : "Bagikan"}
                   <ArrowUpRight size={15} />
                 </Button>
+              </div>
+            </div>
+          )}
+          {uploadProgress && (
+            <p
+              role="status"
+              className="col-span-2 mt-3 text-xs text-[var(--muted)]"
+            >
+              {uploadProgress}
+            </p>
+          )}
+          {!busy && pendingFiles.length > 0 && (
+            <div className="col-span-2 mt-3 rounded-xl bg-[var(--soft)] p-3 text-sm">
+              <p className="break-words">
+                Belum terunggah:{" "}
+                {pendingFiles.map((image) => image.name).join(", ")}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="min-h-10 underline"
+                  onClick={() => upload(pendingFiles)}
+                >
+                  Coba unggah lagi
+                </button>
+                <button
+                  type="button"
+                  className="min-h-10 text-[var(--muted)]"
+                  onClick={() => {
+                    setPendingFiles([]);
+                    setError("");
+                  }}
+                >
+                  Batalkan lampiran gagal
+                </button>
               </div>
             </div>
           )}

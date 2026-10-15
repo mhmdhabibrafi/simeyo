@@ -463,12 +463,14 @@ test("a failed post preserves the draft and permits retry", async ({
   page,
 }) => {
   await fixtures(page);
-  await page.route("**/api/v1/posts", (route) =>
-    route.fulfill({
+  const submissions: { client_id: string; body: string }[] = [];
+  await page.route("**/api/v1/posts", (route) => {
+    submissions.push(route.request().postDataJSON());
+    return route.fulfill({
       status: 503,
       json: { message: "Posting sementara gagal" },
-    }),
-  );
+    });
+  });
   await page.goto("/home");
   await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
   const composer = page
@@ -484,6 +486,219 @@ test("a failed post preserves the draft and permits retry", async ({
   await expect(
     page.getByRole("button", { name: "Bagikan", exact: true }),
   ).toBeEnabled();
+  await page.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect.poll(() => submissions.length).toBe(2);
+  expect(submissions[0].client_id).toMatch(/^[0-9a-f-]{36}$/);
+  expect(submissions[1].client_id).toBe(submissions[0].client_id);
+  await expect(composer).toBeEnabled();
+  await composer.fill("Draft diubah setelah percobaan gagal.");
+  await page.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect.poll(() => submissions.length).toBe(3);
+  expect(submissions[2].client_id).not.toBe(submissions[0].client_id);
+});
+
+test("partial uploads retain successful previews and retry only the remaining image", async ({
+  page,
+}) => {
+  await fixtures(page);
+  let attempts = 0;
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+    "base64",
+  );
+  await page.route("**/api/v1/media/posts/*", (route) =>
+    route.fulfill({ contentType: "image/png", body: png }),
+  );
+  await page.route("**/api/v1/media/posts", async (route) => {
+    attempts++;
+    if (attempts === 1) await pending;
+    if (attempts === 2)
+      return route.fulfill({
+        status: 503,
+        json: { message: "Koneksi upload terputus" },
+      });
+    return route.fulfill({
+      status: 201,
+      json: {
+        data: {
+          id: attempts,
+          url: `/api/v1/media/posts/${attempts}`,
+          width: 1,
+          height: 1,
+        },
+      },
+    });
+  });
+  let posted: { media_ids: number[]; client_id: string } | null = null;
+  await page.route("**/api/v1/posts", (route) => {
+    posted = route.request().postDataJSON();
+    return route.fulfill({ status: 201, json: { data: post } });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Cerita baru", exact: true });
+  await dialog
+    .getByLabel("Tulis cerita", { exact: true })
+    .fill("Dua foto kampus.");
+  await dialog.getByLabel("Lampirkan gambar").setInputFiles([
+    { name: "kampus-1.png", mimeType: "image/png", buffer: png },
+    { name: "kampus-2.png", mimeType: "image/png", buffer: png },
+  ]);
+  await expect(dialog.getByRole("status")).toContainText(
+    "Mengunggah gambar 1 dari 2",
+  );
+  await expect(
+    dialog.getByLabel("Tulis cerita", { exact: true }),
+  ).toBeDisabled();
+  release();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Koneksi upload terputus",
+  );
+  await expect(dialog.getByAltText("Pratinjau lampiran")).toHaveCount(1);
+  await expect(
+    dialog.getByRole("button", { name: "Bagikan", exact: true }),
+  ).toBeDisabled();
+  await expect(dialog).toContainText("Belum terunggah: kampus-2.png");
+  expect(
+    await page.evaluate(() => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    }),
+  ).toBe(true);
+  await page.screenshot({
+    path: path.resolve(
+      "../../docs/testing/screenshots/composer-upload-retry.png",
+    ),
+    animations: "disabled",
+  });
+  await dialog.getByRole("button", { name: "Coba unggah lagi" }).click();
+  await expect(dialog.getByAltText("Pratinjau lampiran")).toHaveCount(2);
+  expect(attempts).toBe(3);
+  await dialog.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(posted!.media_ids).toEqual([1, 3]);
+});
+
+test("invalid uploads are rejected locally without losing text and can be replaced", async ({
+  page,
+}) => {
+  await fixtures(page);
+  let uploads = 0;
+  await page.route("**/api/v1/media/posts", (route) => {
+    uploads++;
+    return route.fulfill({ status: 500 });
+  });
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Cerita baru", exact: true });
+  await dialog
+    .getByLabel("Tulis cerita", { exact: true })
+    .fill("Tulisan tetap ada.");
+  await dialog
+    .getByLabel("Lampirkan gambar")
+    .setInputFiles({
+      name: "besar.png",
+      mimeType: "image/png",
+      buffer: Buffer.alloc(4 * 1024 * 1024 + 1),
+    });
+  await expect(dialog.getByRole("alert")).toContainText("maksimal 4 MB");
+  expect(uploads).toBe(0);
+  await expect(dialog.getByLabel("Tulis cerita", { exact: true })).toHaveValue(
+    "Tulisan tetap ada.",
+  );
+  await dialog.getByLabel("Lampirkan gambar").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: Buffer.from("fixture") });
+  await expect(dialog.getByRole("button", { name: "Coba unggah lagi" })).toBeVisible();
+  expect(uploads).toBe(1);
+  await dialog.getByRole("button", { name: "Batalkan lampiran gagal" }).click();
+  await expect(dialog.getByRole("button", { name: "Coba unggah lagi" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Bagikan", exact: true })).toBeEnabled();
+  await expect(dialog.getByLabel("Tulis cerita", { exact: true })).toHaveValue("Tulisan tetap ada.");
+});
+
+test("reply notifications open their thread, mark read and refresh the replies after posting", async ({
+  page,
+}) => {
+  await fixtures(page);
+  const notificationId = "11111111-1111-4111-8111-111111111111";
+  let read = false;
+  let reply: { body: string; parent_id: number; client_id: string } | null =
+    null;
+  await page.route(
+    `**/api/v1/notifications/${notificationId}/read`,
+    (route) => {
+      read = true;
+      return route.fulfill({ status: 204 });
+    },
+  );
+  await page.route("**/api/v1/notifications", (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          {
+            id: notificationId,
+            kind: "replies",
+            actor: {
+              id: 902,
+              name: "Raka Pratama",
+              username: "raka_pengujian",
+            },
+            post_id: 901,
+            conversation_id: null,
+            read_at: read ? "2026-10-16T00:00:00Z" : null,
+            created_at: "2026-10-16T00:00:00Z",
+          },
+        ],
+        next_cursor: null,
+        unread_count: read ? 0 : 1,
+      },
+    }),
+  );
+  await page.route("**/api/v1/posts/901", (route) =>
+    route.fulfill({ json: { data: post } }),
+  );
+  await page.route("**/api/v1/feed?**", (route) =>
+    route.fulfill({
+      json: {
+        data: reply
+          ? [{ ...post, id: 904, parent_id: 901, body: reply.body }]
+          : [],
+        meta: { next_cursor: null, has_more: false, feed: "campus" },
+      },
+    }),
+  );
+  await page.route("**/api/v1/posts", (route) => {
+    reply = route.request().postDataJSON();
+    return route.fulfill({
+      status: 201,
+      json: { data: { ...post, id: 904, parent_id: 901, body: reply!.body } },
+    });
+  });
+  await page.goto("/notifications");
+  await page
+    .getByRole("link", { name: "Raka Pratama membalas ceritamu." })
+    .click();
+  await expect(page).toHaveURL(/\/thread\/901$/);
+  await expect.poll(() => read).toBe(true);
+  await page
+    .getByLabel("Tulis balasan", { exact: true })
+    .fill("Terima kasih, kita bahas di sini.");
+  await page.getByRole("button", { name: "Balas", exact: true }).click();
+  await expect(page.locator('article[data-post-id="904"]')).toContainText(
+    "Terima kasih, kita bahas di sini.",
+  );
+  expect(reply!.parent_id).toBe(901);
+  expect(reply!.client_id).toMatch(/^[0-9a-f-]{36}$/);
+  await expect(page.getByLabel("Tulis balasan", { exact: true })).toHaveValue(
+    "",
+  );
+  await page.goto("/notifications");
+  await expect(page.getByText("Belum dibaca", { exact: true })).toHaveCount(0);
 });
 
 test("modal keeps a draft until discard is confirmed and profile uses the same composer", async ({
