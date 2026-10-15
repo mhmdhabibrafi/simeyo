@@ -10,8 +10,10 @@ async function request(path, init = {}) {
   }
   return response;
 }
-const landing = await request('/', { headers: { Accept: 'text/html' } });
-assert.equal(landing.status, 200); assert.match(await landing.text(), /simeyo/i);
+const entry = await request('/', { redirect: 'manual', headers: { Accept: 'text/html' } });
+assert.equal(entry.status, 307); assert.equal(entry.headers.get('location'), '/home');
+const home = await request('/home', { headers: { Accept: 'text/html' } });
+assert.equal(home.status, 200); assert.match(await home.text(), /simeyo/i);
 const manifest = await request('/manifest.webmanifest');
 assert.equal(manifest.status, 200); assert.equal((await manifest.json()).name, 'Simeyo');
 const health = await request('/api/v1/health');

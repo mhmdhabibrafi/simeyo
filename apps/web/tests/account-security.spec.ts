@@ -61,6 +61,18 @@ test("unavailable registration and recovery explain availability and permitted d
   await expect(page.getByRole("button", { name: "Kirim tautan pemulihan" })).toBeDisabled();
 });
 
+test("root opens a compact login without a marketing landing page", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveURL("/login");
+  await expect(page.getByRole("heading", { name: "Selamat datang kembali." })).toBeVisible();
+  await expect(page.getByText("Tentang Simeyo", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Sudut pandang berbeda.", { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: path.join(root, "docs/testing/screenshots/login-direct-desktop.png"), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: path.join(root, "docs/testing/screenshots/login-direct-mobile.png"), fullPage: true });
+});
+
 test("Firebase Google option explains the exact campus domains", async ({ page }) => {
   await page.route("**/api/v1/auth/options", route => route.fulfill({ json: { data: { registration_enabled: true, email_delivery_enabled: false, email_domains: ["students.uin-suska.ac.id", "uin-suska.ac.id"], firebase: { apiKey: "test-public-key", projectId: "simeyo-test", appId: "test-app", authDomain: "simeyo-test.firebaseapp.com" } } } }));
   await page.goto("/login");

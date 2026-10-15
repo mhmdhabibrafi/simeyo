@@ -62,27 +62,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       </header>
       <main
         id="main"
-        className="mx-auto grid max-w-6xl gap-16 px-6 py-10 md:grid-cols-2 md:py-16"
+        className="mx-auto max-w-lg px-6 py-10 sm:py-16"
       >
-        <div className="hidden pt-8 md:block">
-          <span className="text-xs font-semibold uppercase tracking-[.2em] text-[var(--accent)]">
-            Cerita dimulai di sini
-          </span>
-          <h1 className="mt-6 max-w-md text-6xl font-semibold leading-[1.08] tracking-[-3px]">
-            Kampus yang sama.
-            <br />
-            <span className="text-[var(--accent)]">Sudut pandang berbeda.</span>
-          </h1>
-          <p className="mt-7 max-w-sm text-lg leading-8 text-[var(--muted)]">
-            Ada teman baru, ide segar, dan percakapan yang belum kamu temukan.
-          </p>
-          <div className="mt-12 border-t border-[var(--border)] pt-7 text-sm text-[var(--muted)]">
-            Komunitas terverifikasi · Privasi sejak awal
-          </div>
-        </div>
         <section className="mx-auto w-full max-w-[420px]">
           <h2 className="text-3xl font-semibold tracking-tight">
-            {registerMode ? "Temukan ruangmu." : "Selamat datang kembali."}
+            {registerMode ? "Bergabung dengan Simeyo." : "Selamat datang kembali."}
           </h2>
           <p className="mb-8 mt-3 text-sm leading-6 text-[var(--muted)]">
             {registerMode

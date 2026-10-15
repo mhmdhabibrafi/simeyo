@@ -1,5 +1,7 @@
 # Changelog
 
+- Removed the marketing landing page. `/` redirects to the feed; signed-out visitors continue to login. Login and registration now use a compact single-column layout.
+
 ### Firebase campus sign-in (pending production acceptance)
 
 - Added Firebase Google web sign-in and Laravel session exchange with signed-token verification and exact campus domain allowlist. Student/staff membership metadata never grants administrator rights.

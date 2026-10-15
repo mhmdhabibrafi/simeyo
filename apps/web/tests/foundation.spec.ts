@@ -10,12 +10,13 @@ if (!password)
     "Run local-postgres and DevelopmentSeeder before browser tests.",
   );
 mkdirSync(path.join(root, "docs/testing/screenshots"), { recursive: true });
-test("landing is responsive, keyboard accessible, and supports dark theme", async ({
+test("root opens login directly, is responsive, keyboard accessible, and supports dark theme", async ({
   page,
 }) => {
   await page.goto("/");
+  await expect(page).toHaveURL("/login");
   await expect(
-    page.getByRole("heading", { name: "Satu kampus. Banyak cerita." }),
+    page.getByRole("heading", { name: "Selamat datang kembali." }),
   ).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(
@@ -23,13 +24,13 @@ test("landing is responsive, keyboard accessible, and supports dark theme", asyn
   ).toBeFocused();
   await page.keyboard.press("Tab");
   await page.screenshot({
-    path: path.join(root, "docs/testing/screenshots/landing-desktop.png"),
+    path: path.join(root, "docs/testing/screenshots/login-desktop.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "Gunakan tema gelap" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.screenshot({
-    path: path.join(root, "docs/testing/screenshots/landing-dark.png"),
+    path: path.join(root, "docs/testing/screenshots/login-dark.png"),
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -42,7 +43,7 @@ test("landing is responsive, keyboard accessible, and supports dark theme", asyn
     )
     .toBe(true);
   await page.screenshot({
-    path: path.join(root, "docs/testing/screenshots/landing-mobile.png"),
+    path: path.join(root, "docs/testing/screenshots/login-mobile.png"),
     fullPage: true,
   });
 });
@@ -57,6 +58,8 @@ test("cookie login, CSRF rejection, profile persistence and logout", async ({
   await expect(
     page.getByRole("heading", { name: "Beranda", exact: true }),
   ).toBeVisible();
+  await page.goto("/");
+  await expect(page).toHaveURL("/home");
   const status = await page.evaluate(async () => {
     const r = await fetch("/api/v1/me", {
       method: "PATCH",
