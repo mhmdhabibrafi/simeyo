@@ -1,0 +1,29 @@
+name: Supporting service acceptance
+on: workflow_dispatch
+permissions: {contents: read}
+jobs:
+  services:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - uses: shivammathur/setup-php@v2
+        with: {php-version: '8.2', extensions: 'pdo_pgsql, gd, mbstring', coverage: none}
+      - run: composer install --no-interaction --prefer-dist
+        working-directory: apps/api
+      - name: Start existing Compose dependencies with isolated generated credentials and volumes
+        run: |
+          node infrastructure/scripts/init-env.mjs
+          docker compose -p simeyo-support-ci --profile storage --profile search config --quiet
+          docker compose -p simeyo-support-ci --profile storage --profile search up -d --wait postgres redis mailpit minio meilisearch
+      - name: Verify Redis persistence and supporting HTTP/S3 protocols
+        run: |
+          test "$(docker compose -p simeyo-support-ci exec -T redis redis-cli SET simeyo:ci:probe synthetic-roundtrip)" = OK
+          test "$(docker compose -p simeyo-support-ci exec -T redis redis-cli GET simeyo:ci:probe)" = synthetic-roundtrip
+          test "$(docker compose -p simeyo-support-ci exec -T redis redis-cli DEL simeyo:ci:probe)" = 1
+          php infrastructure/scripts/verify-supporting-services.php
+      - name: Stop only the disposable CI stack
+        if: always()
+        run: docker compose -p simeyo-support-ci --profile storage --profile search down --remove-orphans
