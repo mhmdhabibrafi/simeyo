@@ -257,6 +257,8 @@ test("mobile chat fits above navigation and campus form controls have consistent
     await page.setViewportSize(viewport);
     await page.goto("/messages/42");
     await expect(page.getByLabel("Tulis pesan", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Tandai dibaca", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Belum ada pesan. Mulai percakapan dengan sapaan pertama.")).toBeVisible();
     const send = await page.getByRole("button", { name: "Kirim pesan", exact: true }).boundingBox();
     const navigation = await page.getByRole("navigation", { name: "Navigasi seluler" }).isVisible()
       ? await page.getByRole("navigation", { name: "Navigasi seluler" }).boundingBox() : null;

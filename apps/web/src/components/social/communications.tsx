@@ -266,6 +266,7 @@ export function MessageThread({ id }: { id: number }) {
         }
       }} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5" role="log" aria-label="Riwayat pesan" aria-relevant="additions">
         {q.isPending && <p role="status">Memuat pesan…</p>}
+        {q.data && messages.length === 0 && <p className="py-10 text-center text-sm leading-6 text-[var(--muted)]">Belum ada pesan. Mulai percakapan dengan sapaan pertama.</p>}
         {q.hasNextPage && (
           <Button
             variant="outline"
@@ -304,7 +305,7 @@ export function MessageThread({ id }: { id: number }) {
             </div>
           </div>
         ))}
-        {q.data && (
+        {q.data && messages.length > 0 && (
           <button
             className="text-sm text-[var(--muted)]"
             disabled={read.isPending}
