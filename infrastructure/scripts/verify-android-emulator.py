@@ -29,12 +29,17 @@ def find(label, timeout=60, editable=False):
     while time.monotonic() < end:
         try:
             current = list(nodes())
+            if any(node.get('text') == "Pixel Launcher isn't responding" for node in current):
+                # Dismiss only the stock launcher's ANR; never hide a Simeyo app failure.
+                for node in current:
+                    if node.get('text') == 'Close app':
+                        tap_node(node)
             for node in current:
                 if label in (node.get('text'), node.get('content-desc')) and (not editable or node.get('class', '').endswith('EditText')):
                     return node
             # The first development-client launch can display its onboarding dialog.
             for node in current:
-                if node.get('text') in ('Got it', 'Continue', 'Allow', 'While using the app'):
+                if node.get('text') in ('Got it', 'Continue', 'Allow', 'While using the app', 'Open'):
                     tap_node(node)
         except (subprocess.SubprocessError, ET.ParseError):
             pass

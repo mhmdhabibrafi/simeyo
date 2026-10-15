@@ -9,7 +9,7 @@ export ANDROID_AVD_HOME="${RUNNER_TEMP:?}/simeyo-avd"
 mkdir -p "$ANDROID_AVD_HOME"
 sdkmanager emulator 'system-images;android-35;google_apis;x86_64' >/dev/null
 echo no | avdmanager create avd --force --name simeyo_ci --package 'system-images;android-35;google_apis;x86_64' --device pixel_6 >/dev/null
-emulator -avd simeyo_ci -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect >"$state/emulator.log" 2>&1 &
+emulator -avd simeyo_ci -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 -cores 2 -camera-back none -camera-front none -feature -Vulkan >"$state/emulator.log" 2>&1 &
 emulator_pid=$!
 api_pid= metro_pid=
 cleanup() {
@@ -28,6 +28,8 @@ done
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
+adb shell wm size 720x1600
+adb shell wm density 280
 adb shell input keyevent 82
 adb install -r "${ANDROID_ACCEPTANCE_APK:-apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk}" >/dev/null
 (cd apps/api/public && php -S 0.0.0.0:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php) >"$state/api.log" 2>&1 &
