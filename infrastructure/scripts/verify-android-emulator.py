@@ -29,6 +29,12 @@ def find(label, timeout=60, editable=False):
     while time.monotonic() < end:
         try:
             current = list(nodes())
+            if any(node.get('text') == 'TOOLS' for node in current):
+                for node in current:
+                    if node.get('content-desc') == 'Close':
+                        tap_node(node)
+                time.sleep(1)
+                continue
             if any(node.get('text') == "Pixel Launcher isn't responding" for node in current):
                 # Dismiss only the stock launcher's ANR; never hide a Simeyo app failure.
                 for node in current:
