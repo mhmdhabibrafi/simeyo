@@ -75,7 +75,11 @@ jobs:
           done
           test "$ready" = true
           cd apps/web
-          npm run test:e2e
+          # Keep the real authentication throttle enabled; separate files by a full rate window.
+          for file in tests/*.spec.ts; do
+            npm run test:e2e -- "$file"
+            sleep 61
+          done
       - uses: actions/upload-artifact@v7
         if: always()
         with:

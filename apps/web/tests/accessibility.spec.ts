@@ -13,11 +13,15 @@ test("public pages meet axe WCAG 2.1 AA checks in light and dark themes", async 
     const toggle = page.getByRole("button", { name: "Gunakan tema gelap" });
     if (await toggle.count()) {
       await toggle.click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+      await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished)));
       const dark = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
         .analyze();
       expect(dark.violations).toEqual([]);
       await page.getByRole("button", { name: "Gunakan tema terang" }).click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+      await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished)));
     }
   }
 });
