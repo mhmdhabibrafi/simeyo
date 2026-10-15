@@ -15,10 +15,14 @@ export function AccountMenu({
   onLogout,
   onToggleNavigation,
   collapsed,
+  side = "bottom",
+  align = "end",
 }: {
   onLogout?: () => void;
   onToggleNavigation?: () => void;
   collapsed?: boolean;
+  side?: "top" | "bottom";
+  align?: "start" | "end";
 }) {
   const { data: user } = useMe();
   return (
@@ -31,7 +35,8 @@ export function AccountMenu({
       <Menu.Portal>
         <Menu.Content
           sideOffset={6}
-          align="end"
+          side={side}
+          align={align}
           className="z-40 min-w-48 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-lg"
         >
           <Menu.Item asChild>

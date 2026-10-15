@@ -179,7 +179,7 @@ test("centered feed, compact composer, keyboard tabs and menus work across sizes
     .filter({ visible: true });
   const box = await accountMenu.boundingBox();
   expect(box!.y + box!.height).toBeLessThanOrEqual(620);
-  expect(box!.y).toBeLessThan(100);
+  expect(box!.y).toBeGreaterThan(540);
   await page
     .getByRole("button", { name: "Menu akun" })
     .filter({ visible: true })
@@ -187,6 +187,10 @@ test("centered feed, compact composer, keyboard tabs and menus work across sizes
   await expect(
     page.getByRole("menuitem", { name: "Tersimpan", exact: true }),
   ).toBeVisible();
+  const menuBox = await page.getByRole("menu", { name: "Menu akun" }).boundingBox();
+  expect(menuBox!.y).toBeGreaterThanOrEqual(0);
+  expect(menuBox!.y + menuBox!.height).toBeLessThan(box!.y);
+  await page.screenshot({ path: "../../docs/testing/screenshots/sidebar-bottom-menu.png" });
   await page.getByRole("menuitem", { name: "Ringkas navigasi", exact: true }).click();
   const sidebar = page.getByRole("complementary", { name: "Navigasi akun", exact: true });
   expect((await sidebar.boundingBox())!.width).toBe(96);

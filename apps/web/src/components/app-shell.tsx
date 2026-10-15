@@ -175,11 +175,6 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
           >
             s.
           </Link>
-          <AccountMenu
-            onLogout={() => setConfirm(true)}
-            onToggleNavigation={() => setCollapsed((value) => !value)}
-            collapsed={collapsed}
-          />
         </div>
         <nav
           className="min-h-0 w-full flex-1 space-y-1 overflow-y-auto pt-3"
@@ -221,6 +216,15 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
         </nav>
+        <div className="sidebar-footer shrink-0 px-2">
+          <AccountMenu
+            onLogout={() => setConfirm(true)}
+            onToggleNavigation={() => setCollapsed((value) => !value)}
+            collapsed={collapsed}
+            side="top"
+            align="start"
+          />
+        </div>
       </aside>
       <div className="mx-auto w-full min-w-0 max-w-[640px] pb-24">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/95 px-5 py-4 backdrop-blur-sm md:hidden">

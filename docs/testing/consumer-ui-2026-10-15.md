@@ -5,7 +5,7 @@ The owner supplied Threads screenshots as a layout/interaction reference. Simeyo
 ## Implemented scope
 
 - Centered 640px feed, labelled desktop navigation, compact layouts at narrower widths, title outside the feed panel and a floating compose action.
-- One account menu beside the wordmark. No scattered sidebar footer controls. Theme selection remains in Settings; wide navigation can be collapsed through the account menu.
+- One account menu at the bottom-left of the desktop sidebar, opening upward. No scattered footer controls. Theme selection remains in Settings; wide navigation can be collapsed through the account menu.
 - One-line compose trigger opens a shared modal from the feed, profile, navigation and floating action. Dirty drafts require explicit discard; pending requests lock the form. Failed posts preserve text.
 - Profile information/avatar sit side by side. No empty cover placeholder; existing uploaded covers remain supported. Academic details remain small metadata, without oversized faculty badges.
 - Pagination stops automatic retries after a failed page, supports manual retry and deduplicates overlapping post IDs. Feed tabs support keyboard navigation.
@@ -13,6 +13,8 @@ The owner supplied Threads screenshots as a layout/interaction reference. Simeyo
 - The composer focus regression was reproduced from the owner's screenshot: an unlayered global `:focus-visible` rule overrode the textarea utility. Moving the fallback into the base layer restores the intended borderless focused editor. Audience selection now uses a themed Radix radio menu instead of the native OS popup. Follower-only guidance reflects the chosen audience.
 
 ## Actual evidence
+
+- Bottom-menu follow-up: web lint/type checking/production build passed; six local fixture-based browser tests passed (15.0 seconds). At a 620px desktop height the trigger remains at the bottom and the popup fits above it; collapse/expand still works. The fresh `sidebar-bottom-menu.png` was visually inspected.
 
 - Web lint, type checking and production build passed.
 - Six UI/browser tests passed locally (13.2 seconds at the latest sidebar checkpoint). These use explicitly fictional API fixtures, not production user data. Covered desktop/mobile widths 320/390/768/1440, light/dark, keyboard tabs, account menu/collapse, modal draft protection, pending/failed posting, pagination failure/retry, profile compose and the focused dark editor/audience menu. Axe WCAG 2.1 AA checks passed in the exercised views.
