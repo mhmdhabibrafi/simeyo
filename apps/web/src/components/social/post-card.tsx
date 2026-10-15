@@ -132,7 +132,7 @@ export function PostCard({
   return (
     <article
       data-post-id={post.id}
-      className={`border-b border-[var(--border)] px-5 py-5 sm:px-6 ${detail ? "sm:py-6" : "transition-colors hover:bg-[var(--soft)]/40"}`}
+      className={`border-b border-[var(--border)] px-4 py-4 sm:px-6 ${detail ? "sm:py-6" : "transition-colors hover:bg-[var(--soft)]/40"}`}
     >
       {post.reposted_by && (
         <p className="mb-3 pl-12 text-[11px] text-[var(--muted)]">
@@ -157,23 +157,23 @@ export function PostCard({
         <div className="min-w-0 flex-1">
           <header className="mb-2 flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <Link
                   href={`/u/${post.author.username}`}
-                  className="text-[15px] font-semibold tracking-[-.015em] hover:underline"
+                  className="truncate text-[14px] font-semibold tracking-[-.015em] hover:underline sm:text-[15px]"
                 >
                   {post.author.name}
                 </Link>
                 {post.author.verified && (
                   <BadgeCheck
                     size={15}
-                    className="text-[var(--accent)]"
+                    className="shrink-0 text-[var(--accent)]"
                     aria-label="Afiliasi terverifikasi"
                   />
                 )}
                 <Link
                   href={`/thread/${post.id}`}
-                  className="ml-1 text-xs text-[var(--muted)]"
+                  className="ml-1 shrink-0 text-xs text-[var(--muted)]"
                 >
                   <time
                     dateTime={post.created_at}
@@ -183,7 +183,7 @@ export function PostCard({
                   </time>
                 </Link>
               </div>
-              <p className="mt-1 text-[11px] text-[var(--muted)]">
+              <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
                 @{post.author.username}
                 {post.author.department && ` · ${post.author.department}`}
                 {post.edited_at && " · Diedit"}
@@ -294,7 +294,7 @@ export function PostCard({
               )}
             </Link>
           )}
-          <div className="-ml-2 mt-2 flex items-center gap-1 sm:gap-2">
+          <div className="-ml-1 mt-2 flex items-center justify-between gap-0 sm:justify-start sm:gap-3">
             <button
               className={`post-action ${post.liked ? "text-[var(--foreground)]" : "text-[var(--muted)]"}`}
               disabled={interaction.pending}

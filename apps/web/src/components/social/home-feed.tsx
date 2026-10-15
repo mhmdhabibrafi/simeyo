@@ -13,7 +13,7 @@ export function HomeFeed() {
   const refreshing = useIsFetching({ queryKey: ["feed", tab] }) > 0;
   return (
     <>
-      <header className="flex h-16 items-center justify-between px-5 sm:px-6">
+      <header className="flex h-12 items-center justify-between px-4 sm:px-6 md:h-16">
         <div className="min-w-0 pr-3">
           <h1 className="text-lg font-semibold tracking-tight">Beranda</h1>
         </div>

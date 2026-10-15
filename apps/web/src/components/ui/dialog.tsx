@@ -27,7 +27,7 @@ export function ConfirmDialog({
           className={cn(
             "fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl",
             className,
-            variant === "composer" && "p-0",
+            variant === "composer" && "p-0 max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[calc(100dvh-24px)] max-sm:w-full max-sm:translate-y-0 max-sm:rounded-b-none max-sm:pb-[env(safe-area-inset-bottom)]",
           )}
         >
           <DialogPrimitive.Title

@@ -79,7 +79,7 @@ export function ThreadComposerTrigger() {
   const open = useThreadComposer();
   if (!user?.verified || !user.email_verified) return null;
   return (
-    <div className="flex items-center gap-3 border-b border-[var(--border)] px-5 py-5 sm:px-6">
+    <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-4 sm:px-6">
       <Avatar name={user.name} url={user.avatar_url} size={36} />
       <button
         type="button"

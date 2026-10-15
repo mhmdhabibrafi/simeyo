@@ -85,3 +85,6 @@ Native-mobile and v1.0.0 releases are not declared.
 
 - Hide cached conversations/composer after access errors and clear DM/activity caches after blocking. Keep narrow profile action buttons aligned. Real API privacy regressions and public UI checks passed; see maturity test evidence for source-specific scope.
 
+
+- Restored missing shared form styles and corrected chat viewport sizing. Refined mobile header/navigation, feed density, nested-route selection and mobile composer presentation.
+

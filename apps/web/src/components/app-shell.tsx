@@ -74,6 +74,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   const { data: user, isPending, error, refetch } = useMe();
   const router = useRouter();
   const pathname = usePathname();
+  const isActive = (href: string) => pathname === href || (href !== "/home" && pathname.startsWith(`${href}/`));
   const client = useQueryClient();
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
@@ -205,12 +206,12 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
                 }
                 title={n.label}
                 aria-label={n.label}
-                className={`rail-link ${pathname === n.href ? "active" : ""}`}
-                aria-current={pathname === n.href ? "page" : undefined}
+                className={`rail-link ${isActive(n.href) ? "active" : ""}`}
+                aria-current={isActive(n.href) ? "page" : undefined}
               >
                 <n.icon
                   size={25}
-                  strokeWidth={pathname === n.href ? 2.2 : 1.7}
+                  strokeWidth={isActive(n.href) ? 2.2 : 1.7}
                 />
                 <span className="rail-label">{n.label}</span>
               </Link>
@@ -227,7 +228,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <div className={pathname.startsWith("/messages") ? "message-frame min-w-0 pb-24 md:pb-0" : "mx-auto w-full min-w-0 max-w-[640px] pb-24"}>
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/95 px-5 py-4 backdrop-blur-sm md:hidden">
+        <header className="mobile-header sticky top-0 z-20 flex items-center justify-between border-b border-[var(--border)] bg-[var(--background)]/95 px-4 backdrop-blur-sm md:hidden">
           <Brand />
           <div className="flex items-center">
             {user.verified && (
@@ -255,7 +256,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-[var(--border)] bg-[var(--surface)] px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 md:hidden"
+        className="mobile-navigation fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-md md:hidden"
         aria-label="Navigasi seluler"
       >
         {mobileNav.map((n) => (
@@ -270,8 +271,8 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
                 : undefined
             }
             key={n.href}
-            className={`flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 text-[10px] ${pathname === n.href ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}
-            aria-current={pathname === n.href ? "page" : undefined}
+            className={`flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 rounded-xl text-[11px] ${isActive(n.href) ? "font-medium text-[var(--accent)]" : "text-[var(--muted)]"}`}
+            aria-current={isActive(n.href) ? "page" : undefined}
           >
             <n.icon size={21} />
             {n.label}

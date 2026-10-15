@@ -185,7 +185,7 @@ test("messaging supports a split inbox, recipient selection and safe send retry 
   await expect(page.getByLabel("Tulis pesan", { exact: true })).toHaveValue("");
   await expect(page.getByRole("log").getByText("Halo Raka!")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.screenshot({ path: path.resolve(process.cwd(), "../../docs/testing/screenshots/messages-mobile-dark.png") });
+  await page.screenshot({ path: path.resolve(process.cwd(), "../../docs/testing/screenshots/messages-mobile-dark.png"), animations: "disabled" });
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole("link", { name: "Semua pesan", exact: true }).click();
   await expect(page.getByLabel("Cari percakapan", { exact: true })).toBeVisible();
@@ -249,6 +249,41 @@ test("revoked messaging access hides cached history and composer", async ({ page
   await expect(page.getByLabel("Tulis pesan", { exact: true })).toHaveCount(0);
 });
 
+test("mobile chat fits above navigation and campus form controls have consistent styling", async ({ page }) => {
+  await fixtures(page);
+  await page.route("**/api/v1/conversations", route => route.fulfill({ json: { data: [], next_cursor: null } }));
+  await page.route("**/api/v1/conversations/42/messages", route => route.fulfill({ json: { data: [], user: { id: 902, name: "Raka Pratama", username: "raka_pengujian" }, can_send: true, next_cursor: null } }));
+  for (const viewport of [{ width: 320, height: 667 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/messages/42");
+    await expect(page.getByLabel("Tulis pesan", { exact: true })).toBeVisible();
+    const send = await page.getByRole("button", { name: "Kirim pesan", exact: true }).boundingBox();
+    const navigation = await page.getByRole("navigation", { name: "Navigasi seluler" }).isVisible()
+      ? await page.getByRole("navigation", { name: "Navigasi seluler" }).boundingBox() : null;
+    expect(send!.y + send!.height).toBeLessThanOrEqual(navigation?.y ?? viewport.height);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(viewport.height + 1);
+    if (viewport.width >= 768) await expect(page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Pesan", exact: true })).toHaveAttribute("aria-current", "page");
+    await page.screenshot({ path: path.resolve(process.cwd(), `../../docs/testing/screenshots/chat-fit-${viewport.width}.png`), animations: "disabled" });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/communities");
+  await page.getByRole("button", { name: "Komunitas baru", exact: true }).click();
+  const input = page.getByLabel("Nama komunitas");
+  await expect(input).toBeVisible();
+  const style = await input.evaluate(element => { const style = getComputedStyle(element); return { border: style.borderTopWidth, radius: style.borderRadius, font: style.fontSize }; });
+  expect(style).toEqual({ border: "1px", radius: "12px", font: "16px" });
+  await page.screenshot({ path: path.resolve(process.cwd(), "../../docs/testing/screenshots/community-form-mobile.png"), animations: "disabled" });
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Cerita baru", exact: true });
+  await expect(dialog).toBeVisible();
+  const bounds = await dialog.boundingBox();
+  expect(bounds!.x).toBe(0);
+  expect(Math.round(bounds!.y + bounds!.height)).toBe(844);
+  await expect(dialog.getByRole("button", { name: "Bagikan", exact: true })).toBeVisible();
+  await page.screenshot({ path: path.resolve(process.cwd(), "../../docs/testing/screenshots/composer-mobile-sheet.png"), animations: "disabled" });
+});
+
 test("explore stays readable across sizes and supports topic search and people", async ({ page }) => {
   await fixtures(page);
   await page.goto("/explore");
@@ -260,7 +295,7 @@ test("explore stays readable across sizes and supports topic search and people",
       await page.evaluate((theme) => document.documentElement.dataset.theme = theme, theme);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await expect(page.getByRole("link", { name: "Komunitas", exact: true })).toBeVisible();
-      await page.screenshot({ path: path.resolve(process.cwd(), `../../docs/testing/screenshots/explore-${width}-${theme}.png`), fullPage: true });
+      await page.screenshot({ path: path.resolve(process.cwd(), `../../docs/testing/screenshots/explore-${width}-${theme}.png`), fullPage: true, animations: "disabled" });
     }
   }
   await page.getByRole("button", { name: "#proyekakhir" }).click();
@@ -314,6 +349,7 @@ test("centered feed, compact composer, keyboard tabs and menus work across sizes
             `../../docs/testing/screenshots/feed-redesign-${width}-${theme}.png`,
           ),
           fullPage: true,
+          animations: "disabled",
         });
     }
   }
@@ -334,7 +370,7 @@ test("centered feed, compact composer, keyboard tabs and menus work across sizes
   const menuBox = await page.getByRole("menu", { name: "Menu akun" }).boundingBox();
   expect(menuBox!.y).toBeGreaterThanOrEqual(0);
   expect(menuBox!.y + menuBox!.height).toBeLessThan(box!.y);
-  await page.screenshot({ path: "../../docs/testing/screenshots/sidebar-bottom-menu.png" });
+  await page.screenshot({ path: "../../docs/testing/screenshots/sidebar-bottom-menu.png", animations: "disabled" });
   await page.getByRole("menuitem", { name: "Ringkas navigasi", exact: true }).click();
   const sidebar = page.getByRole("complementary", { name: "Navigasi akun", exact: true });
   expect((await sidebar.boundingBox())!.width).toBe(96);
@@ -463,6 +499,7 @@ test("modal keeps a draft until discard is confirmed and profile uses the same c
       "../../docs/testing/screenshots/feed-composer-modal.png",
     ),
     fullPage: true,
+    animations: "disabled",
   });
   await dialog.getByRole("button", { name: "Batal", exact: true }).click();
   await discard
@@ -486,6 +523,7 @@ test("modal keeps a draft until discard is confirmed and profile uses the same c
       "../../docs/testing/screenshots/profile-redesign-desktop.png",
     ),
     fullPage: true,
+    animations: "disabled",
   });
   await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
   await expect(dialog).toBeVisible();

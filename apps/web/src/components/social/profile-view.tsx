@@ -84,7 +84,7 @@ export function ProfileView({ username }: { username?: string }) {
     );
   return (
     <>
-      <header className="flex h-16 items-center px-6">
+      <header className="flex h-12 items-center px-5 md:h-16 md:px-6">
         <h1 className="text-lg font-semibold">{owner ? "Profilmu" : u.name}</h1>
       </header>
       <div className="feed-surface">
