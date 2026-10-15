@@ -4,10 +4,28 @@ permissions: {contents: read}
 jobs:
   android:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:17
+        env: {POSTGRES_DB: simeyo_android_ci, POSTGRES_USER: simeyo_ci, POSTGRES_PASSWORD: ci-android-isolated-password}
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 15
     env:
       EXPO_PUBLIC_API_URL: http://10.0.2.2:8000
       EXPO_PUBLIC_WEB_URL: http://10.0.2.2:3000
+      APP_ENV: testing
+      APP_KEY: 'base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: simeyo_android_ci
+      DB_USERNAME: simeyo_ci
+      DB_PASSWORD: ci-android-isolated-password
+      DEMO_PASSWORD: Simeyo-ci-emulator-only-2026
+      BROADCAST_CONNECTION: log
+      EXPO_PUSH_ENABLED: 'false'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -17,6 +35,14 @@ jobs:
           cache-dependency-path: apps/mobile/package-lock.json
       - uses: actions/setup-java@v6
         with: {distribution: temurin, java-version: '17'}
+      - uses: shivammathur/setup-php@v2
+        with: {php-version: '8.2', extensions: 'pdo_pgsql, gd, mbstring', coverage: none}
+      - run: composer install --no-interaction --prefer-dist
+        working-directory: apps/api
+      - run: php artisan migrate --force && php artisan db:seed --class=DevelopmentSeeder --force
+        working-directory: apps/api
+      - name: Enable hardware acceleration on the disposable runner
+        run: sudo chmod 666 /dev/kvm
       - run: npm ci --ignore-scripts
       - run: npm ci
         working-directory: apps/mobile
@@ -32,4 +58,15 @@ jobs:
           name: simeyo-android-development
           path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 3
+      - name: Exercise the installed app on Android
+        run: sh infrastructure/scripts/test-android-emulator.sh
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: simeyo-android-acceptance
+          path: |
+            .local/android-ci/*.png
+            .local/android-ci/acceptance.json
+          if-no-files-found: warn
           retention-days: 3
