@@ -376,13 +376,13 @@ export function Communities() {
   return (
     <>
       <header className="border-b border-[var(--border)] p-6">
-        <h1 className="text-xl font-semibold">Temukan lingkaranmu.</h1>
-        <p className="my-3 text-sm text-[var(--muted)]">
-          Dari fakultas sampai hobi yang mempertemukanmu.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold tracking-tight">Komunitas</h1>
         <Button variant="outline" onClick={() => setCreate(!create)}>
           {create ? "Tutup formulir" : "Komunitas baru"}
         </Button>
+        </div>
+        <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Temukan teman dengan minat yang sama.</p>
       </header>
       {create && (
         <CommunityForm onDone={(id) => router.push(`/communities/${id}`)} />
@@ -392,7 +392,7 @@ export function Communities() {
           .flatMap((p) => p.data)
           .map((c) => (
             <Link
-              className="block p-6"
+              className="block p-6 transition-colors hover:bg-[var(--soft)]"
               key={c.id}
               href={`/communities/${c.id}`}
             >
@@ -408,9 +408,11 @@ export function Communities() {
             </Link>
           ))}
       </div>
+      {q.isPending && <p role="status" className="px-6 py-12 text-center text-sm text-[var(--muted)]">Memuat komunitas…</p>}
+      {q.data && !q.data.pages[0].data.length && <p className="px-6 py-12 text-center text-sm text-[var(--muted)]">Belum ada komunitas. Mulai lingkaran pertamamu.</p>}
       {q.isError && (
         <p role="alert" className="p-6">
-          Komunitas belum dapat dimuat.
+          Komunitas belum dapat dimuat.{" "}<button className="underline" onClick={() => q.refetch()}>Coba lagi</button>
         </p>
       )}
       {q.hasNextPage && (
@@ -925,13 +927,13 @@ export function Events() {
   return (
     <>
       <header className="border-b border-[var(--border)] p-6">
-        <h1 className="text-xl font-semibold">Agenda kampus.</h1>
-        <p className="my-3 text-sm text-[var(--muted)]">
-          Percakapan yang berlanjut di dunia nyata.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold tracking-tight">Acara</h1>
         <Button variant="outline" onClick={() => setCreate(!create)}>
           {create ? "Tutup formulir" : "Acara baru"}
         </Button>
+        </div>
+        <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Temukan kegiatan dan bertemu teman kampus.</p>
       </header>
       {create && (
         <EventForm
@@ -948,9 +950,10 @@ export function Events() {
         ))}
       {q.isError && (
         <p role="alert" className="p-6">
-          Acara belum dapat dimuat.
+          Acara belum dapat dimuat.{" "}<button className="underline" onClick={() => q.refetch()}>Coba lagi</button>
         </p>
       )}
+      {q.isPending && <p role="status" className="px-6 py-12 text-center text-sm text-[var(--muted)]">Memuat acara…</p>}
       {q.data && !q.data.pages[0].data.length && (
         <p className="p-6 text-sm text-[var(--muted)]">
           Belum ada acara mendatang.

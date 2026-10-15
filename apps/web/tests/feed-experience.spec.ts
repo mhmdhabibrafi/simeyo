@@ -106,6 +106,12 @@ async function fixtures(page: Page) {
       return route.fulfill({ json: { data: [post], meta: { next_cursor: null, has_more: false, feed: "search" } } });
     if (url.pathname.endsWith("/people"))
       return route.fulfill({ json: { data: [], meta: { next_cursor: null, has_more: false } } });
+    if (url.pathname.endsWith("/communities") || url.pathname.endsWith("/events"))
+      return route.fulfill({ json: { data: [], next_cursor: null } });
+    if (url.pathname.endsWith("/auth/sessions"))
+      return route.fulfill({ json: { data: [] } });
+    if (url.pathname.endsWith("/notifications"))
+      return route.fulfill({ json: { data: [{ id: "11111111-1111-4111-8111-111111111111", kind: "messages", actor: { id: 902, name: "Raka Pratama", username: "raka_pengujian" }, post_id: null, conversation_id: 42, read_at: null, created_at: "2026-10-15T10:00:00Z" }], next_cursor: null, unread_count: 1 } });
     if (url.pathname.endsWith("/feed"))
       return route.fulfill({
         json: {
@@ -144,7 +150,7 @@ test("messaging supports a split inbox, recipient selection and safe send retry 
   await fixtures(page);
   const recipient = { ...user, id: 902, name: "Raka Pratama", username: "raka_pengujian" };
   await page.route("**/api/v1/people?*", (route) => route.fulfill({ json: { data: [recipient], meta: { next_cursor: null, has_more: false } } }));
-  await page.route("**/api/v1/conversations", (route) => route.fulfill({ json: route.request().method() === "POST" ? { data: { id: 42 } } : { data: [{ id: 42, user: recipient, unread_count: 2 }], next_cursor: null } }));
+  await page.route("**/api/v1/conversations", (route) => route.fulfill({ json: route.request().method() === "POST" ? { data: { id: 42 } } : { data: [{ id: 42, user: recipient, unread_count: 2, last_message: { sender_id: recipient.id, body: "Boleh, kita lanjutkan di sini.", created_at: "2026-10-15T10:00:00Z" } }], next_cursor: null } }));
   let failSend = true;
   let sent = false;
   await page.route("**/api/v1/conversations/42/messages", async (route) => {
@@ -183,6 +189,49 @@ test("messaging supports a split inbox, recipient selection and safe send retry 
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole("link", { name: "Semua pesan", exact: true }).click();
   await expect(page.getByLabel("Cari percakapan", { exact: true })).toBeVisible();
+});
+
+test("incoming messages respect reading position and inbox shows the latest preview", async ({ page }) => {
+  await fixtures(page);
+  await page.clock.install();
+  const recipient = { id: 902, name: "Raka Pratama", username: "raka_pengujian" };
+  let incoming = false;
+  await page.route("**/api/v1/conversations", (route) => route.fulfill({ json: { data: [{ id: 42, user: recipient, unread_count: 1, last_message: { sender_id: recipient.id, body: "Pesan terakhir untuk pratinjau", created_at: "2026-10-15T10:00:00Z" } }], next_cursor: null } }));
+  await page.route("**/api/v1/conversations/42/messages", (route) => route.fulfill({ json: {
+    data: Array.from({ length: incoming ? 26 : 25 }, (_, index) => ({ id: index + 1, conversation_id: 42, sender_id: recipient.id, client_id: "11111111-1111-4111-8111-111111111111", body: `Pesan ${index + 1}: percakapan kampus untuk pengujian posisi baca.`, created_at: "2026-10-15T10:00:00Z" })),
+    user: recipient, can_send: true, next_cursor: null,
+  } }));
+  await page.goto("/messages/42");
+  const log = page.getByRole("log", { name: "Riwayat pesan" });
+  await expect(log.locator('[data-message-id="25"]')).toBeInViewport();
+  await expect(page.getByText("Pesan terakhir untuk pratinjau", { exact: true })).toBeVisible();
+  await log.evaluate((element) => { element.scrollTop = 0; element.dispatchEvent(new Event("scroll")); });
+  incoming = true;
+  await page.clock.fastForward(15_001);
+  await expect(page.getByRole("button", { name: "Pesan baru ↓", exact: true })).toBeVisible();
+  expect(await log.evaluate((element) => element.scrollTop)).toBe(0);
+  await page.getByRole("button", { name: "Pesan baru ↓", exact: true }).click();
+  await expect(log.locator('[data-message-id="26"]')).toBeInViewport();
+});
+
+test("secondary pages fit mobile and community failures can be retried", async ({ page }) => {
+  await fixtures(page);
+  let unavailable = true;
+  await page.route("**/api/v1/communities", (route) => route.fulfill(unavailable ? { status: 503, json: { message: "Temporary outage" } } : { json: { data: [], next_cursor: null } }));
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/communities");
+  await expect(page.getByRole("alert").filter({ hasText: "Komunitas belum dapat dimuat" })).toBeVisible();
+  unavailable = false;
+  await page.getByRole("button", { name: "Coba lagi", exact: true }).click();
+  await expect(page.getByText("Belum ada komunitas. Mulai lingkaran pertamamu.")).toBeVisible();
+  for (const route of ["communities", "events", "notifications", "settings", "profile"]) {
+    await page.goto(`/${route}`);
+    await expect(page.locator("main h1")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.evaluate(() => document.documentElement.dataset.theme = "dark");
+    await page.screenshot({ path: path.resolve(process.cwd(), `../../docs/testing/screenshots/${route}-polish-320.png`), fullPage: true, animations: "disabled" });
+    expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  }
 });
 
 test("explore stays readable across sizes and supports topic search and people", async ({ page }) => {

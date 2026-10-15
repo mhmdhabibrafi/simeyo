@@ -79,3 +79,6 @@ Native-mobile and v1.0.0 releases are not declared.
 
 - Enabled Resend API verification/recovery delivery after provider-simulator and Laravel notification acceptance. Real campus inbox delivery remains untested.
 
+
+- Added batched last-message previews across web/native inboxes and reader-aware chat scrolling; improved secondary-page empty/error states and unread activity presentation.
+

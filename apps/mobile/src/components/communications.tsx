@@ -64,8 +64,8 @@ export function Conversations() {
               >
                 {c.user.name}
               </Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>
-                @{c.user.username}
+              <Text numberOfLines={1} style={{ fontSize: 12, color: colors.muted }}>
+                {c.last_message?.body ?? `@${c.user.username}`}
               </Text>
             </View>
             {c.unread_count > 0 && (

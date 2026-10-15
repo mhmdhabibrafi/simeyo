@@ -87,6 +87,35 @@ class CommunicationsTest extends TestCase
         }
     }
 
+    public function test_inbox_batches_latest_message_previews_and_keeps_them_private(): void
+    {
+        $a = $this->member();
+        $b = $this->member();
+        $id = $this->start($a, $b);
+        $this->getJson('/api/v1/conversations')->assertJsonPath('data.0.last_message', null);
+        foreach (['Older message', 'Latest preview'] as $body) {
+            Message::create(['conversation_id' => $id, 'sender_id' => $b->id, 'body' => $body, 'client_id' => (string) Str::uuid()]);
+        }
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $this->actingAs($a)->getJson('/api/v1/conversations')->assertOk()
+            ->assertJsonPath('data.0.last_message.body', 'Latest preview')
+            ->assertJsonPath('data.0.last_message.sender_id', $b->id)
+            ->assertJsonPath('data.0.unread_count', 2);
+        $one = count(DB::getQueryLog());
+        for ($i = 0; $i < 3; $i++) {
+            $other = $this->member();
+            $conversation = $this->start($a, $other);
+            Message::create(['conversation_id' => $conversation, 'sender_id' => $other->id, 'body' => 'Other preview', 'client_id' => (string) Str::uuid()]);
+        }
+        DB::flushQueryLog();
+        $this->actingAs($a)->getJson('/api/v1/conversations')->assertOk()->assertJsonCount(4, 'data');
+        $this->assertSame($one, count(DB::getQueryLog()), 'Inbox queries must not grow with each conversation.');
+        DB::disableQueryLog();
+        $this->actingAs($b)->putJson('/api/v1/relationships/'.$a->id.'/block')->assertNoContent();
+        $this->actingAs($a)->getJson('/api/v1/conversations')->assertJsonCount(3, 'data');
+    }
+
     public function test_campus_boundary_and_pending_accounts_are_denied(): void
     {
         $a = $this->member();

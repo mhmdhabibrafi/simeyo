@@ -20,11 +20,11 @@ class MessageController extends Controller
         $u = $r->user();
         $q = Conversation::where('institution_id', $u->affiliation->institution_id)->whereHas('participants', fn ($p) => $p->where('users.id', $u->id));
         $q->whereHas('participants', fn ($p) => $p->where('users.id', '!=', $u->id)->where('verification_state', 'approved')->whereNotNull('email_verified_at')->whereHas('affiliation', fn ($a) => $a->where('institution_id', $u->affiliation->institution_id))->whereNotIn('users.id', DB::table('blocks')->select('target_id')->where('user_id', $u->id))->whereNotIn('users.id', DB::table('blocks')->select('user_id')->where('target_id', $u->id)));
-        $page = $q->with('participants.profile')->withCount(['messages as unread_count' => fn ($m) => $m->where('sender_id', '!=', $u->id)->where('messages.id', '>', function ($s) use ($u) {
+        $page = $q->with(['participants', 'latestMessage' => fn ($m) => $m->select('messages.id', 'messages.conversation_id', 'messages.sender_id', 'messages.body', 'messages.created_at')])->withCount(['messages as unread_count' => fn ($m) => $m->where('sender_id', '!=', $u->id)->where('messages.id', '>', function ($s) use ($u) {
             $s->select('last_read_message_id')->from('conversation_participants')->whereColumn('conversation_participants.conversation_id', 'conversations.id')->where('user_id', $u->id);
         })])->orderByDesc('id')->cursorPaginate(20);
 
-        return ['data' => $page->map(fn ($c) => ['id' => $c->id, 'user' => $c->participants->firstWhere('id', '!=', $u->id)->only('id', 'name', 'username'), 'unread_count' => $c->unread_count]), 'next_cursor' => $page->nextCursor()?->encode()];
+        return ['data' => $page->map(fn ($c) => ['id' => $c->id, 'user' => $c->participants->firstWhere('id', '!=', $u->id)->only('id', 'name', 'username'), 'unread_count' => $c->unread_count, 'last_message' => $c->latestMessage?->only('sender_id', 'body', 'created_at')]), 'next_cursor' => $page->nextCursor()?->encode()];
     }
 
     public function start(Request $r)

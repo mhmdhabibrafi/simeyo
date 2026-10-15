@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, SquarePen, Send, ArrowLeft } from "lucide-react";
+import { Search, SquarePen, Send, ArrowLeft, SlidersHorizontal } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { userSchema } from "../../../../../packages/api-contracts/src";
 import {
@@ -41,6 +41,7 @@ export function MessageButton({ userId }: { userId: number }) {
   );
 }
 export function Conversations({ selectedId }: { selectedId?: number }) {
+  const { data: me } = useMe();
   const [search, setSearch] = useState("");
   const [unread, setUnread] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -91,9 +92,12 @@ export function Conversations({ selectedId }: { selectedId?: number }) {
             >
               <Avatar name={c.user.name} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{c.user.name}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className={`truncate text-sm ${c.unread_count ? "font-semibold" : "font-medium"}`}>{c.user.name}</p>
+                  {c.last_message && <time dateTime={c.last_message.created_at} className="shrink-0 text-[10px] text-[var(--muted)]">{new Date(c.last_message.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</time>}
+                </div>
                 <p className="mt-1 truncate text-xs text-[var(--muted)]">
-                  @{c.user.username}
+                  {c.last_message ? `${c.last_message.sender_id === me?.id ? "Kamu: " : ""}${c.last_message.body}` : `@${c.user.username}`}
                 </p>
               </div>
               {c.unread_count > 0 && (
@@ -180,6 +184,10 @@ function NewMessage({ open, onOpenChange }: { open: boolean; onOpenChange: (open
   </ConfirmDialog>;
 }
 export function MessageThread({ id }: { id: number }) {
+  const log = useRef<HTMLDivElement>(null);
+  const atBottom = useRef(true);
+  const previousLastId = useRef<number | null>(null);
+  const [newMessages, setNewMessages] = useState(false);
   const { data: me } = useMe();
   const client = useQueryClient();
   const [body, setBody] = useState("");
@@ -204,6 +212,7 @@ export function MessageThread({ id }: { id: number }) {
         body: JSON.stringify({ body, client_id }),
       }),
     onSuccess: () => {
+      atBottom.current = true;
       setBody("");
       setDraftId(null);
       client.invalidateQueries({ queryKey: ["messages", id] });
@@ -220,6 +229,18 @@ export function MessageThread({ id }: { id: number }) {
   });
   const messages =
     q.data?.pages.flatMap((p) => p.data).sort((a, b) => a.id - b.id) ?? [];
+  const lastId = messages.at(-1)?.id ?? null;
+  useEffect(() => {
+    if (lastId === null || lastId === previousLastId.current) return;
+    const element = log.current;
+    if (element && (previousLastId.current === null || atBottom.current)) {
+      element.scrollTop = element.scrollHeight;
+      setNewMessages(false);
+    } else {
+      setNewMessages(true);
+    }
+    previousLastId.current = lastId;
+  }, [lastId]);
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-3 border-b border-[var(--border)] px-5 py-4">
@@ -230,7 +251,13 @@ export function MessageThread({ id }: { id: number }) {
           {q.data?.pages[0].user.name ?? "Percakapan"}
         </h2>
       </header>
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5" role="log" aria-label="Riwayat pesan" aria-relevant="additions">
+      <div ref={log} onScroll={() => {
+        const element = log.current;
+        if (element) {
+          atBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+          if (atBottom.current) setNewMessages(false);
+        }
+      }} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5" role="log" aria-label="Riwayat pesan" aria-relevant="additions">
         {q.isError && (
           <p role="alert">
             Percakapan tidak tersedia atau kamu tidak memiliki akses.
@@ -240,7 +267,15 @@ export function MessageThread({ id }: { id: number }) {
         {q.hasNextPage && (
           <Button
             variant="outline"
-            onClick={() => q.fetchNextPage()}
+            onClick={async () => {
+              const element = log.current;
+              const previousHeight = element?.scrollHeight ?? 0;
+              const previousTop = element?.scrollTop ?? 0;
+              await q.fetchNextPage();
+              requestAnimationFrame(() => {
+                if (element) element.scrollTop = previousTop + element.scrollHeight - previousHeight;
+              });
+            }}
             disabled={q.isFetchingNextPage}
           >
             Pesan sebelumnya
@@ -277,6 +312,11 @@ export function MessageThread({ id }: { id: number }) {
           </button>
         )}
       </div>
+      {newMessages && <button className="mx-auto my-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs" onClick={() => {
+        if (log.current) log.current.scrollTop = log.current.scrollHeight;
+        atBottom.current = true;
+        setNewMessages(false);
+      }}>Pesan baru ↓</button>}
       {q.data?.pages[0].can_send ? (
         <form
           className="shrink-0 space-y-3 border-t border-[var(--border)] p-4"
@@ -350,13 +390,14 @@ export function Notifications() {
   });
   return (
     <>
-      <header className="border-b border-[var(--border)] px-6 py-5">
-        <h1 className="text-lg font-semibold">Aktivitas</h1>
+      <header className="flex items-center justify-between border-b border-[var(--border)] px-6 py-5">
+        <h1 className="text-xl font-semibold tracking-tight">Aktivitas</h1>
         <Link
-          className="mt-2 block text-sm text-[var(--muted)]"
+          className="icon-button"
+          aria-label="Preferensi notifikasi"
           href="/settings/communications"
         >
-          Preferensi notifikasi
+          <SlidersHorizontal size={19} />
         </Link>
       </header>
       {q.data?.pages
@@ -364,7 +405,7 @@ export function Notifications() {
         .map((n) => (
           <div
             key={n.id}
-            className="flex gap-3 border-b border-[var(--border)] px-6 py-5"
+            className={`flex gap-3 border-b border-[var(--border)] px-5 py-5 sm:px-6 ${!n.read_at ? "bg-[var(--soft)]/50" : ""}`}
           >
             <Avatar name={n.actor.name} />
             <div className="min-w-0 flex-1">
@@ -386,9 +427,9 @@ export function Notifications() {
                   {n.message}
                 </p>
               )}
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                {new Date(n.created_at).toLocaleString("id-ID")}
-              </p>
+              <time dateTime={n.created_at} className="mt-2 block text-xs text-[var(--muted)]">
+                {new Date(n.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+              </time>
               {!n.read_at && (
                 <button
                   className="mt-3 text-xs"
@@ -399,6 +440,7 @@ export function Notifications() {
                 </button>
               )}
             </div>
+            {!n.read_at && <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--foreground)]"><span className="sr-only">Belum dibaca</span></span>}
           </div>
         ))}
       <div className="p-6">
