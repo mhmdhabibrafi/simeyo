@@ -52,4 +52,8 @@ BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") NODE_EXTRA_CA_CER
 BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") node infrastructure/scripts/verify-production-realtime.mjs
 BENCH_ORIGIN=https://localhost:8443 BENCH_EMAIL=nadia@example.test BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") NODE_EXTRA_CA_CERTS="$state/cert.pem" node infrastructure/scripts/benchmark-local-api.mjs > "$state/api-sample.json"
 cat "$state/api-sample.json"
+compose cp infrastructure/scripts/seed-production-load.php api:/tmp/seed-production-load.php
+compose exec -T -e CI=true -e GITHUB_ACTIONS=true api php /tmp/seed-production-load.php > "$state/query-plan.json"
+BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") NODE_EXTRA_CA_CERTS="$state/cert.pem" node infrastructure/scripts/load-production-stack.mjs > "$state/sustained-load.json"
+cat "$state/sustained-load.json"
 echo 'Isolated production-shaped stack passed. No image publication or public deployment performed.'
