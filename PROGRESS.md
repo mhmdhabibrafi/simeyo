@@ -146,3 +146,6 @@ Maturity follow-up: added inbox last-message/time previews with batched database
 
 Deployment checkpoint: maturity-578e8af is active after new images built and a private production database backup passed archive validation. Public-assets UI 10 tests passed (56.3 seconds); trusted internal TLS/security/WSS and worker probe passed. Test-only selector follow-up ff7ec14 scopes message assertions to the chat log. Full browser 38768254369 and standard 38768250362 remain running. Details: docs/testing/maturity-2026-10-15.md.
 
+
+Final maturity checkpoint: full browser 38768254369 passed 28 tests on ff7ec14; privacy/messaging 38769658093 passed 3 overlapping real-API tests on a0d40cf. Complete ff7ec14 standard CI passed all four jobs, including PostgreSQL, recovery and 960-request load (zero failures, p95 67-193 ms). Public-assets UI passed 11 tests on a0d40cf (39.0 seconds). Final style-only 671f921 is deployed on web/gateway and its 320px secondary-page/accessibility check passed (24.3 seconds); API/worker/Reverb remain maturity-578e8af. Latest automatic standard CI 38770476610 is pending at this checkpoint. Real campus Google/inbox checks were explicitly deferred by the owner; native/push, off-host recovery and external alert routing remain open. Evidence: docs/testing/maturity-2026-10-15.md.
+

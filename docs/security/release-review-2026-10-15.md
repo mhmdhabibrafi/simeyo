@@ -2,6 +2,8 @@
 
 This is an engineering review with recorded tests, not a completed production certification or an independent penetration test. v0.4.0/v1.0.0 acceptance remains open.
 
+Latest follow-up evidence supersedes older counts below: 79 local backend tests / 522 assertions, successful PostgreSQL CI, 28 full browser tests and 3 focused privacy/messaging regressions. Cached conversations are hidden after access errors and cleared after blocking. The isolated sustained-load run completed 960 requests with zero failures and endpoint p95 67–193 ms; backup/media/key recovery passed in CI. See [exact source, deployment and testing scope](../testing/maturity-2026-10-15.md).
+
 ## Scope and evidence
 
 - Reviewed the authentication/session boundary, campus and transitive content visibility, private media handling, notification filtering, push send/receipt lifecycle, native account/cache lifecycle, backup scripts, build context and new HTTPS/FPM release configuration.
@@ -23,10 +25,10 @@ These development/build-tooling advisories remain a release gate. A clean runtim
 |---|---|
 | Dependency remediation | Five web and 18 mobile high entries remain; recheck compatible upstream patches before release. |
 | Native Android/iOS and push | Android and iOS simulator builds passed; Android partial installed-app checks passed but complete relaunch/profile acceptance remains open. iOS login UI retry is pending. Physical-device/push and store signing remain unverified. |
-| Provider operations | Real SMTP, Expo/FCM/APNs credentials and push delivery are not verified. Push stays disabled by default. |
+| Provider operations | Resend API verification/reset templates were accepted by its simulator and delivery is enabled. Real campus inbox/link acceptance, Expo/FCM/APNs credentials and push delivery remain unverified. Push stays disabled by default. |
 | Full disaster recovery | Production media, encryption keys, retention, off-host copies, recovery-point/time objectives and operator cutover are not exercised. |
 | Sustained performance | Seeded 120-second HTTPS/FPM CI read load passed 960 requests / zero errors / endpoint p95 113–328 ms; representative production scale, longer soak, resource budgets and external provider load remain unverified. |
-| Production operations | Private WSS through TLS and worker stop/recovery detection passed in isolated CI. Actual domain/certificates, least-privilege database roles, agreed resource budgets, external alert routing and operator rollback still require acceptance. |
+| Production operations | Public domain/TLS, private WSS and worker health passed on the authorized server; stop/recovery detection passed in isolated CI. Agreed resource budgets, external alert routing and a complete operator cutover/rollback drill still require acceptance. |
 | Account lifecycle | Define and implement the operator-approved retention/deletion process before broad campus rollout. |
 
 The owner subsequently authorized a separate public web release-candidate installation on the Mediasi server; actual scope and limitations are recorded in [server operations](../operations/mediasi-server.md). No store submission or image publication was performed. Existing local data, application keys and demo passwords were preserved.

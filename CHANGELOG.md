@@ -82,3 +82,6 @@ Native-mobile and v1.0.0 releases are not declared.
 
 - Added batched last-message previews across web/native inboxes and reader-aware chat scrolling; improved secondary-page empty/error states and unread activity presentation.
 
+
+- Hide cached conversations/composer after access errors and clear DM/activity caches after blocking. Keep narrow profile action buttons aligned. Real API privacy regressions and public UI checks passed; see maturity test evidence for source-specific scope.
+
