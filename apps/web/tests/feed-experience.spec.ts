@@ -253,7 +253,7 @@ test("a failed post preserves the draft and permits retry", async ({
   const composer = page.getByLabel("Tulis cerita", { exact: true });
   await composer.fill("Draft ini tidak boleh hilang.");
   await page.getByRole("button", { name: "Bagikan", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("alert").filter({ hasText: "Posting sementara gagal" })).toContainText(
     "Posting sementara gagal",
   );
   await expect(composer).toHaveValue("Draft ini tidak boleh hilang.");
