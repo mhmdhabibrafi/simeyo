@@ -1,8 +1,15 @@
 import type { ExpoConfig } from "expo/config";
-const production = process.env.EAS_BUILD_PROFILE === "production";
-const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-if (production && (!apiUrl || !apiUrl.startsWith("https://")))
-  throw new Error("Production builds require EXPO_PUBLIC_API_URL with HTTPS.");
+const production = ["preview", "production"].includes(process.env.EAS_BUILD_PROFILE ?? "");
+if (production) {
+  for (const variable of ["EXPO_PUBLIC_API_URL", "EXPO_PUBLIC_WEB_URL"]) {
+    let valid = false;
+    try {
+      const url = new URL(process.env[variable] ?? "");
+      valid = url.protocol === "https:" && !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash;
+    } catch { /* Report the setting name without echoing its value. */ }
+    if (!valid) throw new Error(`Release builds require ${variable} as an HTTPS origin.`);
+  }
+}
 const config: ExpoConfig = {
   name: "Simeyo",
   slug: "simeyo",

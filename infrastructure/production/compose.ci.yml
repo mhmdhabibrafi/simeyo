@@ -1,7 +1,10 @@
 # Test-only database. Never include this override in a real deployment.
 services:
   postgres:
-    image: postgres:17-alpine
+    build:
+      context: .
+      dockerfile: infrastructure/docker/postgres.ci.Dockerfile
+    image: simeyo-postgres-ci:${IMAGE_TAG:-local}
     environment:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}

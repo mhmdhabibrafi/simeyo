@@ -39,7 +39,7 @@ cleanup() {
 }
 trap cleanup EXIT
 compose config --quiet
-compose build api web
+compose build api web postgres
 compose up -d postgres api web reverb
 compose exec -T api php artisan migrate --force
 # Only the ephemeral CI database gets fictional accounts; the running API stays production.

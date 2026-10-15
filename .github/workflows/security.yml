@@ -14,14 +14,14 @@ jobs:
           docker build --pull -f infrastructure/docker/api.production.Dockerfile -t simeyo-api:scan .
           docker build --pull -f infrastructure/docker/web.production.Dockerfile -t simeyo-web:scan .
           docker pull nginx:stable-alpine
-          docker pull postgres:17-alpine
+          docker build --pull -f infrastructure/docker/postgres.ci.Dockerfile -t simeyo-postgres-ci:scan .
           docker pull aquasec/trivy:latest
       - name: Scan OS and application packages
         run: |
           mkdir -p .local/image-audit
           directory=$(cd .local/image-audit && pwd)
           docker image inspect aquasec/trivy:latest --format '{{.Id}}' > "$directory/scanner-image-id.txt"
-          for pair in api=simeyo-api:scan web=simeyo-web:scan gateway=nginx:stable-alpine postgres=postgres:17-alpine; do
+          for pair in api=simeyo-api:scan web=simeyo-web:scan gateway=nginx:stable-alpine postgres=simeyo-postgres-ci:scan; do
             name=${pair%%=*}
             image=${pair#*=}
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$directory:/reports" -v trivy-ci-cache:/root/.cache/ aquasec/trivy:latest image --scanners vuln --severity HIGH,CRITICAL --format json --output "/reports/$name.json" "$image"

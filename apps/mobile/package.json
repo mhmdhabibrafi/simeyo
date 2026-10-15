@@ -47,7 +47,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tests/tsconfig.json",
     "export": "expo export",
     "postinstall": "node scripts/patch-query-string.cjs",
-    "test": "node --test tests/client.test.ts tests/dependency-compat.test.cjs"
+    "test": "node --test tests/client.test.ts tests/dependency-compat.test.cjs tests/config.test.cjs"
   },
   "private": true,
   "overrides": {
