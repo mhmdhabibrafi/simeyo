@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const nextConfig: NextConfig = {
+  ...(process.env.BUILD_STANDALONE === "true"
+    ? { output: "standalone" as const, outputFileTracingRoot: path.resolve(__dirname, "../..") }
+    : {}),
   devIndicators: false,
   /* config options here */
   async rewrites() {

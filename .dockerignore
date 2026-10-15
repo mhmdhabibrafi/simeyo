@@ -3,6 +3,12 @@
 **/.next
 **/.env
 **/.env.local
+**/.env.production
+**/.env.testing
+**/.expo
+**/dist
+apps/mobile/android
+apps/mobile/ios
 **/database/*.sqlite*
 **/storage/logs/*
 **/storage/app/private/**
@@ -10,6 +16,7 @@
 **/storage/framework/sessions/**
 **/storage/framework/views/**
 **/storage/*.key
+**/bootstrap/cache/*.php
 **/test-results
 **/playwright-report
 .git

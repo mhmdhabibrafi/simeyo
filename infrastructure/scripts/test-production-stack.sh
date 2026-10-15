@@ -1,0 +1,48 @@
+#!/bin/sh
+set -eu
+[ "${CI:-}" = true ] || { echo 'This script is restricted to disposable CI runners.' >&2; exit 1; }
+umask 077
+mkdir -p .local/production-ci
+state=$(CDPATH= cd .local/production-ci && pwd)
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 -keyout "$state/key.pem" -out "$state/cert.pem" -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' 2>/dev/null
+environment="$state/.env.production"
+cat > "$environment" <<EOF
+SITE_HOST=localhost
+PUBLIC_TLS_PORT=8443
+PUBLIC_ORIGIN=https://localhost:8443
+STATEFUL_DOMAIN=localhost:8443
+IMAGE_TAG=ci
+SIMEYO_PRODUCTION_ENV_FILE=$environment
+APP_KEY=base64:$(openssl rand -base64 32)
+DB_HOST=postgres
+DB_PORT=5432
+DB_DATABASE=simeyo_production_ci
+DB_USERNAME=simeyo_ci
+DB_PASSWORD=$(openssl rand -hex 24)
+DB_SSLMODE=disable
+REVERB_APP_KEY=$(openssl rand -hex 16)
+REVERB_APP_SECRET=$(openssl rand -hex 32)
+TLS_CERT_FILE=$state/cert.pem
+TLS_KEY_FILE=$state/key.pem
+MAIL_MAILER=log
+DEMO_PASSWORD=$(openssl rand -hex 18)
+EOF
+compose() { docker compose --env-file "$environment" -p simeyo-ci -f docker-compose.production.yml -f infrastructure/production/compose.ci.yml "$@"; }
+cleanup() { compose down --remove-orphans; }
+trap cleanup EXIT
+compose config --quiet
+compose build api web
+compose up -d postgres api web reverb
+compose exec -T api php artisan migrate --force
+# Only the ephemeral CI database gets fictional accounts; the running API stays production.
+compose exec -T -e APP_ENV=testing api php artisan db:seed --class=DevelopmentSeeder --force
+compose up -d worker gateway
+ready=false
+for attempt in $(seq 1 60); do
+  if curl --silent --fail --cacert "$state/cert.pem" https://localhost:8443/api/v1/health >/dev/null; then ready=true; break; fi
+  sleep 2
+done
+[ "$ready" = true ] || { echo 'Production-shaped stack did not become healthy.' >&2; exit 1; }
+compose exec -T gateway nginx -t
+BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") NODE_EXTRA_CA_CERTS="$state/cert.pem" node infrastructure/scripts/verify-production-stack.mjs
+echo 'Isolated production-shaped stack passed. No image publication or public deployment performed.'

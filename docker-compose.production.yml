@@ -1,0 +1,79 @@
+name: simeyo-production
+services:
+  api: &api
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.production.Dockerfile
+    image: simeyo-api:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    env_file: ${SIMEYO_PRODUCTION_ENV_FILE:-.env.production}
+    environment: &api-environment
+      APP_NAME: Simeyo
+      APP_ENV: production
+      APP_DEBUG: 'false'
+      APP_KEY: ${APP_KEY:?Supply a persistent production application key}
+      APP_URL: ${PUBLIC_ORIGIN:?Supply the canonical HTTPS origin}
+      FRONTEND_URL: ${PUBLIC_ORIGIN}
+      DB_CONNECTION: pgsql
+      DB_HOST: ${DB_HOST:?Supply the database host}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:?Supply the database name}
+      DB_USERNAME: ${DB_USERNAME:?Supply the database user}
+      DB_PASSWORD: ${DB_PASSWORD:?Supply the database password}
+      SESSION_DRIVER: database
+      SESSION_SECURE_COOKIE: 'true'
+      SESSION_SAME_SITE: lax
+      SANCTUM_STATEFUL_DOMAINS: ${STATEFUL_DOMAIN:?Supply hostname and nondefault port only}
+      QUEUE_CONNECTION: database
+      LOG_CHANNEL: stderr
+      MEDIA_DISK: local
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: simeyo
+      REVERB_APP_KEY: ${REVERB_APP_KEY:?Supply a Reverb public key}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:?Supply a Reverb signing secret}
+      REVERB_HOST: reverb
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+      REVERB_CLIENT_HOST: ${SITE_HOST}
+      REVERB_CLIENT_PORT: ${PUBLIC_TLS_PORT:-8443}
+      REVERB_CLIENT_SCHEME: https
+      EXPO_PUSH_ENABLED: ${EXPO_PUSH_ENABLED:-false}
+    volumes:
+      - private-media:/app/storage/app/private
+    security_opt: [no-new-privileges:true]
+  worker:
+    <<: *api
+    command: [php, artisan, 'queue:work', '--sleep=1', '--tries=3', '--timeout=60', '--max-time=3600']
+    stop_grace_period: 75s
+    depends_on: [api]
+  reverb:
+    <<: *api
+    command: [php, artisan, 'reverb:start', '--host=0.0.0.0', '--port=8080']
+    depends_on: [api]
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/web.production.Dockerfile
+    image: simeyo-web:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment: {NODE_ENV: production, HOSTNAME: 0.0.0.0, PORT: 3000}
+    security_opt: [no-new-privileges:true]
+  gateway:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports: ['127.0.0.1:${PUBLIC_TLS_PORT:-8443}:8443']
+    environment:
+      SITE_HOST: ${SITE_HOST:?Supply the public hostname}
+      NGINX_ENVSUBST_FILTER: '^SITE_HOST$'
+    volumes:
+      - ./infrastructure/production/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    secrets: [tls_certificate, tls_private_key]
+    depends_on: [api, web, reverb]
+    security_opt: [no-new-privileges:true]
+volumes:
+  private-media:
+secrets:
+  tls_certificate:
+    file: ${TLS_CERT_FILE:?Supply the TLS certificate chain file}
+  tls_private_key:
+    file: ${TLS_KEY_FILE:?Supply the TLS private key file}
