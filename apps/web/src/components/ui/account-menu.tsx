@@ -3,7 +3,6 @@ import * as Menu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
 import {
   Menu as MenuIcon,
-  UserRound,
   Settings,
   Bookmark,
   ShieldCheck,
@@ -39,15 +38,6 @@ export function AccountMenu({
           align={align}
           className="z-40 min-w-48 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-lg"
         >
-          <Menu.Item asChild>
-            <Link
-              href="/profile"
-              className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-[var(--soft)]"
-            >
-              <UserRound size={17} />
-              Profilmu
-            </Link>
-          </Menu.Item>
           <Menu.Item asChild>
             <Link
               href="/settings"
