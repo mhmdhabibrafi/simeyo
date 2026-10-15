@@ -39,7 +39,12 @@ def find(label, timeout=60, editable=False):
         except (subprocess.SubprocessError, ET.ParseError):
             pass
         time.sleep(2)
-    # Never persist the login accessibility hierarchy, which could contain credentials.
+    screenshot('native-failure.png')
+    # Exclude input values and never persist the raw login hierarchy.
+    try:
+        print('Visible non-input labels:', json.dumps([{'class': node.get('class'), 'text': node.get('text'), 'description': node.get('content-desc')} for node in nodes() if not node.get('class', '').endswith('EditText')][:35]))
+    except (subprocess.SubprocessError, ET.ParseError):
+        pass
     raise RuntimeError(f'Android accessibility element not found: {label}')
 
 
