@@ -1,0 +1,64 @@
+# Simeyo
+
+**Satu kampus. Banyak cerita.**
+
+Current locally verified milestone: **v0.3.0 — campus experience**. The Expo/PWA v0.4.0 milestone and v1.0.0 production review remain in progress.
+
+Social features use the Laravel API and PostgreSQL: text/images, nested threads, interactions, follows/private requests, bookmarks and cursor feeds. Campus modules include communities/events, Pulse/search, messaging, notifications and moderation. See [campus architecture](docs/architecture/campus-experience.md) and [mobile implementation and limits](MOBILE.md).
+
+For local realtime, additionally run `npm.cmd run dev:reverb` and `npm.cmd run dev:worker`. These loopback services were tested independently from Docker. Compose requires Docker Engine; its configuration passes validation, but container startup remains **BELUM DIUJI**. To enable Compose realtime, set `BROADCAST_CONNECTION=reverb` in the local root environment and enable both `workers` and `realtime` profiles. Existing credentials are preserved by `setup:env`.
+
+An independent, verified campus community platform, initially configured for UIN Sultan Syarif Kasim Riau. No official university endorsement, SSO integration or access to university student records is implied.
+
+The platform combines Next.js web, Laravel/Sanctum API, PostgreSQL and an Expo React Native client. Identity, social and campus acceptance tests passed locally; PWA production-browser acceptance passed. Native device and production acceptance remain pending. See [PROGRESS.md](PROGRESS.md) for actual implementation and test evidence.
+
+The application was renamed to **Simeyo** at the owner's request. Existing database names, Compose volume namespace and session/storage keys retain their previous internal identifiers to preserve local data and active sessions. The repository directory can remain `D:\ruang-simed`.
+
+## Start locally on Windows
+
+Requirements: Node 24, PHP 8.2 with PDO, PostgreSQL extension, GD, mbstring and Composer. The included local PostgreSQL helper does not use any other project's database.
+
+```powershell
+npm.cmd ci
+npm.cmd --prefix apps/web ci
+composer install --working-dir=apps/api
+npm.cmd run setup:env
+npm.cmd run dev:db
+```
+
+Keep the database terminal open. In another terminal:
+
+```powershell
+cd apps/api
+php -d extension=pdo_pgsql artisan migrate
+php -d extension=pdo_pgsql artisan db:seed --class=DevelopmentSeeder
+cd ../..
+npm.cmd run dev:api
+```
+
+In a third terminal:
+
+```powershell
+npm.cmd run dev:web
+```
+
+Open **http://localhost:3000**. API health: http://localhost:8000/api/v1/health. Use `localhost` consistently: mixing it with `127.0.0.1` in browser URLs breaks cookie origins.
+
+Development-only fictional accounts: `nadia@example.test`, `rafi@example.test`, `admin@example.test`. Their shared **random** local password is `DEMO_PASSWORD` in `apps/api/.env`; it is never committed or printed by setup. Alternatively register a new account. Default mail transport is log; the signed verification/recovery link is in `apps/api/storage/logs/laravel.log`. Docker includes Mailpit for development email.
+
+## Verify
+
+```powershell
+npm.cmd run test:api
+npm.cmd run test:postgres
+npm.cmd --prefix apps/web run lint
+npm.cmd --prefix apps/web run typecheck
+npm.cmd run build:web
+npx.cmd --prefix apps/web playwright install chromium
+npm.cmd --prefix apps/web run test:e2e
+npm.cmd run contracts
+```
+
+The PostgreSQL test runner only targets `ruang_test`; SQLite tests use memory. Browser tests require the development servers and development seeder, create fictional `e2e_*` accounts and modify a demo profile. Do not run them against production.
+
+See [INSTALLATION.md](INSTALLATION.md), [AUTHENTICATION.md](AUTHENTICATION.md), [API.md](API.md), [SECURITY.md](SECURITY.md), [TESTING.md](TESTING.md), and [DATABASE.md](DATABASE.md).

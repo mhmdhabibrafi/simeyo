@@ -1,0 +1,4377 @@
+openapi: 3.1.0
+info:
+  title: Simeyo API
+  version: 0.3.0
+  description: Implemented identity, social and in-progress campus endpoints.
+    First-party cookie writes require CSRF; native clients use scoped bearer
+    tokens. All private reads enforce institutional approval, blocks, audience
+    and ancestry visibility.
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - SessionCookie: []
+  - NativeBearer: []
+paths:
+  /health:
+    get:
+      description: Database health check
+      security: []
+      responses:
+        "200":
+          description: Database health check
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/register:
+    post:
+      description: Web registration; CSRF required. Privilege fields ignored.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Registration"
+      responses:
+        "201":
+          description: Web registration; CSRF required. Privilege fields ignored.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/login:
+    post:
+      description: Web cookie login; CSRF required
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Login"
+      responses:
+        "200":
+          description: Web cookie login; CSRF required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/logout:
+    post:
+      description: Invalidate current web session
+      responses:
+        "204":
+          description: Invalidate current web session
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/forgot-password:
+    post:
+      description: Uniform recovery message regardless of account presence
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+                - email
+      responses:
+        "200":
+          description: Uniform recovery message regardless of account presence
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/reset-password:
+    post:
+      description: Reset password and revoke sessions/tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                token:
+                  type: string
+                password:
+                  type: string
+                  minLength: 12
+                password_confirmation:
+                  type: string
+              required:
+                - email
+                - token
+                - password
+                - password_confirmation
+      responses:
+        "200":
+          description: Reset password and revoke sessions/tokens
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/email/resend:
+    post:
+      description: Resend email verification
+      responses:
+        "200":
+          description: Resend email verification
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/email/verify/{id}/{hash}:
+    get:
+      description: Logged-in owner and temporary signed URL required; redirect to onboarding
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Logged-in owner and temporary signed URL required; redirect to
+            onboarding
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/native/login:
+    post:
+      description: Issue campus-scoped token expiring after 30 days
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                device_name:
+                  type: string
+                  maxLength: 80
+              required:
+                - email
+                - password
+                - device_name
+      responses:
+        "200":
+          description: Issue campus-scoped token expiring after 30 days
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      token:
+                        type: string
+                    required:
+                      - user
+                      - token
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/native/logout:
+    post:
+      description: Revoke current native bearer token
+      responses:
+        "204":
+          description: Revoke current native bearer token
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /me:
+    get:
+      description: Current user with owner fields
+      responses:
+        "200":
+          description: Current user with owner fields
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    patch:
+      description: Update profile and visibility preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Update profile and visibility preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /institutions:
+    get:
+      description: Catalog of institutions, faculties, departments, and cohorts
+      security: []
+      responses:
+        "200":
+          description: Catalog of institutions, faculties, departments, and cohorts
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /onboarding:
+    post:
+      description: Email-verified user sets institution; affiliation locked after submission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                institution_id:
+                  type: integer
+                faculty_id:
+                  type:
+                    - integer
+                    - "null"
+                department_id:
+                  type:
+                    - integer
+                    - "null"
+                academic_cohort_id:
+                  type:
+                    - integer
+                    - "null"
+              required:
+                - institution_id
+      responses:
+        "200":
+          description: Email-verified user sets institution; affiliation locked after
+            submission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /verification:
+    get:
+      description: Own verification request or null
+      responses:
+        "200":
+          description: Own verification request or null
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    post:
+      description: Request manual affiliation review or configured student-email approval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requested_affiliation:
+                  type: string
+                  enum:
+                    - student
+                    - lecturer
+                    - alumni
+                    - organization_manager
+                method:
+                  type: string
+                  enum:
+                    - manual
+                    - institutional_email
+                statement:
+                  type: string
+                  minLength: 20
+                  maxLength: 1000
+              required:
+                - requested_affiliation
+                - method
+                - statement
+      responses:
+        "201":
+          description: Request manual affiliation review or configured student-email
+            approval
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /profiles/{username}:
+    get:
+      description: Same-institution approved profile; academic fields obey visibility
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Same-institution approved profile; academic fields obey visibility
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /campus:
+    get:
+      description: Approved membership context; not a social feed
+      responses:
+        "200":
+          description: Approved membership context; not a social feed
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /me/media:
+    post:
+      description: "Upload profile image: JPEG/PNG/WebP, max 4 MB, max 4096px;
+        reencoded metadata-free JPEG"
+      responses:
+        "200":
+          description: "Upload profile image: JPEG/PNG/WebP, max 4 MB, max 4096px;
+            reencoded metadata-free JPEG"
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - avatar
+                    - cover
+                image:
+                  type: string
+                  format: binary
+              required:
+                - kind
+                - image
+  /auth/sessions:
+    get:
+      description: Own web sessions, no serialized payload or IP
+      responses:
+        "200":
+          description: Own web sessions, no serialized payload or IP
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /auth/sessions/{id}:
+    delete:
+      description: Revoke own session, foreign sessions unaffected
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Revoke own session, foreign sessions unaffected
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /admin/verifications:
+    get:
+      description: Institution-scoped administrator queue; super administrator can
+        access all
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Institution-scoped administrator queue; super administrator can
+            access all
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /admin/verifications/{id}:
+    patch:
+      description: Audited review; no self-review; pending to approved/rejected,
+        approved to suspended
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                state:
+                  type: string
+                  enum:
+                    - approved
+                    - rejected
+                    - suspended
+                review_note:
+                  type: string
+                  minLength: 10
+                  maxLength: 1000
+              required:
+                - state
+                - review_note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Audited review; no self-review; pending to approved/rejected,
+            approved to suspended
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /posts:
+    post:
+      description: Create an actual persisted campus post, reply or quote; own
+        unattached media only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 1000
+                visibility:
+                  type: string
+                  enum:
+                    - campus
+                    - followers
+                parent_id:
+                  type:
+                    - integer
+                    - "null"
+                quote_id:
+                  type:
+                    - integer
+                    - "null"
+                media_ids:
+                  type: array
+                  maxItems: 4
+                  uniqueItems: true
+                  items:
+                    type: integer
+              required:
+                - body
+                - visibility
+      responses:
+        "201":
+          description: Create an actual persisted campus post, reply or quote; own
+            unattached media only
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Post"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /posts/{id}:
+    get:
+      description: Read visible post, counts and viewer interaction state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Read visible post, counts and viewer interaction state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Post"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    patch:
+      description: Owner edits body/audience; ancestry remains immutable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 1000
+                visibility:
+                  type: string
+                  enum:
+                    - campus
+                    - followers
+              required:
+                - body
+                - visibility
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Owner edits body/audience; ancestry remains immutable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Post"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Owner soft-deletes post; dependent replies/quotes and media become
+        inaccessible
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Owner soft-deletes post; dependent replies/quotes and media become
+            inaccessible
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /posts/{id}/interactions/like:
+    put:
+      description: Idempotent interaction with authoritative counts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Idempotent interaction with authoritative counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Post"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Idempotent interaction with authoritative counts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Idempotent interaction with authoritative counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Post"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /posts/{id}/interactions/repost:
+    put:
+      description: Idempotent interaction with authoritative counts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Idempotent interaction with authoritative counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Post"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Idempotent interaction with authoritative counts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Idempotent interaction with authoritative counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Post"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /posts/{id}/interactions/bookmark:
+    put:
+      description: Idempotent interaction with authoritative counts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Idempotent interaction with authoritative counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Post"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Idempotent interaction with authoritative counts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Idempotent interaction with authoritative counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Post"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /posts/{id}/report:
+    post:
+      description: Unique persisted content report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  enum:
+                    - spam
+                    - harassment
+                    - hate
+                    - misinformation
+                    - other
+                details:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 1000
+              required:
+                - reason
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Unique persisted content report
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /feed:
+    get:
+      description: Visibility-filtered keyset feeds; For You uses owner-bound frozen
+        recommendation cursor
+      parameters:
+        - name: feed
+          in: query
+          schema:
+            type: string
+            enum:
+              - for-you
+              - following
+              - campus
+              - profile
+              - replies
+              - media
+              - bookmarks
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          schema:
+            type: integer
+        - name: parent_id
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 30
+      responses:
+        "200":
+          description: Visibility-filtered keyset feeds; For You uses owner-bound frozen
+            recommendation cursor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feed"
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /media/posts:
+    post:
+      description: Private JPEG/PNG/WebP upload, 4 MB / 4096px, resized 1920px and
+        metadata reencoded
+      responses:
+        "201":
+          description: Private JPEG/PNG/WebP upload, 4 MB / 4096px, resized 1920px and
+            metadata reencoded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/PostMedia"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+              required:
+                - image
+  /media/posts/{id}:
+    get:
+      description: Authenticated permission-rechecked binary JPEG; no public bucket URL
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Authenticated permission-rechecked binary JPEG; no public bucket URL
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Owner removes unattached upload
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Owner removes unattached upload
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /people:
+    get:
+      description: Same-campus visible users, search, suggestions and follower lists
+        with batched relationship metadata
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 80
+        - name: relation
+          in: query
+          schema:
+            type: string
+            enum:
+              - followers
+              - following
+        - name: user_id
+          in: query
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Same-campus visible users, search, suggestions and follower lists
+            with batched relationship metadata
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /relationships/{id}:
+    get:
+      description: Actual accepted follow counts and viewer state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Actual accepted follow counts and viewer state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Relationship"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /relationships/{id}/follow:
+    put:
+      description: Same-campus graph operation; private follow requires approval,
+        blocks are bilateral
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Same-campus graph operation; private follow requires approval,
+            blocks are bilateral
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Same-campus graph operation; private follow requires approval,
+        blocks are bilateral
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Same-campus graph operation; private follow requires approval,
+            blocks are bilateral
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /relationships/{id}/block:
+    put:
+      description: Same-campus graph operation; private follow requires approval,
+        blocks are bilateral
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Same-campus graph operation; private follow requires approval,
+            blocks are bilateral
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Same-campus graph operation; private follow requires approval,
+        blocks are bilateral
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Same-campus graph operation; private follow requires approval,
+            blocks are bilateral
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /relationships/{id}/mute:
+    put:
+      description: Same-campus graph operation; private follow requires approval,
+        blocks are bilateral
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Same-campus graph operation; private follow requires approval,
+            blocks are bilateral
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Same-campus graph operation; private follow requires approval,
+        blocks are bilateral
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Same-campus graph operation; private follow requires approval,
+            blocks are bilateral
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /follow-requests:
+    get:
+      description: Own pending incoming follow requests
+      responses:
+        "200":
+          description: Own pending incoming follow requests
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /follow-requests/{id}:
+    patch:
+      description: Owner accepts or denies pending private follow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accept:
+                  type: boolean
+              required:
+                - accept
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Owner accepts or denies pending private follow
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /privacy/blocks:
+    get:
+      description: Own blocked/muted account list
+      responses:
+        "200":
+          description: Own blocked/muted account list
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /privacy/mutes:
+    get:
+      description: Own blocked/muted account list
+      responses:
+        "200":
+          description: Own blocked/muted account list
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /conversations:
+    get:
+      description: Participant-only same-campus conversations; bilateral blocks hide
+        existing conversations
+      responses:
+        "200":
+          description: Participant-only same-campus conversations; bilateral blocks hide
+            existing conversations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversations"
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    post:
+      description: Create or return canonical recipient-approved conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+              required:
+                - user_id
+      responses:
+        "201":
+          description: Create or return canonical recipient-approved conversation
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /conversations/{id}/messages:
+    get:
+      description: Authorized immutable ID cursor history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Authorized immutable ID cursor history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Messages"
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    post:
+      description: Persist message with recipient policy and unique client retry UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body:
+                  type: string
+                  maxLength: 2000
+                client_id:
+                  type: string
+                  format: uuid
+              required:
+                - body
+                - client_id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Persist message with recipient policy and unique client retry UUID
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /conversations/{id}/read:
+    put:
+      description: Server-chosen monotonic read watermark
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Server-chosen monotonic read watermark
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /notifications:
+    get:
+      description: Owned notifications with current content and actor visibility rechecked
+      responses:
+        "200":
+          description: Owned notifications with current content and actor visibility
+            rechecked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notifications"
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /notifications/{id}/read:
+    put:
+      description: Mark only an owned notification read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Mark only an owned notification read
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /communication-preferences:
+    get:
+      description: Own DM and notification preferences
+      responses:
+        "200":
+          description: Own DM and notification preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/CommunicationPreferences"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    patch:
+      description: Whitelisted notification categories and campus/followers/nobody DM policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommunicationPreferences"
+      responses:
+        "200":
+          description: Whitelisted notification categories and campus/followers/nobody DM
+            policy
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /realtime:
+    get:
+      description: Public client key and endpoint; never returns signing secret
+      responses:
+        "200":
+          description: Public client key and endpoint; never returns signing secret
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /broadcasting/auth:
+    post:
+      description: Sanctum and approved campus authorization; only own private channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel_name:
+                  type: string
+                socket_id:
+                  type: string
+              required:
+                - channel_name
+                - socket_id
+      responses:
+        "200":
+          description: Sanctum and approved campus authorization; only own private channel
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /pulse:
+    get:
+      description: Visibility-filtered 24h topics and popular stories; transparent
+        ranking explanation
+      responses:
+        "200":
+          description: Visibility-filtered 24h topics and popular stories; transparent
+            ranking explanation
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /search/posts:
+    get:
+      description: Literal database search with permission filtering and cursor pagination
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 80
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Literal database search with permission filtering and cursor
+            pagination
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feed"
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /communities:
+    get:
+      description: Discover same-campus spaces with membership and private status metadata
+      responses:
+        "200":
+          description: Discover same-campus spaces with membership and private status
+            metadata
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    post:
+      description: Create student/faculty/department space; official organization
+        requires admin verification
+      responses:
+        "201":
+          description: Create student/faculty/department space; official organization
+            requires admin verification
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /communities/{id}:
+    get:
+      description: Community metadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Community metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Community"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    patch:
+      description: Active owner/moderator updates validated academic hierarchy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Active owner/moderator updates validated academic hierarchy
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Owner soft-deletes space; contained stories and events disappear
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Owner soft-deletes space; contained stories and events disappear
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /communities/{id}/membership:
+    put:
+      description: Join/request or leave; owner cannot leave without ownership resolution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Join/request or leave; owner cannot leave without ownership
+            resolution
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Join/request or leave; owner cannot leave without ownership resolution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Join/request or leave; owner cannot leave without ownership
+            resolution
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /communities/{id}/members:
+    get:
+      description: Active member listing; managers also see pending requests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Active member listing; managers also see pending requests
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /communities/{id}/members/{userId}:
+    patch:
+      description: Manager accepts/removes members; only owner appoints moderators
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - accept
+                    - remove
+                    - promote
+                    - demote
+              required:
+                - action
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Manager accepts/removes members; only owner appoints moderators
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /events:
+    get:
+      description: Visible upcoming campus/community events with cursor pagination
+      responses:
+        "200":
+          description: Visible upcoming campus/community events with cursor pagination
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    post:
+      description: Create validated event; community events require management role
+      responses:
+        "201":
+          description: Create validated event; community events require management role
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /events/{id}:
+    get:
+      description: Visible event details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Visible event details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/CampusEvent"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    patch:
+      description: Owner edits event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Owner edits event
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Owner soft-deletes event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Owner soft-deletes event
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /events/{id}/rsvp:
+    put:
+      description: Idempotent visible event attendance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Idempotent visible event attendance
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+    delete:
+      description: Idempotent visible event attendance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Idempotent visible event attendance
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /admin/moderation:
+    get:
+      description: Moderator/admin campus report queue and actual counts
+      responses:
+        "200":
+          description: Moderator/admin campus report queue and actual counts
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /admin/moderation/{id}:
+    patch:
+      description: Audited dismiss/remove/suspend decision; no self-review or
+        moderator account suspension
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - dismiss
+                    - remove
+                    - suspend
+                note:
+                  type: string
+                  minLength: 10
+                  maxLength: 1000
+              required:
+                - action
+                - note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Audited dismiss/remove/suspend decision; no self-review or
+            moderator account suspension
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /admin/organizations:
+    get:
+      description: Admin-only official organization requests
+      responses:
+        "200":
+          description: Admin-only official organization requests
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /admin/organizations/{id}:
+    patch:
+      description: Admin verifies reviewed organization owner affiliation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  minLength: 10
+                  maxLength: 1000
+              required:
+                - note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Admin verifies reviewed organization owner affiliation
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: ruang_session
+    NativeBearer:
+      type: http
+      scheme: bearer
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        username:
+          type:
+            - string
+            - "null"
+        verified:
+          type: boolean
+        bio:
+          type:
+            - string
+            - "null"
+        location:
+          type:
+            - string
+            - "null"
+        avatar_url:
+          type:
+            - string
+            - "null"
+        cover_url:
+          type:
+            - string
+            - "null"
+        links:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        academic_visible:
+          type: boolean
+        private_account:
+          type: boolean
+        institution:
+          type:
+            - object
+            - "null"
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          required:
+            - id
+            - name
+            - slug
+        faculty:
+          type:
+            - string
+            - "null"
+        department:
+          type:
+            - string
+            - "null"
+        cohort:
+          type:
+            - integer
+            - "null"
+        affiliation:
+          type:
+            - object
+            - "null"
+          properties:
+            faculty_id:
+              type:
+                - integer
+                - "null"
+            department_id:
+              type:
+                - integer
+                - "null"
+            academic_cohort_id:
+              type:
+                - integer
+                - "null"
+          required:
+            - faculty_id
+            - department_id
+            - academic_cohort_id
+        email:
+          type: string
+          description: Owner only
+        email_verified:
+          type: boolean
+        onboarded:
+          type: boolean
+        can_review_verifications:
+          type: boolean
+        can_moderate:
+          type: boolean
+        verification_state:
+          type: string
+          enum:
+            - pending
+            - approved
+            - rejected
+            - suspended
+      required:
+        - id
+        - name
+        - username
+        - verified
+        - bio
+        - location
+        - avatar_url
+        - cover_url
+        - links
+        - interests
+        - academic_visible
+        - private_account
+        - institution
+        - faculty
+        - department
+        - cohort
+        - affiliation
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+    Registration:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        username:
+          type: string
+          pattern: ^[a-z0-9_]{3,24}$
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 12
+        password_confirmation:
+          type: string
+      required:
+        - name
+        - username
+        - email
+        - password
+        - password_confirmation
+    ProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        username:
+          type: string
+          pattern: ^[a-z0-9_]{3,24}$
+        bio:
+          type:
+            - string
+            - "null"
+          maxLength: 500
+        location:
+          type:
+            - string
+            - "null"
+          maxLength: 80
+        links:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            format: uri
+        interests:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 40
+        academic_visible:
+          type: boolean
+        private_account:
+          type: boolean
+    Post:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        id:
+          type: number
+        body:
+          type: string
+        visibility:
+          type: string
+          enum:
+            - campus
+            - followers
+        parent_id:
+          type:
+            - number
+            - "null"
+        root_id:
+          type:
+            - number
+            - "null"
+        depth:
+          type: number
+        quote_id:
+          type:
+            - number
+            - "null"
+        created_at:
+          type: string
+        edited_at:
+          type:
+            - string
+            - "null"
+        author:
+          type: object
+          properties:
+            id:
+              type: number
+            name:
+              type: string
+            username:
+              type:
+                - string
+                - "null"
+            verified:
+              type: boolean
+            avatar_url:
+              type:
+                - string
+                - "null"
+            department:
+              type:
+                - string
+                - "null"
+          required:
+            - id
+            - name
+            - username
+            - verified
+            - avatar_url
+            - department
+          additionalProperties: false
+        media:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: number
+              url:
+                type: string
+              width:
+                type: number
+              height:
+                type: number
+            required:
+              - id
+              - url
+              - width
+              - height
+            additionalProperties: false
+        quote:
+          anyOf:
+            - type: object
+              properties:
+                id:
+                  type: number
+                body:
+                  type: string
+                author:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    username:
+                      type:
+                        - string
+                        - "null"
+                  required:
+                    - name
+                    - username
+                  additionalProperties: false
+                media:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: number
+                      url:
+                        type: string
+                      width:
+                        type: number
+                      height:
+                        type: number
+                    required:
+                      - id
+                      - url
+                      - width
+                      - height
+                    additionalProperties: false
+              required:
+                - id
+                - body
+                - author
+                - media
+              additionalProperties: false
+            - type: "null"
+        likes_count:
+          type: number
+        reposts_count:
+          type: number
+        replies_count:
+          type: number
+        liked:
+          type: boolean
+        reposted:
+          type: boolean
+        bookmarked:
+          type: boolean
+        can_edit:
+          type: boolean
+        reposted_by:
+          type:
+            - string
+            - "null"
+      required:
+        - id
+        - body
+        - visibility
+        - parent_id
+        - root_id
+        - depth
+        - quote_id
+        - created_at
+        - edited_at
+        - author
+        - media
+        - quote
+        - likes_count
+        - reposts_count
+        - replies_count
+        - liked
+        - reposted
+        - bookmarked
+        - can_edit
+      additionalProperties: false
+    Feed:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: number
+              body:
+                type: string
+              visibility:
+                type: string
+                enum:
+                  - campus
+                  - followers
+              parent_id:
+                type:
+                  - number
+                  - "null"
+              root_id:
+                type:
+                  - number
+                  - "null"
+              depth:
+                type: number
+              quote_id:
+                type:
+                  - number
+                  - "null"
+              created_at:
+                type: string
+              edited_at:
+                type:
+                  - string
+                  - "null"
+              author:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+                  username:
+                    type:
+                      - string
+                      - "null"
+                  verified:
+                    type: boolean
+                  avatar_url:
+                    type:
+                      - string
+                      - "null"
+                  department:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - name
+                  - username
+                  - verified
+                  - avatar_url
+                  - department
+                additionalProperties: false
+              media:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: number
+                    url:
+                      type: string
+                    width:
+                      type: number
+                    height:
+                      type: number
+                  required:
+                    - id
+                    - url
+                    - width
+                    - height
+                  additionalProperties: false
+              quote:
+                anyOf:
+                  - type: object
+                    properties:
+                      id:
+                        type: number
+                      body:
+                        type: string
+                      author:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          username:
+                            type:
+                              - string
+                              - "null"
+                        required:
+                          - name
+                          - username
+                        additionalProperties: false
+                      media:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: number
+                            url:
+                              type: string
+                            width:
+                              type: number
+                            height:
+                              type: number
+                          required:
+                            - id
+                            - url
+                            - width
+                            - height
+                          additionalProperties: false
+                    required:
+                      - id
+                      - body
+                      - author
+                      - media
+                    additionalProperties: false
+                  - type: "null"
+              likes_count:
+                type: number
+              reposts_count:
+                type: number
+              replies_count:
+                type: number
+              liked:
+                type: boolean
+              reposted:
+                type: boolean
+              bookmarked:
+                type: boolean
+              can_edit:
+                type: boolean
+              reposted_by:
+                type:
+                  - string
+                  - "null"
+            required:
+              - id
+              - body
+              - visibility
+              - parent_id
+              - root_id
+              - depth
+              - quote_id
+              - created_at
+              - edited_at
+              - author
+              - media
+              - quote
+              - likes_count
+              - reposts_count
+              - replies_count
+              - liked
+              - reposted
+              - bookmarked
+              - can_edit
+            additionalProperties: false
+        meta:
+          type: object
+          properties:
+            next_cursor:
+              type:
+                - string
+                - "null"
+            has_more:
+              type: boolean
+            feed:
+              type: string
+            ranking:
+              type: string
+          required:
+            - next_cursor
+            - has_more
+            - feed
+          additionalProperties: false
+      required:
+        - data
+        - meta
+      additionalProperties: false
+    Relationship:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        followers_count:
+          type: number
+        following_count:
+          type: number
+        follow_state:
+          anyOf:
+            - type: string
+              enum:
+                - pending
+                - accepted
+            - type: "null"
+        muted:
+          type: boolean
+      required:
+        - followers_count
+        - following_count
+        - follow_state
+        - muted
+      additionalProperties: false
+    PostMedia:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        id:
+          type: number
+        url:
+          type: string
+        width:
+          type: number
+        height:
+          type: number
+      required:
+        - id
+        - url
+        - width
+        - height
+      additionalProperties: false
+    Messages:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                minimum: -9007199254740991
+                maximum: 9007199254740991
+              conversation_id:
+                type: integer
+                minimum: -9007199254740991
+                maximum: 9007199254740991
+              sender_id:
+                type: integer
+                minimum: -9007199254740991
+                maximum: 9007199254740991
+              client_id:
+                type: string
+                format: uuid
+                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+              body:
+                type: string
+              created_at:
+                type: string
+            required:
+              - id
+              - conversation_id
+              - sender_id
+              - client_id
+              - body
+              - created_at
+            additionalProperties: false
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+              minimum: -9007199254740991
+              maximum: 9007199254740991
+            name:
+              type: string
+            username:
+              type: string
+          required:
+            - id
+            - name
+            - username
+          additionalProperties: false
+        next_cursor:
+          type:
+            - string
+            - "null"
+        can_send:
+          type: boolean
+      required:
+        - data
+        - user
+        - next_cursor
+        - can_send
+      additionalProperties: false
+    Conversations:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                minimum: -9007199254740991
+                maximum: 9007199254740991
+              user:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  name:
+                    type: string
+                  username:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - username
+                additionalProperties: false
+              unread_count:
+                type: integer
+                minimum: -9007199254740991
+                maximum: 9007199254740991
+            required:
+              - id
+              - user
+              - unread_count
+            additionalProperties: false
+        next_cursor:
+          type:
+            - string
+            - "null"
+      required:
+        - data
+        - next_cursor
+      additionalProperties: false
+    Notifications:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+              kind:
+                type: string
+              actor:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  name:
+                    type: string
+                  username:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - username
+                additionalProperties: false
+              post_id:
+                anyOf:
+                  - type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  - type: "null"
+              conversation_id:
+                anyOf:
+                  - type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  - type: "null"
+              message:
+                type:
+                  - string
+                  - "null"
+              read_at:
+                type:
+                  - string
+                  - "null"
+              created_at:
+                type: string
+            required:
+              - id
+              - kind
+              - actor
+              - post_id
+              - conversation_id
+              - read_at
+              - created_at
+            additionalProperties: false
+        next_cursor:
+          type:
+            - string
+            - "null"
+        unread_count:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - data
+        - next_cursor
+        - unread_count
+      additionalProperties: false
+    CommunicationPreferences:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        dm_policy:
+          type: string
+          enum:
+            - campus
+            - followers
+            - nobody
+        notification_preferences:
+          anyOf:
+            - type: object
+              propertyNames:
+                type: string
+              additionalProperties:
+                type: boolean
+            - type: "null"
+      required:
+        - dm_policy
+        - notification_preferences
+      additionalProperties: false
+    Community:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        id:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        name:
+          type: string
+        description:
+          type: string
+        rules:
+          type:
+            - string
+            - "null"
+        visibility:
+          type: string
+          enum:
+            - campus
+            - private
+        faculty_id:
+          anyOf:
+            - type: integer
+              minimum: -9007199254740991
+              maximum: 9007199254740991
+            - type: "null"
+        department_id:
+          anyOf:
+            - type: integer
+              minimum: -9007199254740991
+              maximum: 9007199254740991
+            - type: "null"
+        owner_id:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        organization_verified:
+          type: boolean
+        members_count:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        membership:
+          anyOf:
+            - type: object
+              properties:
+                role:
+                  type: string
+                  enum:
+                    - owner
+                    - moderator
+                    - member
+                state:
+                  type: string
+                  enum:
+                    - active
+                    - pending
+              required:
+                - role
+                - state
+              additionalProperties: {}
+            - type: "null"
+      required:
+        - id
+        - name
+        - description
+        - rules
+        - visibility
+        - faculty_id
+        - department_id
+        - owner_id
+        - organization_verified
+        - members_count
+        - membership
+      additionalProperties: false
+    CampusEvent:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        id:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        title:
+          type: string
+        description:
+          type: string
+        location:
+          type: string
+        starts_at:
+          type: string
+        ends_at:
+          type: string
+        user_id:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        community_id:
+          anyOf:
+            - type: integer
+              minimum: -9007199254740991
+              maximum: 9007199254740991
+            - type: "null"
+        going_count:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        rsvp:
+          anyOf:
+            - type: string
+              enum:
+                - going
+                - interested
+            - type: "null"
+      required:
+        - id
+        - title
+        - description
+        - location
+        - starts_at
+        - ends_at
+        - user_id
+        - community_id
+        - going_count
+        - rsvp
+      additionalProperties: false

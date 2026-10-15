@@ -1,0 +1,26 @@
+{
+  "name": "simeyo",
+  "version": "0.3.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "npm --prefix apps/web run dev",
+    "build:web": "npm --prefix apps/web run build",
+    "test:api": "cd apps/api && php artisan test",
+    "dev:api": "cd apps/api/public && php -d extension=pdo_pgsql -S localhost:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php",
+    "dev:db": "node infrastructure/scripts/local-postgres.mjs",
+    "dev:reverb": "node infrastructure/scripts/local-realtime.mjs",
+    "dev:worker": "node infrastructure/scripts/local-realtime.mjs worker",
+    "setup:env": "node infrastructure/scripts/init-env.mjs",
+    "test:postgres": "node infrastructure/scripts/test-postgres.mjs",
+    "test:contracts": "node --test packages/api-contracts/tests/contracts.test.ts",
+    "contracts": "node infrastructure/scripts/write-openapi.mjs && openapi-typescript docs/api/openapi.yaml -o packages/api-contracts/src/generated.ts"
+  },
+  "devDependencies": {
+    "embedded-postgres": "^17.9.0-beta.16",
+    "openapi-typescript": "^7.13.0",
+    "yaml": "^2.9.1"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  }
+}

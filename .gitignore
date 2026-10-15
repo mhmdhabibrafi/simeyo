@@ -1,0 +1,16 @@
+**/node_modules/
+**/.next/
+**/vendor/
+**/.env
+**/.env.local
+**/.env.testing
+**/storage/*.key
+**/storage/logs/*
+**/storage/framework/cache/data/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/database/*.sqlite*
+**/test-results/
+**/playwright-report/
+.local/
+*.log

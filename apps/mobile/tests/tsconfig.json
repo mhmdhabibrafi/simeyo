@@ -1,0 +1,6 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {"types": ["node"], "lib": ["ESNext", "DOM"], "allowImportingTsExtensions": true},
+  "include": ["*.test.ts", "../src/lib/client.ts", "../src/lib/notification-target.ts"],
+  "exclude": []
+}

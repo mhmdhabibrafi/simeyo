@@ -1,0 +1,11 @@
+import {readFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import assert from 'node:assert/strict';
+import YAML from 'yaml';
+const root=resolve(import.meta.dirname,'../..');
+const compose=YAML.parse(await readFile(resolve(root,'docker-compose.yml'),'utf8'));
+for(const name of ['api','web','postgres','redis','minio','meilisearch','worker','reverb'])assert.ok(compose.services[name],`Missing ${name}`);
+for(const service of Object.values(compose.services))for(const port of service.ports??[])assert.ok(port.startsWith('127.0.0.1:'),'Development ports must bind to loopback.');
+const schema=YAML.parse(await readFile(resolve(root,'docs/api/openapi.yaml'),'utf8'));
+assert.equal(schema.openapi,'3.1.0');assert.ok(schema.paths['/me'].patch);assert.ok(schema.components.schemas.User);
+console.log('Compose and OpenAPI YAML structure checks passed. Docker runtime, image pulls and deployment have not been validated.');
