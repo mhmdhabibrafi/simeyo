@@ -13,7 +13,9 @@ ENV APP_ENV=production APP_DEBUG=false LOG_CHANNEL=stderr
 COPY apps/api/composer.json apps/api/composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader
 COPY apps/api .
-RUN composer dump-autoload --no-dev --classmap-authoritative --no-scripts \
+# A checkout created with umask 077 must still be readable by the runtime user.
+RUN chmod -R a+rX /app \
+    && composer dump-autoload --no-dev --classmap-authoritative --no-scripts \
     && php artisan package:discover \
     && chown -R www-data:www-data storage bootstrap/cache
 USER www-data
