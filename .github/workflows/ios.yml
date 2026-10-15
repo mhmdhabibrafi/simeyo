@@ -66,12 +66,12 @@ jobs:
           xcrun simctl bootstatus "$device" -b
           open -a Simulator
           xcrun simctl install "$device" .local/ios-ci/build/Build/Products/Debug-iphonesimulator/Simeyo.app
-          (cd apps/mobile && npx expo start --localhost --port 8081) >.local/ios-ci/metro.log 2>&1 &
+          (cd apps/mobile && npx expo start --lan --port 8081) >.local/ios-ci/metro.log 2>&1 &
           metro_pid=$!
           trap 'xcrun simctl io "$device" screenshot .local/ios-ci/initial-screen.png >/dev/null 2>&1 || true; kill "$metro_pid" 2>/dev/null || true' EXIT
           ready=false
           for attempt in $(seq 1 90); do
-            if curl --silent --fail http://localhost:8081/status | grep -q packager-status:running; then ready=true; break; fi
+            if curl --silent --fail http://127.0.0.1:8081/status | grep -q packager-status:running; then ready=true; break; fi
             sleep 2
           done
           [ "$ready" = true ]

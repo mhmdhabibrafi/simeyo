@@ -107,7 +107,7 @@ find(story)
 screenshot('native-post.png')
 
 tap('Profil')
-find('Nadia Putri')
+find('@nadia')
 tap('Pengaturan')
 find('Tampilan')
 tap('Gelap')
