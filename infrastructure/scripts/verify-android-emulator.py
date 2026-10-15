@@ -112,7 +112,8 @@ for _ in range(8):
         tap_node(find('Keluar', 1))
         break
     except RuntimeError:
-        adb('shell', 'input', 'swipe', '500', '1700', '500', '500', '350')
+        width, height = map(int, re.findall(r'(\d+)x(\d+)', adb('shell', 'wm', 'size').decode())[-1])
+        adb('shell', 'input', 'swipe', str(width // 2), str(height * 4 // 5), str(width // 2), str(height // 4), '350')
 else:
     raise RuntimeError('Native logout control was not reachable.')
 find('Email')

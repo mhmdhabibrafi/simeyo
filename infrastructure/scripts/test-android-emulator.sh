@@ -34,11 +34,11 @@ adb shell input keyevent 82
 adb install -r "${ANDROID_ACCEPTANCE_APK:-apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk}" >/dev/null
 (cd apps/api/public && php -S 0.0.0.0:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php) >"$state/api.log" 2>&1 &
 api_pid=$!
-(cd apps/mobile && npx expo start --localhost --port 8081) >"$state/metro.log" 2>&1 &
+(cd apps/mobile && npx expo start --lan --port 8081) >"$state/metro.log" 2>&1 &
 metro_pid=$!
 ready=false
 for attempt in $(seq 1 90); do
-  if curl --silent --fail http://localhost:8081/status | grep -q packager-status:running && curl --silent --fail http://localhost:8000/api/v1/health >/dev/null; then ready=true; break; fi
+  if curl --silent --fail http://127.0.0.1:8081/status | grep -q packager-status:running && curl --silent --fail http://127.0.0.1:8000/api/v1/health >/dev/null; then ready=true; break; fi
   sleep 2
 done
 [ "$ready" = true ] || { echo 'Emulator backend/Metro did not become ready.' >&2; exit 1; }
