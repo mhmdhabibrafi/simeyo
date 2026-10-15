@@ -1,7 +1,16 @@
 "use client";
 import { useState, useRef, useId, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, X, ArrowUpRight } from "lucide-react";
+import {
+  ImagePlus,
+  X,
+  ArrowUpRight,
+  ChevronDown,
+  Check,
+  Globe2,
+  Users,
+} from "lucide-react";
+import * as Menu from "@radix-ui/react-dropdown-menu";
 import Image from "next/image";
 import { api, ApiError } from "@/lib/api";
 import { useMe } from "@/lib/auth";
@@ -217,18 +226,78 @@ export function Composer({
                 <label className="sr-only" htmlFor={`audience-${inputId}`}>
                   Visibilitas cerita
                 </label>
-                <select
-                  id={`audience-${inputId}`}
-                  className="max-w-40 rounded-lg bg-transparent px-2 py-2 text-xs text-[var(--muted)]"
-                  value={visibility}
-                  disabled={busy}
-                  onChange={(e) =>
-                    setVisibility(e.target.value as "campus" | "followers")
-                  }
-                >
-                  <option value="campus">Kampus</option>
-                  <option value="followers">Hanya pengikut</option>
-                </select>
+                <Menu.Root>
+                  <Menu.Trigger asChild>
+                    <button
+                      type="button"
+                      id={`audience-${inputId}`}
+                      aria-label="Visibilitas cerita"
+                      disabled={busy}
+                      className="inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-xs text-[var(--muted)] transition-colors hover:bg-[var(--soft)]"
+                    >
+                      {visibility === "campus" ? (
+                        <Globe2 size={15} />
+                      ) : (
+                        <Users size={15} />
+                      )}
+                      {visibility === "campus" ? "Kampus" : "Pengikut"}
+                      <ChevronDown size={13} />
+                    </button>
+                  </Menu.Trigger>
+                  <Menu.Portal>
+                    <Menu.Content
+                      align="start"
+                      sideOffset={8}
+                      collisionPadding={16}
+                      className="z-[70] min-w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-xl"
+                    >
+                      <Menu.Label className="px-3 pb-2 pt-2 text-xs font-semibold text-[var(--muted)]">
+                        Siapa yang bisa melihat?
+                      </Menu.Label>
+                      <Menu.RadioGroup
+                        value={visibility}
+                        onValueChange={(value) =>
+                          setVisibility(value as "campus" | "followers")
+                        }
+                      >
+                        {[
+                          {
+                            value: "campus",
+                            label: "Kampus",
+                            description: "Anggota kampus yang terverifikasi",
+                            icon: Globe2,
+                          },
+                          {
+                            value: "followers",
+                            label: "Hanya pengikut",
+                            description: "Pengikutmu di kampus ini",
+                            icon: Users,
+                          },
+                        ].map((option) => (
+                          <Menu.RadioItem
+                            key={option.value}
+                            value={option.value}
+                            aria-label={option.label}
+                            className="relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 pr-9 outline-none data-[highlighted]:bg-[var(--soft)]"
+                          >
+                            <option.icon size={18} />
+                            <div>
+                              <p className="text-sm font-medium">
+                                {option.label}
+                              </p>
+                              <p className="mt-0.5 text-xs text-[var(--muted)]">
+                                {option.description}
+                              </p>
+                            </div>
+                            <Menu.ItemIndicator className="absolute right-3">
+                              <Check size={16} />
+                            </Menu.ItemIndicator>
+                          </Menu.RadioItem>
+                        ))}
+                      </Menu.RadioGroup>
+                    </Menu.Content>
+                  </Menu.Portal>
+                </Menu.Root>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-[11px] tabular-nums text-[var(--muted)]">
@@ -262,7 +331,9 @@ export function Composer({
             <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
               {user.private_account
                 ? "Akun privat: cerita hanya dapat dibaca pengikut yang disetujui."
-                : "Cerita tersedia untuk anggota kampus yang terverifikasi."}
+                : visibility === "followers"
+                  ? "Hanya pengikutmu yang dapat melihat cerita ini."
+                  : "Cerita tersedia untuk anggota kampus yang terverifikasi."}
             </p>
           )}
         </div>

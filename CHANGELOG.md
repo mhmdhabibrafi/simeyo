@@ -1,5 +1,7 @@
 # Changelog
 
+- Fixed the global focus rule overriding the composer textarea. Replaced its native audience select with a themed, keyboard-accessible radio menu; simplified the modal header and corrected follower-only visibility guidance.
+
 ### Consumer feed redesign and interaction fixes
 
 - Centered feed with compact desktop navigation, a quieter post layout and a composer that expands while writing. Removed the oversized campus sidebar; academic information remains small metadata. Bookmarks, verification and moderation remain available in the account menu.

@@ -100,7 +100,12 @@ async function fixtures(page: Page) {
     if (url.pathname.endsWith("/feed"))
       return route.fulfill({
         json: {
-          data: url.searchParams.has("user_id") ? posts.filter(post => post.author.id === Number(url.searchParams.get("user_id"))) : posts,
+          data: url.searchParams.has("user_id")
+            ? posts.filter(
+                (post) =>
+                  post.author.id === Number(url.searchParams.get("user_id")),
+              )
+            : posts,
           meta: {
             next_cursor: null,
             has_more: false,
@@ -290,7 +295,7 @@ test("modal keeps a draft until discard is confirmed and profile uses the same c
   const dialog = page.getByRole("dialog", { name: "Cerita baru", exact: true });
   const input = dialog.getByLabel("Tulis cerita", { exact: true });
   await input.fill("Draf yang sedang dikerjakan.");
-  await dialog.getByRole("button", { name: "Tutup", exact: true }).click();
+  await dialog.getByRole("button", { name: "Batal", exact: true }).click();
   const discard = page.getByRole("dialog", {
     name: "Buang draf?",
     exact: true,
@@ -305,7 +310,7 @@ test("modal keeps a draft until discard is confirmed and profile uses the same c
     ),
     fullPage: true,
   });
-  await dialog.getByRole("button", { name: "Tutup", exact: true }).click();
+  await dialog.getByRole("button", { name: "Batal", exact: true }).click();
   await discard
     .getByRole("button", { name: "Buang draf", exact: true })
     .click();
@@ -330,4 +335,55 @@ test("modal keeps a draft until discard is confirmed and profile uses the same c
   });
   await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
   await expect(dialog).toBeVisible();
+});
+
+test("dark focused editor has no native frame and audience menu follows the theme", async ({
+  page,
+}) => {
+  await fixtures(page);
+  await page.addInitScript(() => localStorage.setItem("ruang-theme", "dark"));
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Cerita baru", exact: true });
+  const editor = dialog.getByLabel("Tulis cerita", { exact: true });
+  await editor.focus();
+  expect(
+    await editor.evaluate((node) => getComputedStyle(node).outlineStyle),
+  ).toBe("none");
+  expect(
+    await editor.evaluate((node) => getComputedStyle(node).borderTopWidth),
+  ).toBe("0px");
+  await expect(dialog.locator("select")).toHaveCount(0);
+  await dialog
+    .getByRole("button", { name: "Visibilitas cerita", exact: true })
+    .click();
+  await expect(
+    page.getByRole("menuitemradio", { name: "Kampus", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
+  await page.screenshot({
+    path: path.resolve(
+      "../../docs/testing/screenshots/composer-dark-audience.png",
+    ),
+    animations: "disabled",
+  });
+  await page
+    .getByRole("menuitemradio", { name: "Hanya pengikut", exact: true })
+    .click();
+  await expect(
+    dialog.getByRole("button", { name: "Visibilitas cerita", exact: true }),
+  ).toContainText("Pengikut");
+  await expect(
+    dialog.getByText("Hanya pengikutmu yang dapat melihat cerita ini."),
+  ).toBeVisible();
+  await editor.focus();
+  await page.screenshot({
+    path: path.resolve(
+      "../../docs/testing/screenshots/composer-dark-focused.png",
+    ),
+    animations: "disabled",
+  });
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(result.violations).toEqual([]);
 });

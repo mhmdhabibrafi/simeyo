@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { useMe } from "@/lib/auth";
 import { Avatar } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -32,6 +38,7 @@ export function ThreadComposerProvider({ children }: { children: ReactNode }) {
         title="Cerita baru"
         description="Bagikan cerita, pertanyaan, atau sudut pandangmu."
         className="max-w-[620px]"
+        variant="composer"
       >
         <Composer
           autoFocus
