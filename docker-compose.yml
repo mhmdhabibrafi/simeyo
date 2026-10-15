@@ -69,7 +69,8 @@ services:
     image: axllent/mailpit:v1.31.5
     ports: ['127.0.0.1:8025:8025']
   minio:
-    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-06T17-38-46Z}
+    build: {context: ., dockerfile: infrastructure/docker/minio.development.Dockerfile}
+    image: simeyo-minio-development:source-20251015
     profiles: [storage]
     command: server /data --console-address ':9001'
     environment:

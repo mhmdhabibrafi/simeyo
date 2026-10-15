@@ -17,6 +17,7 @@ jobs:
         run: |
           node infrastructure/scripts/init-env.mjs
           docker compose -p simeyo-support-ci --profile storage --profile search config --quiet
+          docker compose -p simeyo-support-ci --profile storage --profile search build minio
           docker compose -p simeyo-support-ci --profile storage --profile search up -d --wait postgres redis mailpit minio meilisearch
       - name: Verify Redis persistence and supporting HTTP/S3 protocols
         run: |
