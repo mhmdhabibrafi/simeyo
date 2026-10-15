@@ -116,7 +116,11 @@ export const PostCard = memo(function PostCard({ post }: { post: Post }) {
         ).data,
       ),
     onMutate: async ({ kind, active }) => {
-      await client.cancelQueries({ queryKey: ["feed"] });
+      await Promise.all([
+        client.cancelQueries({ queryKey: ["feed"] }),
+        client.cancelQueries({ queryKey: ["post", post.id] }),
+        client.cancelQueries({ queryKey: ["pulse"] }),
+      ]);
       const flag =
         kind === "like"
           ? "liked"

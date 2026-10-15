@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { router, useRootNavigationState } from "expo-router";
 import * as Notifications from "expo-notifications";
@@ -17,6 +17,7 @@ export function NativeActivity() {
   const { api, token, user, origin } = useSession();
   const client = useQueryClient();
   const navigation = useRootNavigationState();
+  const lastOpenedId = useRef<string | null>(null);
   const q = useQuery({
     queryKey: ["realtime"],
     enabled: !!token && !!user?.verified,
@@ -50,14 +51,16 @@ export function NativeActivity() {
         protocols: undefined,
         options: { headers: Record<string, string> },
       ) => WebSocket;
-      socket =
+      const connection =
         Platform.OS === "web"
           ? new WebSocket(address)
           : new NativeSocket(address, undefined, {
               headers: { Origin: config.origin },
             });
-      socket.onmessage = (event) => {
+      socket = connection;
+      connection.onmessage = (event) => {
         void (async () => {
+          if (disposed || socket !== connection) return;
           const packet = JSON.parse(String(event.data));
           if (packet.event === "pusher:connection_established") {
             const data =
@@ -72,22 +75,22 @@ export function NativeActivity() {
                 channel_name: channel,
               }),
             });
-            if (!disposed && socket?.readyState === WebSocket.OPEN)
-              socket.send(
+            if (!disposed && socket === connection && connection.readyState === WebSocket.OPEN)
+              connection.send(
                 JSON.stringify({
                   event: "pusher:subscribe",
                   data: { channel, auth: auth.auth },
                 }),
               );
           } else if (packet.event === "pusher:ping")
-            socket?.send(JSON.stringify({ event: "pusher:pong", data: {} }));
+            connection.send(JSON.stringify({ event: "pusher:pong", data: {} }));
           else if (packet.event === "activity.changed") refresh();
-        })().catch(() => socket?.close());
+        })().catch(() => connection.close());
       };
-      socket.onclose = () => {
-        if (!disposed) reconnect = setTimeout(connect, 5000);
+      connection.onclose = () => {
+        if (!disposed && socket === connection) reconnect = setTimeout(connect, 5000);
       };
-      socket.onerror = () => socket?.close();
+      connection.onerror = () => connection.close();
     };
     connect();
     return () => {
@@ -98,12 +101,16 @@ export function NativeActivity() {
   }, [q.data, token, user?.id, user?.verified, origin, api, client]);
   useEffect(() => {
     if (Platform.OS === "web" || !token || !user || !navigation?.key) return;
+    let active = true;
     const open = (response: Notifications.NotificationResponse) => {
+      if (!active) return;
       const target = notificationTarget(
         response.notification.request.content.data,
         user.id,
+        lastOpenedId.current,
       );
       if (target) {
+        lastOpenedId.current = target;
         void client.invalidateQueries({ queryKey: ["notifications"] });
         router.push("/activity");
       }
@@ -132,6 +139,7 @@ export function NativeActivity() {
       })
       .catch(() => {});
     return () => {
+      active = false;
       received.remove();
       tapped.remove();
       Notifications.setNotificationHandler(null);

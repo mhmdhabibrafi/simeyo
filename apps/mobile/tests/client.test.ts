@@ -24,3 +24,11 @@ test('an old 401 cannot sign out the next account',async()=>{
 test('push targets are bound to current account and never use an arbitrary URL',()=>{
  const id='019a0000-1234-4123-8123-123456789abc';assert.equal(notificationTarget({user_id:2,notification_id:id,url:'https://evil.example'},2),id);assert.equal(notificationTarget({user_id:3,notification_id:id},2),null);assert.equal(notificationTarget({user_id:2,notification_id:'../messages'},2),null);assert.equal(notificationTarget(undefined,2),null);
 });
+test('a retained push response cannot reopen activity after a profile refresh',()=>{
+ const id='019a0000-1234-4123-8123-123456789abc';
+ const data={user_id:2,notification_id:id};
+ assert.equal(notificationTarget(data,2),id);
+ assert.equal(notificationTarget(data,2,id),null);
+ assert.equal(notificationTarget(data,3),null);
+ assert.equal(notificationTarget({...data,notification_id:'019a0000-1234-4123-8123-123456789abd'},2,id),'019a0000-1234-4123-8123-123456789abd');
+});

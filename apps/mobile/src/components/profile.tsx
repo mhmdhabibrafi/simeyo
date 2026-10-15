@@ -44,7 +44,7 @@ export function Profile({ username }: { username?: string }) {
     },
     onError: (e) => setError(e.message),
   });
-  if (!u)
+  if (!u || (Boolean(username) && q.isError))
     return (
       <Screen>
         <Status
@@ -225,10 +225,7 @@ export function Profile({ username }: { username?: string }) {
                             method: "PUT",
                           })
                             .then(() => {
-                              client.removeQueries({ queryKey: ["profile"] });
-                              void client.invalidateQueries({
-                                queryKey: ["feed"],
-                              });
+                              client.clear();
                               router.replace("/explore");
                             })
                             .catch((e) => setError(e.message));

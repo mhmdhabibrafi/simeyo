@@ -62,3 +62,5 @@ npm.cmd run contracts
 The PostgreSQL test runner only targets `ruang_test`; SQLite tests use memory. Browser tests require the development servers and development seeder, create fictional `e2e_*` accounts and modify a demo profile. Do not run them against production.
 
 See [INSTALLATION.md](INSTALLATION.md), [AUTHENTICATION.md](AUTHENTICATION.md), [API.md](API.md), [SECURITY.md](SECURITY.md), [TESTING.md](TESTING.md), and [DATABASE.md](DATABASE.md).
+
+Release preparation: [HTTPS/FPM/standalone configuration](infrastructure/production/README.md), [database backup and restore](docs/operations/backup-restore.md), and [bounded local load sampler](docs/testing/local-api-load.md). These checks do not declare production readiness or deploy the application.
