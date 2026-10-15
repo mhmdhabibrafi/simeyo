@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { authFormSchema } from "../../../../packages/api-contracts/src";
+import { authFormSchema, userSchema } from "../../../../packages/api-contracts/src";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthOptions } from "@/lib/auth";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
@@ -32,8 +32,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const submit = handleSubmit(async (data) => {
     setFailure("");
     try {
-      await api(`auth/${mode}`, { method: "POST", body: JSON.stringify(data) });
-      await client.invalidateQueries({ queryKey: ["me"] });
+      const result = await api<{ data: unknown }>(`auth/${mode}`, { method: "POST", body: JSON.stringify(data) });
+      const user = userSchema.parse(result.data);
+      await client.cancelQueries();
+      client.clear();
+      client.setQueryData(["me"], user);
       router.push(registerMode ? "/verification" : "/home");
     } catch (e) {
       if (e instanceof ApiError) {

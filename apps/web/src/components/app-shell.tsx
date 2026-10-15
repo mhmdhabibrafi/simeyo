@@ -10,8 +10,6 @@ import {
   UserRound,
   Settings,
   ShieldCheck,
-  ArrowUpRight,
-  LogOut,
   Check,
   Compass,
   Bookmark,
@@ -126,7 +124,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         { href: "/home", label: "Beranda", icon: Home },
         { href: "/explore", label: "Jelajahi", icon: Compass },
         { href: "/compose", label: "Cerita", icon: SquarePen },
-        { href: "/bookmarks", label: "Tersimpan", icon: Bookmark },
+        { href: "/notifications", label: "Aktivitas", icon: Bell },
         { href: "/profile", label: "Profil", icon: UserRound },
       ]
     : nav.filter((n) => n.href !== "/admin/verifications");
@@ -143,79 +141,72 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }
   return (
-    <div className="mx-auto grid min-h-dvh w-full max-w-[1280px] md:grid-cols-[220px_1fr] xl:grid-cols-[240px_minmax(0,650px)_1fr]">
+    <div className="min-h-dvh w-full md:pl-24">
       {user.verified && <Realtime userId={user.id} />}
       <aside
         aria-label="Navigasi akun"
-        className="sticky top-0 hidden h-dvh flex-col border-r border-[var(--border)] px-5 py-9 md:flex"
+        className="fixed inset-y-0 left-0 z-30 hidden w-24 flex-col items-center gap-3 px-3 py-5 md:flex"
       >
-        <div className="px-3">
-          <Brand />
-        </div>
-        <p className="mb-8 mt-4 px-3 text-[10px] uppercase tracking-[.18em] text-[var(--muted)]">
-          Satu kampus. Banyak cerita.
-        </p>
-        <nav className="space-y-2" aria-label="Navigasi utama">
-          {nav.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className={`nav-item ${pathname === n.href ? "active" : ""}`}
-              aria-current={pathname === n.href ? "page" : undefined}
-            >
-              <n.icon size={21} strokeWidth={1.6} />
-              {n.label}
-            </Link>
-          ))}
+        <Link
+          href="/home"
+          aria-label="Simeyo, halaman utama"
+          className="mb-2 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-[42px] font-bold tracking-[-4px] transition-transform hover:scale-105"
+        >
+          s.
+        </Link>
+        <nav
+          className="min-h-0 w-full flex-1 space-y-1 overflow-y-auto"
+          aria-label="Navigasi utama"
+        >
+          {nav
+            .filter((n) =>
+              [
+                "/home",
+                "/explore",
+                "/notifications",
+                "/messages",
+                "/profile",
+              ].includes(n.href),
+            )
+            .map((n) => (
+              <Link
+                key={n.href}
+                href={n.href}
+                title={n.label}
+                aria-label={n.label}
+                className={`rail-link ${pathname === n.href ? "active" : ""}`}
+                aria-current={pathname === n.href ? "page" : undefined}
+              >
+                <n.icon
+                  size={25}
+                  strokeWidth={pathname === n.href ? 2.2 : 1.7}
+                />
+                <span className="sr-only">{n.label}</span>
+              </Link>
+            ))}
         </nav>
         {user.verified && (
           <Link
             href="/compose"
-            className="mt-6 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-foreground)]"
+            aria-label="Cerita baru"
+            title="Cerita baru"
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--soft)] transition-colors hover:bg-[var(--border)]"
           >
-            <SquarePen size={17} />
-            Cerita baru
+            <SquarePen size={25} />
+            <span className="sr-only">Cerita baru</span>
           </Link>
         )}
-        <div className="mt-auto space-y-4">
-          <div className="flex items-center justify-between">
-            <ThemeToggle />
-            <AccountMenu />
-            <button
-              className="icon-button"
-              aria-label="Keluar"
-              onClick={() => setConfirm(true)}
-            >
-              <LogOut size={19} />
-            </button>
-          </div>
-          <Link
-            href="/profile"
-            className="flex min-w-0 items-center gap-3 border-t border-[var(--border)] pt-5"
-          >
-            <Avatar name={user.name} url={user.avatar_url} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{user.name}</p>
-              <p className="truncate text-xs text-[var(--muted)]">
-                @{user.username}
-              </p>
-            </div>
-          </Link>
+        <div className="flex shrink-0 flex-col items-center gap-2 pt-2">
+          <ThemeToggle />
+          <AccountMenu onLogout={() => setConfirm(true)} />
         </div>
       </aside>
-      <div className="min-w-0 pb-24 md:pb-0">
+      <div className="mx-auto w-full min-w-0 max-w-[680px] pb-24 md:py-6 md:pr-6">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/95 px-5 py-4 backdrop-blur-sm md:hidden">
           <Brand />
           <div className="flex items-center">
             {user.verified && (
               <>
-                <Link
-                  href="/notifications"
-                  className="icon-button"
-                  aria-label="Aktivitas"
-                >
-                  <Bell size={19} />
-                </Link>
                 <Link
                   href="/messages"
                   className="icon-button"
@@ -225,50 +216,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               </>
             )}
-            <ThemeToggle />
-            <AccountMenu />
-            <button
-              className="icon-button"
-              aria-label="Keluar"
-              onClick={() => setConfirm(true)}
-            >
-              <LogOut size={19} />
-            </button>
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
+            <AccountMenu onLogout={() => setConfirm(true)} />
           </div>
         </header>
-        <main id="main">{children}</main>
+        <main
+          id="main"
+          className="min-h-[calc(100dvh-8rem)] bg-[var(--surface)] md:overflow-hidden md:rounded-[28px] md:border md:border-[var(--border)] md:shadow-[0_4px_28px_#00000003]"
+        >
+          {children}
+        </main>
       </div>
-      <aside
-        aria-label="Lingkaran kampus"
-        className="hidden border-l border-[var(--border)] px-7 py-9 xl:block"
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-[.17em] text-[var(--muted)]">
-          Lingkaran kampusmu
-        </p>
-        <div className="mt-5 rounded-2xl bg-[var(--soft)] p-5">
-          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
-            <ArrowUpRight size={22} />
-          </div>
-          <h2 className="text-sm font-semibold">
-            {user.institution?.name ?? "Pilih kampusmu"}
-          </h2>
-          <p className="mt-3 text-xs leading-6 text-[var(--muted)]">
-            Identitas terverifikasi membantu membangun ruang percakapan yang
-            lebih terjaga.
-          </p>
-          <Link
-            href="/verification"
-            className="mt-4 inline-flex min-h-10 items-center gap-2 text-xs font-medium text-[var(--accent)]"
-          >
-            Lihat status afiliasi <ArrowUpRight size={14} />
-          </Link>
-        </div>
-        <div className="mt-7 text-xs leading-6 text-[var(--muted)]">
-          Platform komunitas independen.
-          <br />
-          Tidak mewakili universitas.
-        </div>
-      </aside>
       <nav
         className="fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-[var(--border)] bg-[var(--surface)] px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 md:hidden"
         aria-label="Navigasi seluler"

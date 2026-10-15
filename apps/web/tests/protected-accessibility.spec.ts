@@ -59,10 +59,8 @@ test("authenticated screens, menus and privacy popover are accessible", async ({
   await expect(page.getByRole("menu")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).not.toBeVisible();
-  await page
-    .getByRole("button", { name: "Keluar", exact: true })
-    .filter({ visible: true })
-    .click();
+  await page.getByRole("button", { name: "Menu akun" }).filter({ visible: true }).click();
+  await page.getByRole("menuitem", { name: "Keluar", exact: true }).click();
   const dialog = await new AxeBuilder({ page })
     .include('[role="dialog"]')
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])

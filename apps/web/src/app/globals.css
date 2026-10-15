@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #fafafa;
   --foreground: #171717;
   --surface: #fff;
   --soft: #f7f7f7;
@@ -133,6 +133,28 @@ button:disabled {
   background: var(--soft);
   color: var(--accent);
   font-weight: 600;
+}
+.rail-link {
+  display: flex;
+  width: 56px;
+  min-height: 52px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  color: var(--muted);
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.rail-link:hover {
+  background: var(--soft);
+  color: var(--foreground);
+}
+.rail-link:active {
+  transform: scale(.94);
+}
+.rail-link.active {
+  color: var(--foreground);
+  background: var(--soft);
 }
 .post-action {
   display: inline-flex;

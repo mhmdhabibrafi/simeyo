@@ -1,8 +1,17 @@
 "use client";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
-import { MoreHorizontal, UserRound, Settings } from "lucide-react";
-export function AccountMenu() {
+import {
+  MoreHorizontal,
+  UserRound,
+  Settings,
+  Bookmark,
+  ShieldCheck,
+  LogOut,
+} from "lucide-react";
+import { useMe } from "@/lib/auth";
+export function AccountMenu({ onLogout }: { onLogout?: () => void }) {
+  const { data: user } = useMe();
   return (
     <Menu.Root>
       <Menu.Trigger asChild>
@@ -34,6 +43,53 @@ export function AccountMenu() {
               Pengaturan
             </Link>
           </Menu.Item>
+          {[
+            ...(user?.verified
+              ? [{ href: "/bookmarks", label: "Tersimpan", icon: Bookmark }]
+              : []),
+            {
+              href: "/verification",
+              label: "Status verifikasi",
+              icon: ShieldCheck,
+            },
+            ...(user?.can_moderate
+              ? [
+                  {
+                    href: "/admin/moderation",
+                    label: "Moderasi",
+                    icon: ShieldCheck,
+                  },
+                ]
+              : []),
+            ...(user?.can_review_verifications
+              ? [
+                  {
+                    href: "/admin/verifications",
+                    label: "Review afiliasi",
+                    icon: ShieldCheck,
+                  },
+                ]
+              : []),
+          ].map((item) => (
+            <Menu.Item asChild key={item.href}>
+              <Link
+                href={item.href}
+                className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-[var(--soft)]"
+              >
+                <item.icon size={17} />
+                {item.label}
+              </Link>
+            </Menu.Item>
+          ))}
+          {onLogout && (
+            <>
+              <Menu.Separator className="my-1 h-px bg-[var(--border)]" />
+              <Menu.Item className="menu-choice gap-3" onSelect={onLogout}>
+                <LogOut size={17} />
+                Keluar
+              </Menu.Item>
+            </>
+          )}
         </Menu.Content>
       </Menu.Portal>
     </Menu.Root>

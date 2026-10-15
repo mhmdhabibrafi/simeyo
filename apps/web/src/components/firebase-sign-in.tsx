@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthOptions } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "./ui/button";
+import { userSchema } from "../../../../packages/api-contracts/src";
 
 export function FirebaseSignIn() {
   const policy = useAuthOptions();
@@ -40,13 +41,16 @@ export function FirebaseSignIn() {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
       const result = await signInWithPopup(auth, provider);
-      await api("auth/firebase", {
+      const response = await api<{ data: unknown }>("auth/firebase", {
         method: "POST",
         body: JSON.stringify({
           firebase_token: await result.user.getIdToken(true),
         }),
       });
-      await client.invalidateQueries({ queryKey: ["me"] });
+      const user = userSchema.parse(response.data);
+      await client.cancelQueries();
+      client.clear();
+      client.setQueryData(["me"], user);
       router.push("/home");
     } catch (e) {
       setError(

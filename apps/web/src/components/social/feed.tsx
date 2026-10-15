@@ -31,10 +31,15 @@ export function Feed({
     },
     getNextPageParam: (last) => last.meta.next_cursor ?? undefined,
   });
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const {
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+  } = query;
   useEffect(() => {
     const target = sentinel.current;
-    if (!target || !hasNextPage) return;
+    if (!target || !hasNextPage || isFetchNextPageError) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting) && !isFetchingNextPage)
@@ -44,7 +49,7 @@ export function Feed({
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError]);
   if (query.isPending)
     return (
       <div
@@ -75,7 +80,14 @@ export function Feed({
         </Button>
       </div>
     );
-  const posts = query.data?.pages.flatMap((p) => p.data) ?? [];
+  const posts = Array.from(
+    new Map(
+      (query.data?.pages.flatMap((p) => p.data) ?? []).map((post) => [
+        post.id,
+        post,
+      ]),
+    ).values(),
+  );
   return (
     <div>
       {posts.length === 0 ? (
@@ -108,10 +120,14 @@ export function Feed({
             onClick={() => query.fetchNextPage()}
             disabled={query.isFetchingNextPage}
           >
-            {query.isFetchingNextPage ? "Memuat…" : "Lihat cerita berikutnya"}
+            {query.isFetchingNextPage
+              ? "Memuat…"
+              : isFetchNextPageError
+                ? "Coba muat berikutnya"
+                : "Lihat cerita berikutnya"}
           </Button>
         )}
-        {query.isError && (
+        {query.isError && !isFetchNextPageError && (
           <Button variant="outline" onClick={() => query.refetch()}>
             Muat ulang feed
           </Button>

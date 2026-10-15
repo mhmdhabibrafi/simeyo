@@ -42,9 +42,11 @@ export function Composer({
   const [images, setImages] = useState<Media[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState(!compact);
   const file = useRef<HTMLInputElement>(null);
   async function upload(files: FileList | null) {
-    if (!files) return;
+    if (!files || busy) return;
+    setExpanded(true);
     if (files.length + images.length > 4) {
       setError("Maksimal 4 gambar.");
       return;
@@ -74,6 +76,7 @@ export function Composer({
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
@@ -90,6 +93,7 @@ export function Composer({
       });
       setBody("");
       setImages([]);
+      if (compact) setExpanded(false);
       await Promise.all([
         client.invalidateQueries({ queryKey: ["feed"] }),
         client.invalidateQueries({ queryKey: ["post"] }),
@@ -108,7 +112,7 @@ export function Composer({
   }
   if (!user?.verified || !user.email_verified) return null;
   return (
-    <form onSubmit={submit} className={compact ? "p-5" : "py-2"}>
+    <form onSubmit={submit} className={compact ? "px-5 py-5 sm:px-6" : "py-2"}>
       <div className="flex gap-3">
         <Avatar name={user.name} url={user.avatar_url} size={40} />
         <div className="min-w-0 flex-1">
@@ -119,8 +123,10 @@ export function Composer({
             id={`composer-${inputId}`}
             value={body}
             onChange={(e) => setBody(e.target.value)}
+            onFocus={() => setExpanded(true)}
+            disabled={busy}
             maxLength={1000}
-            rows={compact ? 2 : 4}
+            rows={compact && !expanded ? 1 : compact ? 3 : 4}
             placeholder={
               parentId
                 ? "Tambahkan sudut pandangmu…"
@@ -166,77 +172,82 @@ export function Composer({
               ))}
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
-              {!editId && (
-                <>
-                  <input
-                    className="sr-only"
-                    type="file"
-                    ref={file}
-                    multiple
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(e) => upload(e.target.files)}
-                    aria-label="Lampirkan gambar"
-                  />
-                  <button
-                    type="button"
-                    className="icon-button text-[var(--muted)]"
-                    aria-label="Tambah gambar"
-                    disabled={busy}
-                    onClick={() => file.current?.click()}
-                  >
-                    <ImagePlus size={20} />
-                  </button>
-                </>
-              )}
-              <label className="sr-only" htmlFor={`audience-${inputId}`}>
-                Visibilitas cerita
-              </label>
-              <select
-                id={`audience-${inputId}`}
-                className="max-w-40 rounded-lg bg-transparent px-2 py-2 text-xs text-[var(--muted)]"
-                value={visibility}
-                onChange={(e) =>
-                  setVisibility(e.target.value as "campus" | "followers")
-                }
-              >
-                <option value="campus">Komunitas kampus</option>
-                <option value="followers">Hanya pengikut</option>
-              </select>
+          {expanded && (
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                {!editId && (
+                  <>
+                    <input
+                      className="sr-only"
+                      type="file"
+                      ref={file}
+                      multiple
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => upload(e.target.files)}
+                      aria-label="Lampirkan gambar"
+                    />
+                    <button
+                      type="button"
+                      className="icon-button text-[var(--muted)]"
+                      aria-label="Tambah gambar"
+                      disabled={busy}
+                      onClick={() => file.current?.click()}
+                    >
+                      <ImagePlus size={20} />
+                    </button>
+                  </>
+                )}
+                <label className="sr-only" htmlFor={`audience-${inputId}`}>
+                  Visibilitas cerita
+                </label>
+                <select
+                  id={`audience-${inputId}`}
+                  className="max-w-40 rounded-lg bg-transparent px-2 py-2 text-xs text-[var(--muted)]"
+                  value={visibility}
+                  disabled={busy}
+                  onChange={(e) =>
+                    setVisibility(e.target.value as "campus" | "followers")
+                  }
+                >
+                  <option value="campus">Kampus</option>
+                  <option value="followers">Hanya pengikut</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] tabular-nums text-[var(--muted)]">
+                  {body.length}/1000
+                </span>
+                <Button
+                  className="min-h-10 px-4"
+                  disabled={
+                    busy ||
+                    (!body.trim() && !images.length && !existingImageCount)
+                  }
+                >
+                  {busy
+                    ? "Menyimpan…"
+                    : editId
+                      ? "Simpan"
+                      : parentId
+                        ? "Balas"
+                        : "Bagikan"}
+                  <ArrowUpRight size={15} />
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] text-[var(--muted)]">
-                {body.length}/1000
-              </span>
-              <Button
-                className="min-h-10 px-4"
-                disabled={
-                  busy ||
-                  (!body.trim() && !images.length && !existingImageCount)
-                }
-              >
-                {busy
-                  ? "Menyimpan…"
-                  : editId
-                    ? "Simpan"
-                    : parentId
-                      ? "Balas"
-                      : "Bagikan"}
-                <ArrowUpRight size={15} />
-              </Button>
-            </div>
-          </div>
+          )}
           {error && (
             <p role="alert" className="mt-3 text-sm text-red-600">
               {error}
             </p>
           )}
-          <p className="mt-2 text-[10px] leading-5 text-[var(--muted)]">
-            {user.private_account
-              ? "Akun privat: cerita hanya dapat dibaca pengikut yang disetujui."
-              : "Cerita tersedia untuk anggota kampus yang terverifikasi."}
-          </p>
+          {expanded && (
+            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+              {user.private_account
+                ? "Akun privat: cerita hanya dapat dibaca pengikut yang disetujui."
+                : "Cerita tersedia untuk anggota kampus yang terverifikasi."}
+            </p>
+          )}
         </div>
       </div>
     </form>

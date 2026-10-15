@@ -1,5 +1,12 @@
 # Changelog
 
+### Consumer feed redesign and interaction fixes
+
+- Centered feed with compact desktop navigation, a quieter post layout and a composer that expands while writing. Removed the oversized campus sidebar; academic information remains small metadata. Bookmarks, verification and moderation remain available in the account menu.
+- Kept account controls reachable on short desktops and simplified narrow mobile headers. Logout is available through the account menu.
+- Locked the draft during submission, preserved failed drafts, paused automatic pagination after a failed page, deduplicated overlapping cursor pages, and added keyboard navigation for feed tabs.
+- Clear private query caches on successful password/Firebase account login so a prior account's cached feed is not reused.
+
 - Removed the marketing landing page. `/` redirects to the feed; signed-out visitors continue to login. Login and registration now use a compact single-column layout.
 
 ### Firebase campus sign-in (pending production acceptance)

@@ -100,7 +100,8 @@ test("cookie login, CSRF rejection, profile persistence and logout", async ({
     path: path.join(root, "docs/testing/screenshots/profile-mobile.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Keluar", exact: true }).click();
+  await page.getByRole("button", { name: "Menu akun" }).filter({ visible: true }).click();
+  await page.getByRole("menuitem", { name: "Keluar", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page
     .getByRole("dialog")

@@ -27,7 +27,7 @@ import { useToast } from "@/components/providers";
 import { Composer } from "./composer";
 export function PostBody({ body }: { body: string }) {
   return (
-    <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.8]">
+    <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.65]">
       {body
         .split(/(https?:\/\/[^\s]+|@[a-zA-Z0-9_]{3,24}|#[\p{L}\p{N}_]{2,40})/gu)
         .map((part, i) =>
@@ -132,7 +132,7 @@ export function PostCard({
   return (
     <article
       data-post-id={post.id}
-      className={`border-b border-[var(--border)] px-5 py-5 ${detail ? "sm:px-7" : "transition-colors hover:bg-[var(--soft)]/40"}`}
+      className={`border-b border-[var(--border)] px-5 py-5 sm:px-6 ${detail ? "sm:py-6" : "transition-colors hover:bg-[var(--soft)]/40"}`}
     >
       {post.reposted_by && (
         <p className="mb-3 pl-12 text-[11px] text-[var(--muted)]">
@@ -160,7 +160,7 @@ export function PostCard({
               <div className="flex flex-wrap items-center gap-1.5">
                 <Link
                   href={`/u/${post.author.username}`}
-                  className="text-sm font-semibold hover:underline"
+                  className="text-[15px] font-semibold tracking-[-.015em] hover:underline"
                 >
                   {post.author.name}
                 </Link>
@@ -294,9 +294,9 @@ export function PostCard({
               )}
             </Link>
           )}
-          <div className="-ml-2 mt-3 flex flex-wrap items-center gap-1 sm:gap-3">
+          <div className="-ml-2 mt-2 flex items-center gap-1 sm:gap-2">
             <button
-              className={`post-action ${post.liked ? "text-rose-600" : "text-[var(--muted)]"}`}
+              className={`post-action ${post.liked ? "text-[var(--foreground)]" : "text-[var(--muted)]"}`}
               disabled={interaction.pending}
               aria-label="Sukai cerita"
               aria-pressed={post.liked}
