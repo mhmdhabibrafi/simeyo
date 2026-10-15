@@ -1,0 +1,86 @@
+name: Full browser acceptance
+on: workflow_dispatch
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env: {POSTGRES_DB: simeyo_browser_ci, POSTGRES_USER: simeyo_ci, POSTGRES_PASSWORD: ci-browser-isolated-password}
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      APP_ENV: local
+      APP_KEY: 'base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
+      APP_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:3000
+      SANCTUM_STATEFUL_DOMAINS: localhost:3000,localhost:8000
+      API_ORIGIN: http://127.0.0.1:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: simeyo_browser_ci
+      DB_USERNAME: simeyo_ci
+      DB_PASSWORD: ci-browser-isolated-password
+      DEMO_PASSWORD: Simeyo-ci-browser-only-2026
+      REVERB_APP_ID: simeyo-browser-ci
+      REVERB_APP_KEY: synthetic-browser-public-key
+      REVERB_APP_SECRET: synthetic-browser-ci-signing-secret
+      REVERB_HOST: 127.0.0.1
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+      REVERB_CLIENT_HOST: 127.0.0.1
+      REVERB_CLIENT_PORT: 8080
+      REVERB_CLIENT_SCHEME: http
+      BROADCAST_CONNECTION: reverb
+      QUEUE_CONNECTION: database
+      MAIL_MAILER: log
+      EXPO_PUSH_ENABLED: 'false'
+      PHP_CLI_SERVER_WORKERS: 4
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - uses: shivammathur/setup-php@v2
+        with: {php-version: '8.2', extensions: 'pdo_pgsql, gd, mbstring', coverage: none}
+      - run: npm ci --ignore-scripts
+      - run: npm ci
+        working-directory: apps/web
+      - run: composer install --no-interaction --prefer-dist
+        working-directory: apps/api
+      - name: Prepare only the disposable browser database
+        run: |
+          test "$DB_DATABASE" = simeyo_browser_ci
+          printf 'DEMO_PASSWORD=%s\n' "$DEMO_PASSWORD" > apps/api/.env
+          cd apps/api
+          php artisan migrate --force
+          php artisan db:seed --class=DevelopmentSeeder --force
+      - run: npm run build
+        working-directory: apps/web
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Exercise the production web build with real API and realtime
+        run: |
+          mkdir -p .local/browser-ci
+          (cd apps/api/public && php -S '[::]:8000' ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php) >.local/browser-ci/api.log 2>&1 &
+          (cd apps/api && php artisan reverb:start --host=127.0.0.1 --port=8080) >.local/browser-ci/reverb.log 2>&1 &
+          (cd apps/api && php artisan queue:work --sleep=1 --tries=3 --timeout=60) >.local/browser-ci/queue.log 2>&1 &
+          (cd apps/web && npm run start -- --hostname localhost --port 3000) >.local/browser-ci/web.log 2>&1 &
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://localhost:3000/api/v1/health >/dev/null; then ready=true; break; fi
+            sleep 2
+          done
+          test "$ready" = true
+          cd apps/web
+          npm run test:e2e
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: browser-synthetic-screenshots
+          path: docs/testing/screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 3
+      # Traces, HTML reports and runtime logs can contain cookies/signed URLs and are never uploaded.
