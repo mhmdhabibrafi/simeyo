@@ -2,6 +2,12 @@
 
 ## Unreleased — v0.4.0 work in progress
 
+- Install the owner-authorized web release candidate on the existing Mediasi server with dedicated PostgreSQL/media volumes, restricted application database role and verified Cloudflare origin TLS. Public HTTPS/security/mobile login rendering and internal owner login/worker/WebSocket checks passed. Explicitly suspend email-dependent endpoints until SMTP is configured; preserve existing server applications and ingress entries.
+
+- Add real private WSS gateway acceptance, isolated full browser regression, seeded sustained-load/query-plan/resource evidence and operational queue heartbeat checks (including stopped-worker detection/recovery).
+- Disable PostgreSQL JIT per application connection after measured compilation overhead; honor database TLS/CA settings. Minimize PHP/Node release images and run CI PostgreSQL unprivileged; HIGH/CRITICAL image scanning passed without suppression.
+- Exercise optional Redis/S3/search/Mailpit protocols in Docker CI. Build optional development MinIO from pinned official community source after public image pull failures; preserve existing local namespaces and volumes.
+- Compile/install/launch the iOS simulator app, add native UI acceptance harnesses and reusable explicit build-artifact inputs. Native UI and physical push acceptance remain separate from compilation; production/preview mobile origin validation now covers both API and web.
 - Extend isolated PostgreSQL recovery CI with profile-linked private media archive/content checksums, Laravel encrypted push-device recovery using a retained key, and wrong-key rejection. Production recovery remains a separate acceptance gate.
 - Rename the application to **Simeyo** as confirmed by the owner; update web/native branding, application icons, manifests and API documentation. Preserve database, volume, credential and session identifiers for compatibility.
 - Add a privacy-preserving PWA and Expo native client with scoped authentication, feeds, composer, profiles, activity, messaging, themes and guarded push registration.

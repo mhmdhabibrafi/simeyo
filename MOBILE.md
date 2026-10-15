@@ -14,10 +14,10 @@ The existing Next.js/Laravel platform is preserved. `apps/mobile` adds a separat
 ## Evidence and limits
 
 - Production PWA browser test **passed**: real service worker, parsed manifest, authenticated private API/no-store checks, cache inventory, offline navigation without identity data and reconnect. Screenshot: `docs/testing/screenshots/pwa-offline.png`.
-- Expo Doctor: **21/21 checks passed**. Seven pure client/dependency tests passed for origin/header/session isolation, push targets, patched URI decoding and xcode UUID compatibility.
+- Expo Doctor: **21/21 checks passed**. Eight pure client/dependency/configuration tests passed for origin/header/session isolation, push targets, patched URI decoding, xcode UUID compatibility and release-profile HTTPS validation.
 - Push API tests passed with **mocked provider HTTP**. They prove validation, encrypted storage, revocation, generic payloads, permission rechecks and receipt cleanup; they do not prove FCM/APNs or physical-device delivery.
 - Native TypeScript/lint passed. Expo component browser acceptance passed for token login, post/like persistence, profile edits visible to another account, dark theme, sending/receiving/reading messages and actual private Reverb invalidation-only delivery. Android prebuild passed and its Simeyo app name, package and URI scheme were inspected. All-platform Metro exports passed again after the rename and browser fixes; Metro export is separate from the later APK build and does not establish installed-device behavior.
-- Android SDK/JDK/adb are not currently detected; the generated Gradle wrapper failed because JAVA_HOME/java are absent. The GitHub Android development build passed and produced an ARM64/x86_64 debug APK. No iOS build or installed-device test has been produced. iOS builds require an appropriate macOS/Xcode or configured build service. The Android development-client build ran successfully in disposable GitHub CI; no EAS build, store submission or public deployment was performed.
+- This Windows host lacks Android SDK/JDK/adb. GitHub CI compiled an ARM64/x86_64 development APK and a Debug iOS simulator app using macOS/Xcode, then installed/launched the iOS process. The first iOS screenshot remained on the system development-client Open dialog, so it does not prove login rendering. Android emulator and iOS UI assertions are being exercised separately; use PROGRESS.md for actual acceptance results. No EAS build, distribution signing, store submission or public deployment was performed.
 - FCM/APNs/Expo project credentials and physical-device push delivery remain **BELUM DIUJI**. Configure the real project ID and provider credentials before enabling `EXPO_PUSH_ENABLED`.
 
 ## Local commands
@@ -31,7 +31,7 @@ node --test tests/client.test.ts tests/dependency-compat.test.cjs
 npx.cmd expo start
 ```
 
-`app.config.ts` and `eas.json` define Android/iOS builds. Use `expo prebuild --no-clean --no-install` for existing generated projects; SDK 57 clears generated folders by default unless `--no-clean` is supplied. Production build configuration requires an HTTPS API. Example environment values are in `.env.example`; they contain no credentials. Android emulator API uses `10.0.2.2`, while iOS simulator/web preview uses `localhost`. Real devices need a reachable API with appropriate transport security. Development CORS permits only the explicit loopback web-preview origins in addition to the existing frontend.
+`app.config.ts` and `eas.json` define Android/iOS builds. Use `expo prebuild --no-clean --no-install` for existing generated projects; SDK 57 clears generated folders by default unless `--no-clean` is supplied. Both preview and production profiles require HTTPS API and web origins without credentials, paths, queries or fragments; release Android cleartext traffic is disabled. Example environment values are in `.env.example`; they contain no credentials. Android emulator API uses `10.0.2.2`, while iOS simulator/web preview uses `localhost`. Real devices need a reachable API with appropriate transport security. Development CORS permits only the explicit loopback web-preview origins in addition to the existing frontend.
 
 ## Dependency status
 

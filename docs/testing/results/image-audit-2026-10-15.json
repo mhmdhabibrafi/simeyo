@@ -1,0 +1,39 @@
+{
+  "scope": "Fresh release/CI image HIGH and CRITICAL OS/application advisories; no ignore-unfixed or vulnerability suppression",
+  "accepted": true,
+  "findings": 0,
+  "images": [
+    {
+      "name": "api",
+      "artifact": "simeyo-api:scan",
+      "image_id": "sha256:d2ab69b6d742b26257d8b561f460d049a047abaed2eeabb03b2d3d28e0237fb9",
+      "high": 0,
+      "critical": 0,
+      "findings": []
+    },
+    {
+      "name": "web",
+      "artifact": "simeyo-web:scan",
+      "image_id": "sha256:95681eea26d4609cc471f97ec5cb8e237b48aa344ffefd221d5ed14c78ab51b4",
+      "high": 0,
+      "critical": 0,
+      "findings": []
+    },
+    {
+      "name": "gateway",
+      "artifact": "nginx:stable-alpine",
+      "image_id": "sha256:0d831f5435ede3eeaba5768270c9e6f542d58306f69bb61f148e5c2374b57c56",
+      "high": 0,
+      "critical": 0,
+      "findings": []
+    },
+    {
+      "name": "postgres",
+      "artifact": "simeyo-postgres-ci:scan",
+      "image_id": "sha256:2a82db1efb2fafa1ca599f4c7f8e50d33c8ac8142e800813b195e14bcb2b03a9",
+      "high": 0,
+      "critical": 0,
+      "findings": []
+    }
+  ]
+}

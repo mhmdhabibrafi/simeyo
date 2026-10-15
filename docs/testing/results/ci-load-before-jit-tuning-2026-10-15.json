@@ -1,0 +1,84 @@
+{
+  "scope": "120-second isolated HTTPS/FPM CI read load, four fictional accounts; not public campus capacity certification",
+  "dataset": {
+    "users": 100,
+    "root_posts": 5000,
+    "replies": 500
+  },
+  "duration_seconds": 123.33,
+  "target_requests_per_second": 8,
+  "concurrency_limit": 8,
+  "requests": 260,
+  "actual_requests_per_second": 2.11,
+  "failed": 0,
+  "endpoint_p95_budget_ms": 2000,
+  "accepted": false,
+  "endpoints": [
+    {
+      "path": "feed?feed=campus&limit=20",
+      "requests": 44,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 4186,
+      "p95_ms": 4950,
+      "max_ms": 5406
+    },
+    {
+      "path": "feed?feed=following&limit=20",
+      "requests": 44,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 4475,
+      "p95_ms": 5426,
+      "max_ms": 6062
+    },
+    {
+      "path": "feed?feed=for-you&limit=20",
+      "requests": 43,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 4762,
+      "p95_ms": 5303,
+      "max_ms": 5368
+    },
+    {
+      "path": "pulse",
+      "requests": 43,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 5050,
+      "p95_ms": 5702,
+      "max_ms": 6136
+    },
+    {
+      "path": "search/posts?q=campus",
+      "requests": 43,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 2171,
+      "p95_ms": 2846,
+      "max_ms": 3543
+    },
+    {
+      "path": "notifications",
+      "requests": 43,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 1741,
+      "p95_ms": 2415,
+      "max_ms": 2553
+    }
+  ]
+}

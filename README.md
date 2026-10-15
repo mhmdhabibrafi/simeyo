@@ -4,9 +4,11 @@
 
 Current locally verified milestone: **v0.3.0 — campus experience**. The Expo/PWA v0.4.0 milestone and v1.0.0 production review remain in progress.
 
+The authorized server release candidate is available at **https://simeyo.mhmdhabibrafi.me**. SMTP is not configured, so registration and email recovery are temporarily unavailable. See [server operations and verified scope](docs/operations/mediasi-server.md); public availability does not mark v1.0.0 acceptance complete.
+
 Social features use the Laravel API and PostgreSQL: text/images, nested threads, interactions, follows/private requests, bookmarks and cursor feeds. Campus modules include communities/events, Pulse/search, messaging, notifications and moderation. See [campus architecture](docs/architecture/campus-experience.md) and [mobile implementation and limits](MOBILE.md).
 
-For local realtime, additionally run `npm.cmd run dev:reverb` and `npm.cmd run dev:worker`. These loopback services were tested independently from Docker. Compose requires Docker Engine; its configuration passes validation, but container startup remains **BELUM DIUJI**. To enable Compose realtime, set `BROADCAST_CONNECTION=reverb` in the local root environment and enable both `workers` and `realtime` profiles. Existing credentials are preserved by `setup:env`.
+For local realtime, additionally run `npm.cmd run dev:reverb` and `npm.cmd run dev:worker`. Local services and the separate production-shaped HTTPS/FPM Docker stack were tested. Redis, Mailpit, optional S3 storage and search service protocols also passed in isolated Docker CI; this Windows host still has no Docker Engine. To enable development Compose realtime, set `BROADCAST_CONNECTION=reverb` in the local root environment and enable both `workers` and `realtime` profiles. Existing credentials are preserved by `setup:env`.
 
 An independent, verified campus community platform, initially configured for UIN Sultan Syarif Kasim Riau. No official university endorsement, SSO integration or access to university student records is implied.
 
@@ -64,3 +66,5 @@ The PostgreSQL test runner only targets `ruang_test`; SQLite tests use memory. B
 See [INSTALLATION.md](INSTALLATION.md), [AUTHENTICATION.md](AUTHENTICATION.md), [API.md](API.md), [SECURITY.md](SECURITY.md), [TESTING.md](TESTING.md), and [DATABASE.md](DATABASE.md).
 
 Release preparation: [HTTPS/FPM/standalone configuration](infrastructure/production/README.md), [database backup and restore](docs/operations/backup-restore.md), and [bounded local load sampler](docs/testing/local-api-load.md). These checks do not declare production readiness or deploy the application.
+
+Latest release work includes a real private WebSocket round trip through the TLS gateway, database/private-media/encryption recovery, a redacted [database/worker operational check](docs/operations/monitoring.md), full isolated browser regression and HIGH/CRITICAL image scanning. External push credentials are not available, as confirmed by the owner; physical push acceptance remains open. See PROGRESS.md for run links and current native/load status.

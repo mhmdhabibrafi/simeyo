@@ -1,0 +1,8 @@
+{
+  "publicCookieLogin": true,
+  "me": 200,
+  "emailVerified": false,
+  "adminEnabled": false,
+  "logout": 204,
+  "afterLogout": 401
+}
