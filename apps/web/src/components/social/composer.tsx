@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useId } from "react";
+import { useState, useRef, useId, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, X, ArrowUpRight } from "lucide-react";
 import Image from "next/image";
@@ -22,6 +22,8 @@ export function Composer({
   onDone,
   compact = false,
   existingImageCount = 0,
+  autoFocus = false,
+  onStateChange,
 }: {
   parentId?: number;
   communityId?: number;
@@ -32,6 +34,8 @@ export function Composer({
   onDone?: () => void;
   compact?: boolean;
   existingImageCount?: number;
+  autoFocus?: boolean;
+  onStateChange?: (state: { dirty: boolean; busy: boolean }) => void;
 }) {
   const { data: user } = useMe();
   const inputId = useId();
@@ -44,6 +48,10 @@ export function Composer({
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(!compact);
   const file = useRef<HTMLInputElement>(null);
+  const dirty = !!body.trim() || images.length > 0;
+  useEffect(() => {
+    onStateChange?.({ dirty, busy });
+  }, [dirty, busy, onStateChange]);
   async function upload(files: FileList | null) {
     if (!files || busy) return;
     setExpanded(true);
@@ -116,12 +124,21 @@ export function Composer({
       <div className="flex gap-3">
         <Avatar name={user.name} url={user.avatar_url} size={40} />
         <div className="min-w-0 flex-1">
+          {!compact && (
+            <p className="mb-1 text-sm font-semibold">
+              {user.username ?? user.name}
+              <span className="ml-2 font-normal text-[var(--muted)]">
+                · {visibility === "campus" ? "Kampus" : "Pengikut"}
+              </span>
+            </p>
+          )}
           <label className="sr-only" htmlFor={`composer-${inputId}`}>
             {parentId ? "Tulis balasan" : "Tulis cerita"}
           </label>
           <textarea
             id={`composer-${inputId}`}
             value={body}
+            autoFocus={autoFocus}
             onChange={(e) => setBody(e.target.value)}
             onFocus={() => setExpanded(true)}
             disabled={busy}

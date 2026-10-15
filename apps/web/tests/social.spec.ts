@@ -35,7 +35,8 @@ test("real social posting, interactions, rollback, reply, quote, edit, report an
   const users = fixture();
   await login(page, users.a.email);
   const story = `Cerita kampus browser ${Date.now()}`;
-  await page.getByLabel("Tulis cerita", { exact: true }).fill(story);
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  await page.getByRole("dialog").getByLabel("Tulis cerita", { exact: true }).fill(story);
   await page.getByRole("button", { name: "Bagikan", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Cerita dibagikan.");
   const card = page.locator("article[data-post-id]").filter({ hasText: story });
@@ -197,7 +198,8 @@ test("private follow approval, follow feed, mute and bilateral block are persist
   await author.getByRole("button", { name: "Simpan perubahan" }).click();
   await expect(author.getByRole("status")).toContainText("Profil disimpan");
   await author.goto("http://localhost:3000/home");
-  await author
+  await author.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  await author.getByRole("dialog")
     .getByLabel("Tulis cerita", { exact: true })
     .fill("Cerita privat yang harus dilindungi.");
   await author.getByRole("button", { name: "Bagikan", exact: true }).click();

@@ -156,6 +156,27 @@ button:disabled {
   color: var(--foreground);
   background: var(--soft);
 }
+.rail-label, .sidebar-wordmark, .sidebar-toggle {
+  display: none;
+}
+.desktop-sidebar { width: 96px; }
+.feed-surface { background: var(--surface); }
+@media (min-width: 768px) {
+  .app-frame { padding-left: 96px; }
+  .feed-surface { border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: calc(100dvh - 64px); }
+}
+@media (min-width: 1024px) {
+  .app-frame { padding-left: 0; }
+}
+@media (min-width: 1280px) {
+  .sidebar-toggle { display: inline-flex; }
+  .app-frame:not([data-collapsed="true"]) .desktop-sidebar { width: 240px; }
+  .app-frame:not([data-collapsed="true"]) .sidebar-wordmark { display: block; }
+  .app-frame:not([data-collapsed="true"]) .sidebar-mark { display: none; }
+  .app-frame:not([data-collapsed="true"]) .rail-label { display: inline; }
+  .app-frame:not([data-collapsed="true"]) .rail-link { width: 100%; min-height: 38px; justify-content: flex-start; gap: 12px; padding: 6px 10px; border-radius: 9px; font-size: 14px; }
+  .app-frame:not([data-collapsed="true"]) .rail-link svg { width: 20px; height: 20px; }
+}
 .post-action {
   display: inline-flex;
   min-height: 44px;

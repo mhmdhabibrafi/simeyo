@@ -34,7 +34,8 @@ test("administrator reviews a real report and removal hides the source story", a
   );
   await login(page, users.a.email);
   const story = `Konten moderasi browser ${Date.now()}`;
-  await page.getByLabel("Tulis cerita", { exact: true }).fill(story);
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  await page.getByRole("dialog").getByLabel("Tulis cerita", { exact: true }).fill(story);
   await page.getByRole("button", { name: "Bagikan", exact: true }).click();
   const post = page.locator("article[data-post-id]").filter({ hasText: story });
   await expect(post).toBeVisible();

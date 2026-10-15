@@ -100,11 +100,22 @@ async function fixtures(page: Page) {
     if (url.pathname.endsWith("/feed"))
       return route.fulfill({
         json: {
-          data: posts,
+          data: url.searchParams.has("user_id") ? posts.filter(post => post.author.id === Number(url.searchParams.get("user_id"))) : posts,
           meta: {
             next_cursor: null,
             has_more: false,
             feed: url.searchParams.get("feed"),
+          },
+        },
+      });
+    if (url.pathname.includes("/relationships/"))
+      return route.fulfill({
+        json: {
+          data: {
+            followers_count: 12,
+            following_count: 24,
+            follow_state: null,
+            muted: false,
           },
         },
       });
@@ -122,8 +133,8 @@ test("centered feed, compact composer, keyboard tabs and menus work across sizes
   await page.goto("/home");
   await expect(page.locator("article")).toHaveCount(3);
   await expect(
-    page.getByLabel("Tulis cerita", { exact: true }),
-  ).toHaveAttribute("rows", "1");
+    page.getByRole("button", { name: "Tulis cerita", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Bagikan", exact: true }),
   ).toHaveCount(0);
@@ -190,7 +201,10 @@ test("posting locks the draft while saving and collapses only after success", as
     await route.fulfill({ status: 201, json: { data: post } });
   });
   await page.goto("/home");
-  const composer = page.getByLabel("Tulis cerita", { exact: true });
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const composer = page
+    .getByRole("dialog")
+    .getByLabel("Tulis cerita", { exact: true });
   await composer.fill("Draft yang harus tetap aman saat dikirim.");
   await page.getByRole("button", { name: "Bagikan", exact: true }).click();
   await expect(composer).toBeDisabled();
@@ -198,9 +212,10 @@ test("posting locks the draft while saving and collapses only after success", as
     "Draft yang harus tetap aman saat dikirim.",
   );
   release();
-  await expect(composer).toBeEnabled();
-  await expect(composer).toHaveValue("");
-  await expect(composer).toHaveAttribute("rows", "1");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Tulis cerita", exact: true }),
+  ).toBeVisible();
 });
 
 test("pagination pauses after a failed page and deduplicates overlapping results on manual retry", async ({
@@ -250,15 +265,69 @@ test("a failed post preserves the draft and permits retry", async ({
     }),
   );
   await page.goto("/home");
-  const composer = page.getByLabel("Tulis cerita", { exact: true });
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const composer = page
+    .getByRole("dialog")
+    .getByLabel("Tulis cerita", { exact: true });
   await composer.fill("Draft ini tidak boleh hilang.");
   await page.getByRole("button", { name: "Bagikan", exact: true }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Posting sementara gagal" })).toContainText(
-    "Posting sementara gagal",
-  );
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Posting sementara gagal" }),
+  ).toContainText("Posting sementara gagal");
   await expect(composer).toHaveValue("Draft ini tidak boleh hilang.");
   await expect(composer).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "Bagikan", exact: true }),
   ).toBeEnabled();
+});
+
+test("modal keeps a draft until discard is confirmed and profile uses the same composer", async ({
+  page,
+}) => {
+  await fixtures(page);
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Cerita baru", exact: true });
+  const input = dialog.getByLabel("Tulis cerita", { exact: true });
+  await input.fill("Draf yang sedang dikerjakan.");
+  await dialog.getByRole("button", { name: "Tutup", exact: true }).click();
+  const discard = page.getByRole("dialog", {
+    name: "Buang draf?",
+    exact: true,
+  });
+  await discard
+    .getByRole("button", { name: "Lanjut menulis", exact: true })
+    .click();
+  await expect(input).toHaveValue("Draf yang sedang dikerjakan.");
+  await page.screenshot({
+    path: path.resolve(
+      "../../docs/testing/screenshots/feed-composer-modal.png",
+    ),
+    fullPage: true,
+  });
+  await dialog.getByRole("button", { name: "Tutup", exact: true }).click();
+  await discard
+    .getByRole("button", { name: "Buang draf", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page
+    .getByRole("link", { name: "Profil", exact: true })
+    .filter({ visible: true })
+    .first()
+    .click();
+  await expect(page).toHaveURL("/profile");
+  await expect(
+    page.getByRole("link", { name: "Edit profil", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Bagikan profil", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: path.resolve(
+      "../../docs/testing/screenshots/profile-redesign-desktop.png",
+    ),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  await expect(dialog).toBeVisible();
 });
