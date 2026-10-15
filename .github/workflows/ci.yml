@@ -68,3 +68,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
       - run: sh infrastructure/scripts/test-production-stack.sh
+        # Synthetic ambient values must not override the disposable fixture environment.
+        env:
+          SIMEYO_PRODUCTION_ENV_FILE: /nonexistent/ambient-environment
+          DB_HOST: ignored.invalid
+          DB_DATABASE: must_never_be_used
+          DB_PASSWORD: synthetic-ambient-not-a-secret
+          APP_KEY: synthetic-invalid-key-must-be-ignored
