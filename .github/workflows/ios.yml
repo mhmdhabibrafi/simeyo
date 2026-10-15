@@ -1,6 +1,12 @@
 name: iOS simulator build
-on: workflow_dispatch
-permissions: {contents: read}
+on:
+  workflow_dispatch:
+    inputs:
+      simulator_run_id:
+        description: 'Optional existing simulator artifact run ID for repeating launch acceptance without recompiling'
+        required: false
+        type: string
+permissions: {contents: read, actions: read}
 jobs:
   ios:
     runs-on: macos-26
@@ -8,6 +14,7 @@ jobs:
     env:
       EXPO_PUBLIC_API_URL: http://localhost:8000
       EXPO_PUBLIC_WEB_URL: http://localhost:3000
+      SIMULATOR_RUN_ID: ${{ inputs.simulator_run_id }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -22,12 +29,35 @@ jobs:
       - run: npm run typecheck && npm run lint && npm test
         working-directory: apps/mobile
       - run: npx expo prebuild --platform ios --no-clean --no-install
+        if: inputs.simulator_run_id == ''
         working-directory: apps/mobile
       - run: pod install
+        if: inputs.simulator_run_id == ''
         working-directory: apps/mobile/ios
       - name: Compile simulator app without distribution signing
+        if: inputs.simulator_run_id == ''
         run: xcodebuild -workspace Simeyo.xcworkspace -scheme Simeyo -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ../../../.local/ios-ci/build CODE_SIGNING_ALLOWED=NO -quiet
         working-directory: apps/mobile/ios
+      - name: Reuse an explicitly selected simulator artifact
+        if: inputs.simulator_run_id != ''
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          case "$SIMULATOR_RUN_ID" in *[!0-9]*|'') echo 'Invalid simulator run ID.' >&2; exit 1;; esac
+          mkdir -p .local/ios-ci
+          gh run view "$SIMULATOR_RUN_ID" --json headSha,url > .local/ios-ci/simulator-source.json
+          gh run download "$SIMULATOR_RUN_ID" -n simeyo-ios-simulator -D .local/ios-ci
+          chmod +x .local/ios-ci/build/Build/Products/Debug-iphonesimulator/Simeyo.app/Simeyo
+      - name: Install pinned native UI test tool
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          mkdir -p "$RUNNER_TEMP/maestro-cli"
+          cd "$RUNNER_TEMP/maestro-cli"
+          gh release download cli-2.11.0 --repo mobile-dev-inc/Maestro -p maestro.zip -p checksums_sha256.txt
+          checksum=$(awk '$2 == "maestro.zip" || $2 == "*maestro.zip" { print $1 }' checksums_sha256.txt)
+          test -n "$checksum"
+          printf '%s  maestro.zip\n' "$checksum" | shasum -a 256 -c -
+          unzip -q maestro.zip
+          echo "$RUNNER_TEMP/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
       - name: Launch the installed simulator app and capture its initial screen
         run: |
           set -eu
@@ -46,7 +76,7 @@ jobs:
           [ "$ready" = true ]
           xcrun simctl launch "$device" app.simeyo.mobile
           xcrun simctl openurl "$device" 'exp+simeyo://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081'
-          sleep 45
+          maestro --device "$device" test apps/mobile/.maestro/ios-launch.yaml
           xcrun simctl io "$device" screenshot .local/ios-ci/initial-screen.png
           xcrun simctl spawn "$device" launchctl list | grep app.simeyo.mobile
       - uses: actions/upload-artifact@v7
@@ -56,5 +86,6 @@ jobs:
           path: |
             .local/ios-ci/build/Build/Products/Debug-iphonesimulator/Simeyo.app
             .local/ios-ci/initial-screen.png
+            .local/ios-ci/simulator-source.json
           if-no-files-found: warn
           retention-days: 3

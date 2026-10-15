@@ -1,0 +1,14 @@
+appId: app.simeyo.mobile
+---
+- tapOn:
+    text: Open
+    optional: true
+- tapOn:
+    text: Continue
+    optional: true
+- extendedWaitUntil:
+    visible: Email
+    timeout: 180000
+- assertVisible: Kembali ke lingkaranmu.
+- assertVisible: Kata sandi
+- assertVisible: Masuk
