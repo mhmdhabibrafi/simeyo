@@ -1,4 +1,4 @@
-const CACHE = 'simeyo-public-v0.4.0';
+const CACHE = 'simeyo-public-v0.4.0-monochrome';
 const PUBLIC = ['/offline.html','/icons/icon-192.png','/icons/icon-512.png','/icons/icon-maskable.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(PUBLIC))));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const name of await caches.keys())if((name.startsWith('ruang-public-')||name.startsWith('simeyo-public-'))&&name!==CACHE)await caches.delete(name);await self.clients.claim();})()));
