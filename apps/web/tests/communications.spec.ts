@@ -80,12 +80,12 @@ test("real persisted messages, private Reverb delivery, notifications and mobile
   await page.getByLabel("Tulis pesan").fill(body);
   await page.getByRole("button", { name: "Kirim pesan", exact: true }).click();
   await sent;
-  await expect(page.getByText(body, { exact: true })).toBeVisible();
-  await expect(recipient.getByText(body, { exact: true })).toBeVisible();
+  await expect(page.getByRole("log", { name: "Riwayat pesan" }).getByText(body, { exact: true })).toBeVisible();
+  await expect(recipient.getByRole("log", { name: "Riwayat pesan" }).getByText(body, { exact: true })).toBeVisible();
   await expect.poll(() => events.length, { timeout: 15000 }).toBeGreaterThan(0);
   expect(events.some((e) => e.includes(body))).toBe(false);
   await page.reload();
-  await expect(page.getByText(body, { exact: true })).toBeVisible();
+  await expect(page.getByRole("log", { name: "Riwayat pesan" }).getByText(body, { exact: true })).toBeVisible();
   await recipient.goto("http://localhost:3000/notifications");
   await expect(
     recipient.getByText("mengirim pesan", { exact: false }),
