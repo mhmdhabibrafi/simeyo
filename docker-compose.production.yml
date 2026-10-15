@@ -61,7 +61,7 @@ services:
   gateway:
     image: nginx:stable-alpine
     restart: unless-stopped
-    ports: ['127.0.0.1:${PUBLIC_TLS_PORT:-8443}:8443']
+    ports: ['127.0.0.1:${GATEWAY_BIND_PORT:-${PUBLIC_TLS_PORT:-8443}}:8443']
     environment:
       SITE_HOST: ${SITE_HOST:?Supply the public hostname}
       NGINX_ENVSUBST_FILTER: '^SITE_HOST$'
