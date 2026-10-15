@@ -130,15 +130,12 @@ export function Composer({
   if (!user?.verified || !user.email_verified) return null;
   return (
     <form onSubmit={submit} className={compact ? "px-5 py-5 sm:px-6" : "py-2"}>
-      <div className="flex gap-3">
-        <Avatar name={user.name} url={user.avatar_url} size={40} />
-        <div className="min-w-0 flex-1">
+      <div className="grid grid-cols-[40px_minmax(0,1fr)] gap-x-3">
+        <div className="row-span-2 self-start"><Avatar name={user.name} url={user.avatar_url} size={40} /></div>
+        <div className="contents">
           {!compact && (
-            <p className="mb-1 text-sm font-semibold">
+            <p className="col-start-2 mb-1 text-sm font-semibold">
               {user.username ?? user.name}
-              <span className="ml-2 font-normal text-[var(--muted)]">
-                · {visibility === "campus" ? "Kampus" : "Pengikut"}
-              </span>
             </p>
           )}
           <label className="sr-only" htmlFor={`composer-${inputId}`}>
@@ -158,13 +155,13 @@ export function Composer({
                 ? "Tambahkan sudut pandangmu…"
                 : "Apa cerita kampusmu hari ini?"
             }
-            className="w-full resize-none bg-transparent py-2 text-[15px] leading-7 outline-none placeholder:text-[var(--muted)] focus-visible:outline-none"
+            className="col-start-2 w-full resize-none bg-transparent py-2 text-[15px] leading-7 outline-none placeholder:text-[var(--muted)] focus-visible:outline-none"
             required={
               !!editId && images.length === 0 && existingImageCount === 0
             }
           />
           {images.length > 0 && (
-            <div className="mb-4 grid grid-cols-2 gap-2">
+            <div className="col-start-2 mb-4 grid grid-cols-2 gap-2">
               {images.map((m) => (
                 <div key={m.id} className="relative">
                   <Image
@@ -199,7 +196,7 @@ export function Composer({
             </div>
           )}
           {expanded && (
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="col-span-2 mt-4 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
               <div className="flex items-center gap-1">
                 {!editId && (
                   <>
@@ -300,7 +297,7 @@ export function Composer({
                 </Menu.Root>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-[11px] tabular-nums text-[var(--muted)]">
+                <span className="hidden text-[11px] tabular-nums text-[var(--muted)] sm:inline">
                   {body.length}/1000
                 </span>
                 <Button
@@ -323,12 +320,12 @@ export function Composer({
             </div>
           )}
           {error && (
-            <p role="alert" className="mt-3 text-sm text-red-600">
+            <p role="alert" className="col-span-2 mt-3 text-sm text-red-600">
               {error}
             </p>
           )}
           {expanded && (
-            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+            <p className="col-span-2 mt-3 text-xs leading-5 text-[var(--muted)]">
               {user.private_account
                 ? "Akun privat: cerita hanya dapat dibaca pengikut yang disetujui."
                 : visibility === "followers"

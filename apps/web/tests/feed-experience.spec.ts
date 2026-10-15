@@ -283,6 +283,14 @@ test("mobile chat fits above navigation and campus form controls have consistent
   expect(bounds!.x).toBe(0);
   expect(Math.round(bounds!.y + bounds!.height)).toBe(844);
   await expect(dialog.getByRole("button", { name: "Bagikan", exact: true })).toBeVisible();
+  for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 667 }]) {
+    await page.setViewportSize(viewport);
+    const attach = await dialog.getByRole("button", { name: "Tambah gambar", exact: true }).boundingBox();
+    const submit = await dialog.getByRole("button", { name: "Bagikan", exact: true }).boundingBox();
+    expect(Math.abs((attach!.y + attach!.height / 2) - (submit!.y + submit!.height / 2))).toBeLessThan(3);
+    expect(submit!.x + submit!.width).toBeLessThanOrEqual(viewport.width - 16);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: path.resolve(process.cwd(), "../../docs/testing/screenshots/composer-mobile-sheet.png"), animations: "disabled" });
 });
 
