@@ -1,5 +1,7 @@
 # Changelog
 
+- Removed the feed explanation strip and duplicate profile entry in the account menu. Profile remains available through the main desktop/mobile navigation.
+
 - Consolidated desktop account controls into one menu at the bottom-left of the sidebar, opening upward. Navigation collapse lives in that menu and theme selection remains in Settings.
 
 - Fixed the global focus rule overriding the composer textarea. Replaced its native audience select with a themed, keyboard-accessible radio menu; simplified the modal header and corrected follower-only visibility guidance.

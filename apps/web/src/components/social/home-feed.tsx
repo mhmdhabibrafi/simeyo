@@ -117,19 +117,6 @@ export function HomeFeed() {
                     : "Feed Kampus"
               }
             >
-              {tab === "for-you" && (
-                <details className="border-b border-[var(--border)] px-6 py-3 text-xs leading-5 text-[var(--muted)]">
-                  <summary className="w-fit cursor-pointer">
-                    Tentang feed Untukmu
-                  </summary>
-                  <p className="pt-2">
-                    Cerita terkini, interaksi nyata, dan akun yang kamu ikuti.{" "}
-                    <Link href="/explore" className="underline">
-                      Kenali lingkaran baru
-                    </Link>
-                  </p>
-                </details>
-              )}
               <Feed key={tab} feed={tab} />
             </section>
           </>
