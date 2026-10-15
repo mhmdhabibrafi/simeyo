@@ -112,7 +112,7 @@ Public follow-up: new monochrome service-worker cache and offline fallback passe
 
 ## Latest consumer UI checkpoint, 2026-10-15
 
-The latest follow-up moves the single desktop account menu to the bottom-left of the sidebar and opens it upward, as requested. Local lint/type checking/build and all six UI tests passed (15.0 seconds); the short-desktop popup screenshot was inspected. Deployment of this follow-up is recorded separately after verification.
+The latest follow-up moves the single desktop account menu to the bottom-left of the sidebar and opens it upward, as requested. Local lint/type checking/build and all six UI tests passed (15.0 seconds). Source 6b33ab8 is deployed as `consumer-6b33ab8`; only web/gateway were recreated. Six public-assets UI tests passed with fictional API fixtures (27.7 seconds); the bottom-menu screenshot was inspected. Trusted internal TLS, API/security and actual WSS handshake checks passed. Earlier standard CI 34412db passed; new standard CI 38735669663 remains pending. Production data and credentials were preserved.
 
 Previously deployed source 34412db as `consumer-34412db` after building fresh images. Only web/gateway were recreated; API/worker/Reverb/PostgreSQL, credentials and data were preserved. The owner's Threads references guided a centered feed, labelled/collapsible desktop navigation, modal posting and compact profile. The global focus-layer regression and native audience popup were corrected after the owner's screenshots. Dirty drafts require confirmation; failed posts preserve text; pagination retries pause on failure; login replaces prior private caches.
 

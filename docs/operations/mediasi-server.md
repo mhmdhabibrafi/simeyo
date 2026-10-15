@@ -35,4 +35,6 @@ The registration endpoint was removed from the temporary Nginx guard. An empty r
 
 ## Latest consumer presentation deployment
 
+Bottom-menu follow-up: source 6b33ab8 is deployed as `consumer-6b33ab8`. Both images built successfully; only web/gateway were recreated, with a private environment rollback snapshot retained. Six fixture-based UI tests against the public assets passed (27.7 seconds), including the bottom-left/upward popup at 620px height and navigation collapse/expand. The screenshot was inspected. Trusted internal HTTPS/security/health checks and actual WSS handshake passed. No migration, seeding or production account mutation accompanied this update.
+
 UI source 34412db is deployed as `consumer-34412db`. API images were also built under that tag for future Compose consistency; only web and gateway were recreated. The API/worker/Reverb containers retain the working Firebase release code and existing database/media volumes. Private environment snapshots and previous immutable images remain available for rollback. No migration or seeding accompanied this presentation update. Public-backed fictional UI probes passed 6 tests / 20.7 seconds; trusted internal TLS/security/WSS checks passed. The latest full real-API browser and standard checks remain running at the recorded checkpoint; see the consumer UI test report for links and exact scope.

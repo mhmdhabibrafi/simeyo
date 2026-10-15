@@ -15,6 +15,7 @@ The owner supplied Threads screenshots as a layout/interaction reference. Simeyo
 ## Actual evidence
 
 - Bottom-menu follow-up: web lint/type checking/production build passed; six local fixture-based browser tests passed (15.0 seconds). At a 620px desktop height the trigger remains at the bottom and the popup fits above it; collapse/expand still works. The fresh `sidebar-bottom-menu.png` was visually inspected.
+- Source 6b33ab8 deployed as `consumer-6b33ab8`, recreating only web/gateway. All six UI tests passed against public deployed assets with fictional API responses (27.7 seconds); the public-backed bottom-menu screenshot was inspected. Trusted internal TLS, health/security status codes and the actual WebSocket handshake passed. No production account/data was modified by these UI tests. Standard checks for earlier 34412db passed; the new 6b33ab8 standard run 38735669663 remains pending at this checkpoint.
 
 - Web lint, type checking and production build passed.
 - Six UI/browser tests passed locally (13.2 seconds at the latest sidebar checkpoint). These use explicitly fictional API fixtures, not production user data. Covered desktop/mobile widths 320/390/768/1440, light/dark, keyboard tabs, account menu/collapse, modal draft protection, pending/failed posting, pagination failure/retry, profile compose and the focused dark editor/audience menu. Axe WCAG 2.1 AA checks passed in the exercised views.
