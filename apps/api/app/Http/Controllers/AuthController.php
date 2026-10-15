@@ -18,10 +18,24 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
+    public function options()
+    {
+        return ['data' => [
+            'registration_enabled' => (bool) config('registration.enabled') && (bool) config('registration.email_delivery_enabled'),
+            'email_delivery_enabled' => (bool) config('registration.email_delivery_enabled'),
+            'email_domains' => config('registration.email_domains'),
+        ]];
+    }
+
     public function register(Request $r)
     {
+        abort_unless(config('registration.enabled') && config('registration.email_delivery_enabled'), 503, 'Pendaftaran belum tersedia. Silakan coba kembali nanti.');
         $r->merge(['email' => Str::lower((string) $r->input('email')), 'username' => Str::lower((string) $r->input('username'))]);
         $data = $r->validate(['name' => 'required|string|max:80', 'username' => 'required|string|regex:/^[a-z0-9_]{3,24}$/|unique:users', 'email' => 'required|email|max:254|unique:users', 'password' => ['required', 'confirmed', PasswordRule::min(12)->mixedCase()->numbers()]]);
+        $domains = config('registration.email_domains');
+        if ($domains && ! in_array(Str::afterLast($data['email'], '@'), $domains, true)) {
+            throw ValidationException::withMessages(['email' => 'Gunakan alamat email dengan domain kampus yang diizinkan.']);
+        }
         $u = DB::transaction(function () use ($data) {
             $u = User::create($data);
             $u->profile()->create([]);
@@ -57,10 +71,51 @@ class AuthController extends Controller
 
     public function forgot(Request $r)
     {
+        abort_unless(config('registration.email_delivery_enabled'), 503, 'Pemulihan melalui email belum tersedia.');
         $d = $r->validate(['email' => 'required|email']);
         Password::sendResetLink(['email' => Str::lower($d['email'])]);
 
         return ['message' => 'Jika email terdaftar, tautan pemulihan akan dikirim.'];
+    }
+
+    public function resend(Request $r)
+    {
+        abort_unless(config('registration.email_delivery_enabled'), 503, 'Pengiriman email verifikasi belum tersedia.');
+        if (! $r->user()->hasVerifiedEmail()) {
+            $r->user()->sendEmailVerificationNotification();
+        }
+
+        return ['message' => 'Tautan verifikasi dikirim.'];
+    }
+
+    public function changePassword(Request $r)
+    {
+        $d = $r->validate([
+            'current_password' => 'required|string|max:1024',
+            'password' => ['required', 'confirmed', 'different:current_password', 'max:1024', PasswordRule::min(12)->mixedCase()->numbers()],
+        ]);
+        $web = ! ($r->user()->currentAccessToken() instanceof PersonalAccessToken) && $r->hasSession();
+        $sessionId = $web ? $r->session()->getId() : null;
+        $u = DB::transaction(function () use ($r, $d, $sessionId) {
+            $u = User::whereKey($r->user()->id)->lockForUpdate()->firstOrFail();
+            if (! Hash::check($d['current_password'], $u->password)) {
+                throw ValidationException::withMessages(['current_password' => 'Kata sandi saat ini tidak sesuai.']);
+            }
+            $u->forceFill(['password' => $d['password'], 'remember_token' => Str::random(60)])->save();
+            $u->tokens()->delete();
+            DB::table('sessions')->where('user_id', $u->id)->when($sessionId, fn ($q) => $q->where('id', '!=', $sessionId))->delete();
+            DB::table('password_reset_tokens')->where('email', $u->email)->delete();
+            DB::table('audit_logs')->insert(['actor_id' => $u->id, 'subject_id' => $u->id, 'action' => 'password.changed', 'metadata' => json_encode(['source' => $sessionId ? 'web' : 'native']), 'created_at' => now()]);
+
+            return $u;
+        });
+        if ($web) {
+            Auth::guard('web')->setUser($u);
+            $r->session()->regenerate(true);
+            $r->session()->regenerateToken();
+        }
+
+        return response()->noContent();
     }
 
     public function reset(Request $r)

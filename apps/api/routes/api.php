@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+    Route::get('auth/options', [AuthController::class, 'options'])->middleware('throttle:catalog');
     Route::get('health', function () {
         DB::select('select 1');
 
@@ -36,6 +37,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('auth/native/logout', [AuthController::class, 'nativeLogout']);
         Route::get('me', [ProfileController::class, 'me']);
+        Route::put('me/password', [AuthController::class, 'changePassword'])->middleware('throttle:password-change');
         Route::get('notifications', [ActivityController::class, 'index']);
         Route::put('notifications/{notification}/read', [ActivityController::class, 'read'])->whereUuid('notification');
         Route::patch('me', [ProfileController::class, 'update']);

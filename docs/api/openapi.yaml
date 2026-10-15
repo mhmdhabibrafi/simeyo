@@ -44,6 +44,61 @@ paths:
                   - errors
         "429":
           description: Rate limited
+  /auth/options:
+    get:
+      description: Public registration/delivery availability and exact allowed email
+        domains; a matching domain never grants verification.
+      security: []
+      responses:
+        "200":
+          description: Public registration/delivery availability and exact allowed email
+            domains; a matching domain never grants verification.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      registration_enabled:
+                        type: boolean
+                      email_delivery_enabled:
+                        type: boolean
+                      email_domains:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                      - registration_enabled
+                      - email_delivery_enabled
+                      - email_domains
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
   /auth/register:
     post:
       description: Web registration; CSRF required. Privilege fields ignored.
@@ -90,6 +145,8 @@ paths:
                   - errors
         "429":
           description: Rate limited
+        "503":
+          description: Email delivery or registration is unavailable
   /auth/login:
     post:
       description: Web cookie login; CSRF required
@@ -112,6 +169,60 @@ paths:
                     $ref: "#/components/schemas/User"
                 required:
                   - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /me/password:
+    put:
+      description: Change own password using current credentials. Web session rotates
+        and remains active; all other web sessions, native tokens and pending
+        reset links are revoked. Native caller must log in again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                current_password:
+                  type: string
+                  maxLength: 1024
+                password:
+                  type: string
+                  minLength: 12
+                  maxLength: 1024
+                password_confirmation:
+                  type: string
+              required:
+                - current_password
+                - password
+                - password_confirmation
+      responses:
+        "204":
+          description: Change own password using current credentials. Web session rotates
+            and remains active; all other web sessions, native tokens and
+            pending reset links are revoked. Native caller must log in again.
         "401":
           description: Authentication required
         "403":
@@ -209,6 +320,8 @@ paths:
                   - errors
         "429":
           description: Rate limited
+        "503":
+          description: Email delivery or registration is unavailable
   /auth/reset-password:
     post:
       description: Reset password and revoke sessions/tokens
@@ -292,6 +405,8 @@ paths:
                   - errors
         "429":
           description: Rate limited
+        "503":
+          description: Email delivery or registration is unavailable
   /auth/email/verify/{id}/{hash}:
     get:
       description: Logged-in owner and temporary signed URL required; redirect to onboarding

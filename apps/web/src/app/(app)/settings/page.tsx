@@ -51,10 +51,10 @@ export default function Page() {
           <h2 className="text-sm font-semibold">Akun</h2>
           <p className="my-3 text-sm text-[var(--muted)]">{u?.email}</p>
           <Link
-            href="/forgot-password"
+            href="/settings/password"
             className="text-sm text-[var(--accent)]"
           >
-            Ubah kata sandi melalui email →
+            Ubah kata sandi →
           </Link>
         </section>
         <section className="flex items-center justify-between border-y border-[var(--border)] py-5">

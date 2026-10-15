@@ -26,8 +26,10 @@ function operation(path,method,description,{schema,status='200',result,publicRou
 }
 const userEnvelope=object({data:ref('User')},['data']);
 operation('/health','get','Database health check',{publicRoute:true});
+operation('/auth/options','get','Public registration/delivery availability and exact allowed email domains; a matching domain never grants verification.',{publicRoute:true,result:object({data:object({registration_enabled:boolean,email_delivery_enabled:boolean,email_domains:{type:'array',items:string}},['registration_enabled','email_delivery_enabled','email_domains'])},['data'])});
 operation('/auth/register','post','Web registration; CSRF required. Privilege fields ignored.',{schema:ref('Registration'),status:'201',result:userEnvelope,publicRoute:true});
 operation('/auth/login','post','Web cookie login; CSRF required',{schema:ref('Login'),result:userEnvelope,publicRoute:true});
+operation('/me/password','put','Change own password using current credentials. Web session rotates and remains active; all other web sessions, native tokens and pending reset links are revoked. Native caller must log in again.',{status:'204',schema:object({current_password:{type:'string',maxLength:1024},password:{type:'string',minLength:12,maxLength:1024},password_confirmation:string},['current_password','password','password_confirmation'])});
 operation('/auth/logout','post','Invalidate current web session',{status:'204'});
 operation('/auth/forgot-password','post','Uniform recovery message regardless of account presence',{publicRoute:true,schema:object({email:{type:'string',format:'email'}},['email'])});
 operation('/auth/reset-password','post','Reset password and revoke sessions/tokens',{publicRoute:true,schema:object({email:{type:'string',format:'email'},token:string,password:{type:'string',minLength:12},password_confirmation:string},['email','token','password','password_confirmation'])});
@@ -51,6 +53,7 @@ operation('/admin/verifications/{id}','patch','Audited review; no self-review; p
 const postEnvelope=object({data:ref('Post')},['data']);
 const postInput=object({body:{type:['string','null'],maxLength:1000},visibility:{type:'string',enum:['campus','followers']},parent_id:nullable('integer'),quote_id:nullable('integer'),community_id:nullable('integer'),client_id:{type:['string','null'],format:'uuid'},media_ids:{type:'array',maxItems:4,uniqueItems:true,items:integer}},['body','visibility']);
 operation('/posts','post','Create a persisted campus/community post, reply or quote. Optional client_id makes same-content retries idempotent; conflicting or deleted drafts return 409.',{schema:postInput,status:'201',result:postEnvelope});
+for(const path of ['/auth/register','/auth/forgot-password','/auth/email/resend'])paths[path].post.responses['503']=response('Email delivery or registration is unavailable');
 paths['/posts'].post.responses['409']=response('Retry identity already used with different content or a deleted post');
 operation('/posts/{id}','get','Read visible post, counts and viewer interaction state',{result:postEnvelope});
 operation('/posts/{id}','patch','Owner edits body/audience; ancestry remains immutable',{schema:object({body:{type:['string','null'],maxLength:1000},visibility:{type:'string',enum:['campus','followers']}},['body','visibility']),result:postEnvelope});

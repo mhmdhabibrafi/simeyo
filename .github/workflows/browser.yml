@@ -1,5 +1,12 @@
 name: Full browser acceptance
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Browser acceptance scope
+        type: choice
+        options: [full, account-security]
+        default: full
 permissions: {contents: read}
 jobs:
   browser:
@@ -12,6 +19,7 @@ jobs:
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 15
     env:
+      TEST_SUITE: ${{ inputs.suite }}
       APP_ENV: local
       APP_KEY: 'base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
       APP_URL: http://localhost:8000
@@ -76,7 +84,8 @@ jobs:
           test "$ready" = true
           cd apps/web
           # Keep the real authentication throttle enabled; separate files by a full rate window.
-          for file in tests/*.spec.ts; do
+          if [ "$TEST_SUITE" = account-security ]; then set -- tests/account-security.spec.ts; else set -- tests/*.spec.ts; fi
+          for file in "$@"; do
             npm run test:e2e -- "$file"
             sleep 61
           done

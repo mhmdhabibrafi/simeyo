@@ -24,6 +24,7 @@ export default function Layout() {
         options={{ title: "Percakapan pribadi" }}
       />
       <Stack.Screen name="settings" options={{ title: "Pengaturan" }} />
+      <Stack.Screen name="change-password" options={{ title: "Ubah kata sandi" }} />
       <Stack.Screen name="edit-profile" options={{ title: "Ubah profil" }} />
       <Stack.Screen
         name="post-actions/[id]"

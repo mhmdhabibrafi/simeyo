@@ -5,11 +5,14 @@ import Link from "next/link";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
 import { api, ApiError } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { authenticationOptionsSchema } from "../../../../packages/api-contracts/src";
 function Form({ reset }: { reset: boolean }) {
   const params = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const policy = useQuery({ queryKey: ["auth-options"], enabled: !reset, queryFn: async () => authenticationOptionsSchema.parse((await api<{data: unknown}>("auth/options")).data) });
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -57,6 +60,8 @@ function Form({ reset }: { reset: boolean }) {
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-5">
+          {!reset && policy.data?.email_delivery_enabled === false && <p role="status" className="rounded-xl border border-[var(--border)] p-4 text-sm leading-6">Pemulihan melalui email belum tersedia. Jika masih masuk di perangkat lain, ubah kata sandi dari Pengaturan.</p>}
+          {!reset && policy.isError && <div role="alert" className="text-sm">Layanan pemulihan belum dapat diperiksa. <button type="button" onClick={() => policy.refetch()} className="font-semibold underline">Coba lagi</button></div>}
           <div>
             <label className="form-label" htmlFor="email">
               Email
@@ -95,7 +100,7 @@ function Form({ reset }: { reset: boolean }) {
               {error}
             </p>
           )}
-          <Button className="w-full" disabled={busy}>
+          <Button className="w-full" disabled={busy || (!reset && !policy.data?.email_delivery_enabled)}>
             {busy
               ? "Memproses…"
               : reset

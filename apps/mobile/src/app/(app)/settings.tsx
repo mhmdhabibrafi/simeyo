@@ -83,6 +83,7 @@ export default function Settings() {
     <Screen scroll>
       <Heading title="Pengaturan" />
       <Text style={{ fontSize: 14, color: colors.muted }}>{user?.email}</Text>
+      <Button label="Ubah kata sandi" outline onPress={() => router.push("/change-password")} />
       <Text style={{ fontSize: 16, fontWeight: "600", color: colors.text }}>
         Tampilan
       </Text>

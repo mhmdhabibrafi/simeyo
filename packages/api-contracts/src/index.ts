@@ -1,6 +1,12 @@
 import { z } from "zod";
 import type {components} from "./generated";
 
+export const authenticationOptionsSchema = z.object({
+  registration_enabled: z.boolean(),
+  email_delivery_enabled: z.boolean(),
+  email_domains: z.array(z.string()),
+});
+
 export const userSchema = z.object({
   id: z.number(), name: z.string(), username: z.string().nullable(), verified: z.boolean(),
   bio: z.string().nullable(), location: z.string().nullable(), avatar_url: z.string().nullable(), cover_url: z.string().nullable(),
