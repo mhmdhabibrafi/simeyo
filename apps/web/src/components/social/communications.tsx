@@ -62,10 +62,11 @@ export function Conversations({ selectedId }: { selectedId?: number }) {
   ) ?? [];
   return (
     <div className="message-workspace">
+      <h1 className="sr-only">Pesan pribadi</h1>
       <section aria-label="Daftar percakapan" className={`message-list min-w-0 ${selectedId ? "hidden lg:block" : ""}`}>
         <header className="px-5 pb-4 pt-6">
           <div className="mb-5 flex items-center justify-between">
-            <h1 className="text-xl font-semibold tracking-tight">Pesan</h1>
+            <h2 className="text-xl font-semibold tracking-tight">Pesan</h2>
             <button className="icon-button" aria-label="Buat pesan baru" onClick={() => setComposing(true)}><SquarePen size={21} /></button>
           </div>
           <label className="flex items-center gap-2 rounded-full bg-[var(--soft)] px-4 py-2.5">

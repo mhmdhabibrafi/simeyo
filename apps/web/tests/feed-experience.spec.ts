@@ -180,7 +180,7 @@ test("messaging supports a split inbox, recipient selection and safe send retry 
   await expect(page.getByRole("log").getByText("Halo Raka!")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: path.resolve(process.cwd(), "../../docs/testing/screenshots/messages-mobile-dark.png") });
-  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole("link", { name: "Semua pesan", exact: true }).click();
   await expect(page.getByLabel("Cari percakapan", { exact: true })).toBeVisible();
 });
