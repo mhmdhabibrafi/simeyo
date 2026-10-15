@@ -1,0 +1,19 @@
+{
+    "scope":  "Development client build; not store release or device acceptance",
+    "source_commit":  "c8c65a9",
+    "build_run":  "https://github.com/mhmdhabibrafi/simeyo/actions/runs/38689605244",
+    "artifact_id":  11952014173,
+    "file_name":  "Simeyo-development.apk",
+    "bytes":  157016199,
+    "sha256":  "b83d860c81d8aa4c25bba1c95481eff702b11b32c993ac94f874684c784fdf60",
+    "zip_inspection":  {
+                           "dex_present":  true,
+                           "manifest_package_string":  "app.simeyo.mobile",
+                           "native_architectures":  [
+                                                        "arm64-v8a",
+                                                        "x86_64"
+                                                    ]
+                       },
+    "independent_signature_verification":  "not performed",
+    "installed_device_acceptance":  "not performed"
+}

@@ -6,7 +6,11 @@
 - Add a privacy-preserving PWA and Expo native client with scoped authentication, feeds, composer, profiles, activity, messaging, themes and guarded push registration.
 - Add encrypted push-device registration, queued generic notifications/receipt checks and idempotent post retry identities. Push provider tests use mocked HTTP; physical delivery remains untested.
 - API regression after these additions: **61 tests / 406 assertions passed** on SQLite and isolated PostgreSQL. Expo Android/iOS/web bundles exported successfully; compilation does not prove installed-device behavior.
-- PWA production-browser acceptance passed after the rename; Expo component browser acceptance also passed. Docker runtime, native builds and production readiness remain pending.
+- PWA production-browser acceptance passed after the rename; Expo component browser acceptance also passed. Isolated HTTPS/FPM/standalone Docker smoke acceptance now passes; local supporting Docker services and production readiness remain pending.
+
+- Add guarded PostgreSQL archive backup/restore with actual isolated recovery acceptance, bounded API samples and separate HTTPS/FPM/standalone release configuration.
+- Harden native notification/WebSocket/account-cache lifecycle; add push lookup indexes and native push/retry API contracts.
+- Android development APK compilation passed in GitHub CI; extended Expo browser acceptance includes messaging and private realtime. Installed-device/push/store acceptance remains pending.
 
 ## 0.3.0 — 2026-10-15 — Campus experience, locally verified
 

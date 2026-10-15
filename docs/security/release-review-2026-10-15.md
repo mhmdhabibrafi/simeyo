@@ -15,14 +15,14 @@ This is an engineering review with recorded tests, not a completed production ce
 
 Fresh npm registry checks: **web production dependencies: zero advisory entries**; full web graph: **five high**; mobile graph: **18 high**, with no critical entries in these reports. Published `braces` remains 3.0.3 and `node-forge` remains 1.4.0. The compatible decoder/UUID overrides and their regression tests remain in place. No forced framework downgrade or advisory suppression was applied. See [dependency review](dependencies-2026-10-15.md) and [MOBILE.md](../../MOBILE.md).
 
-These development/build-tooling advisories remain a release gate. A clean runtime-only web report does not establish a clean mobile graph, image scan or complete application security audit. Composer's earlier audit used cached metadata after a live refresh timeout; a fully fresh Composer/image audit is still required.
+These development/build-tooling advisories remain a release gate. A clean runtime-only web report does not establish a clean mobile graph, image scan or complete application security audit. Composer's earlier audit used cached metadata after a live refresh timeout. Latest full locked and no-dev locked audit commands both completed with no advisories or abandoned packages and no fallback warning. Image vulnerability scanning remains required.
 
 ## Open release gates
 
 | Gate | Status / required evidence |
 |---|---|
 | Dependency remediation | Five web and 18 mobile high entries remain; recheck compatible upstream patches before release. |
-| Native Android/iOS and push | Android development APK build is being attempted in CI. No physical-device session/media/push acceptance, store signing or iOS installed-build acceptance. |
+| Native Android/iOS and push | Android development APK compilation passed in CI. No physical-device session/media/push acceptance, store signing or iOS installed-build acceptance. |
 | Provider operations | Real SMTP, Expo/FCM/APNs credentials and push delivery are not verified. Push stays disabled by default. |
 | Full disaster recovery | Production media, encryption keys, retention, off-host copies, recovery-point/time objectives and operator cutover are not exercised. |
 | Sustained performance | The 80-request samples are bounded baselines, not representative staging load or capacity acceptance. |

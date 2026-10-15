@@ -6,7 +6,7 @@
     "dev:web": "npm --prefix apps/web run dev",
     "build:web": "npm --prefix apps/web run build",
     "test:api": "cd apps/api && php artisan test",
-    "dev:api": "cd apps/api/public && php -d extension=pdo_pgsql -S localhost:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php",
+    "dev:api": "cd apps/api/public && php -d extension=pdo_pgsql -S 127.0.0.1:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php",
     "dev:db": "node infrastructure/scripts/local-postgres.mjs",
     "dev:reverb": "node infrastructure/scripts/local-realtime.mjs",
     "dev:worker": "node infrastructure/scripts/local-realtime.mjs worker",
