@@ -89,6 +89,18 @@ class AccountSecurityTest extends TestCase
         $this->postJson('/api/v1/auth/native/login', ['email' => $u->email, 'password' => 'ReplacementPassword456', 'device_name' => 'test'])->assertOk();
     }
 
+    public function test_cookie_login_binds_the_session_to_the_password_hash_and_rejects_a_stale_session(): void
+    {
+        config(['sanctum.stateful' => ['localhost']]);
+        $u = User::factory()->create(['password' => 'OriginalPassword123']);
+        $this->postJson('/api/v1/auth/login', ['email' => $u->email, 'password' => 'OriginalPassword123'])->assertOk();
+        $this->assertNotEmpty(session('password_hash_web'));
+        // Simulate a login finishing while another request rotates the password.
+        $u->forceFill(['password' => 'ReplacementPassword456'])->save();
+        $this->app['auth']->forgetGuards();
+        $this->withHeader('Origin', 'http://localhost')->getJson('/api/v1/me')->assertUnauthorized();
+    }
+
     private function registration(string $email): array
     {
         return ['name' => 'Campus User', 'username' => 'campus_user', 'email' => $email, 'password' => 'CampusPassword123', 'password_confirmation' => 'CampusPassword123'];

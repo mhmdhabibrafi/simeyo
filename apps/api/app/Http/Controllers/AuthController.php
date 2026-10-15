@@ -57,6 +57,8 @@ class AuthController extends Controller
         }
         $r->session()->regenerate();
 
+        $r->session()->put('password_hash_web', Auth::guard('web')->hashPasswordForCookie($r->user()->getAuthPassword()));
+
         return new UserResource($r->user());
     }
 
@@ -154,13 +156,18 @@ class AuthController extends Controller
     public function nativeLogin(Request $r)
     {
         $d = $r->validate(['email' => 'required|email', 'password' => 'required|string', 'device_name' => 'required|string|max:80']);
-        $u = User::where('email', Str::lower($d['email']))->first();
-        if (! $u || ! Hash::check($d['password'], $u->password)) {
-            throw ValidationException::withMessages(['email' => 'Email atau kata sandi tidak sesuai.']);
-        }
+        [$u, $token] = DB::transaction(function () use ($d) {
+            // Serialize credential checks/token issuance with password rotation.
+            $u = User::where('email', Str::lower($d['email']))->lockForUpdate()->first();
+            if (! $u || ! Hash::check($d['password'], $u->password)) {
+                throw ValidationException::withMessages(['email' => 'Email atau kata sandi tidak sesuai.']);
+            }
+
+            return [$u, $u->createToken($d['device_name'], ['campus'], now()->addDays(30))->plainTextToken];
+        });
         $r->setUserResolver(fn () => $u);
 
-        return ['data' => ['user' => new UserResource($u), 'token' => $u->createToken($d['device_name'], ['campus'], now()->addDays(30))->plainTextToken]];
+        return ['data' => ['user' => new UserResource($u), 'token' => $token]];
     }
 
     public function nativeLogout(Request $r)
