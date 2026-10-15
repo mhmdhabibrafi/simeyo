@@ -8,4 +8,4 @@ for(const name of ['api','web','postgres','redis','minio','meilisearch','worker'
 for(const service of Object.values(compose.services))for(const port of service.ports??[])assert.ok(port.startsWith('127.0.0.1:'),'Development ports must bind to loopback.');
 const schema=YAML.parse(await readFile(resolve(root,'docs/api/openapi.yaml'),'utf8'));
 assert.equal(schema.openapi,'3.1.0');assert.ok(schema.paths['/me'].patch);assert.ok(schema.components.schemas.User);
-console.log('Compose and OpenAPI YAML structure checks passed. Docker runtime, image pulls and deployment have not been validated.');
+console.log('Compose and OpenAPI YAML structure checks passed. This command does not verify Docker runtime, image pulls or deployment.');

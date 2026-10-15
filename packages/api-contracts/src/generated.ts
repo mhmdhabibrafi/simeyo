@@ -1684,7 +1684,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Create an actual persisted campus post, reply or quote; own unattached media only */
+        /** @description Create a persisted campus/community post, reply or quote. Optional client_id makes same-content retries idempotent; conflicting or deleted drafts return 409. */
         post: {
             parameters: {
                 query?: never;
@@ -1700,12 +1700,15 @@ export interface paths {
                         visibility: "campus" | "followers";
                         parent_id?: number | null;
                         quote_id?: number | null;
+                        community_id?: number | null;
+                        /** Format: uuid */
+                        client_id?: string | null;
                         media_ids?: number[];
                     };
                 };
             };
             responses: {
-                /** @description Create an actual persisted campus post, reply or quote; own unattached media only */
+                /** @description Create a persisted campus/community post, reply or quote. Optional client_id makes same-content retries idempotent; conflicting or deleted drafts return 409. */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -1725,6 +1728,13 @@ export interface paths {
                 };
                 /** @description Permission or verification requirement not met */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Retry identity already used with different content or a deleted post */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3953,7 +3963,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    id: number;
+                    id: string;
                 };
                 cookie?: never;
             };
@@ -4005,6 +4015,291 @@ export interface paths {
         };
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/push-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Whether provider sending is enabled; no credentials exposed */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Whether provider sending is enabled; no credentials exposed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/push-devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List own push devices; native campus-scoped bearer required. Tokens are never returned. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List own push devices; native campus-scoped bearer required. Tokens are never returned. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["PushDevice"][];
+                        };
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** @description Register or rotate an encrypted Expo device token bound to the current native access token; at most 10 devices. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        token: string;
+                        /** @enum {string} */
+                        platform: "android" | "ios";
+                        name: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Register or rotate an encrypted Expo device token bound to the current native access token; at most 10 devices. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["PushDevice"];
+                        };
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/push-devices/{device}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Revoke only an owned push device. Native logout also removes devices bound to that token. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    device: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Revoke only an owned push device. Native logout also removes devices bound to that token. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -6004,6 +6299,14 @@ export interface components {
             community_id: number | null;
             going_count: number;
             rsvp: ("going" | "interested") | null;
+        };
+        PushDevice: {
+            id: number;
+            name: string;
+            /** @enum {string} */
+            platform: "android" | "ios";
+            /** Format: date-time */
+            updated_at: string;
         };
     };
     responses: never;

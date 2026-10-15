@@ -2,10 +2,11 @@ openapi: 3.1.0
 info:
   title: Simeyo API
   version: 0.3.0
-  description: Implemented identity, social and in-progress campus endpoints.
-    First-party cookie writes require CSRF; native clients use scoped bearer
-    tokens. All private reads enforce institutional approval, blocks, audience
-    and ancestry visibility.
+  description: Implemented identity, social, campus and native push-device
+    endpoints. Session cookie name follows the configured APP_NAME unless
+    SESSION_COOKIE overrides it. First-party cookie writes require CSRF; native
+    clients use scoped bearer tokens. All private reads enforce institutional
+    approval, blocks, audience and ancestry visibility.
 servers:
   - url: http://localhost:8000/api/v1
 security:
@@ -983,8 +984,9 @@ paths:
           description: Rate limited
   /posts:
     post:
-      description: Create an actual persisted campus post, reply or quote; own
-        unattached media only
+      description: Create a persisted campus/community post, reply or quote. Optional
+        client_id makes same-content retries idempotent; conflicting or deleted
+        drafts return 409.
       requestBody:
         required: true
         content:
@@ -1010,6 +1012,15 @@ paths:
                   type:
                     - integer
                     - "null"
+                community_id:
+                  type:
+                    - integer
+                    - "null"
+                client_id:
+                  type:
+                    - string
+                    - "null"
+                  format: uuid
                 media_ids:
                   type: array
                   maxItems: 4
@@ -1021,8 +1032,9 @@ paths:
                 - visibility
       responses:
         "201":
-          description: Create an actual persisted campus post, reply or quote; own
-            unattached media only
+          description: Create a persisted campus/community post, reply or quote. Optional
+            client_id makes same-content retries idempotent; conflicting or
+            deleted drafts return 409.
           content:
             application/json:
               schema:
@@ -1036,6 +1048,8 @@ paths:
           description: Authentication required
         "403":
           description: Permission or verification requirement not met
+        "409":
+          description: Retry identity already used with different content or a deleted post
         "422":
           description: Validation error
           content:
@@ -2424,7 +2438,8 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
+            format: uuid
       responses:
         "204":
           description: Mark only an owned notification read
@@ -2452,6 +2467,200 @@ paths:
                   - errors
         "429":
           description: Rate limited
+  /push-config:
+    get:
+      description: Whether provider sending is enabled; no credentials exposed
+      responses:
+        "200":
+          description: Whether provider sending is enabled; no credentials exposed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                    required:
+                      - enabled
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /push-devices:
+    get:
+      description: List own push devices; native campus-scoped bearer required. Tokens
+        are never returned.
+      responses:
+        "200":
+          description: List own push devices; native campus-scoped bearer required. Tokens
+            are never returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PushDevice"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+      security:
+        - NativeBearer: []
+    put:
+      description: Register or rotate an encrypted Expo device token bound to the
+        current native access token; at most 10 devices.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  maxLength: 255
+                  pattern: ^(ExponentPushToken|ExpoPushToken)\[[a-zA-Z0-9_\-]+\]$
+                platform:
+                  type: string
+                  enum:
+                    - android
+                    - ios
+                name:
+                  type: string
+                  maxLength: 80
+              required:
+                - token
+                - platform
+                - name
+      responses:
+        "201":
+          description: Register or rotate an encrypted Expo device token bound to the
+            current native access token; at most 10 devices.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/PushDevice"
+                required:
+                  - data
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+      security:
+        - NativeBearer: []
+  /push-devices/{device}:
+    delete:
+      description: Revoke only an owned push device. Native logout also removes
+        devices bound to that token.
+      parameters:
+        - name: device
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Revoke only an owned push device. Native logout also removes
+            devices bound to that token.
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+      security:
+        - NativeBearer: []
   /communication-preferences:
     get:
       description: Own DM and notification preferences
@@ -3439,7 +3648,7 @@ components:
     SessionCookie:
       type: apiKey
       in: cookie
-      name: ruang_session
+      name: simeyo_session
     NativeBearer:
       type: http
       scheme: bearer
@@ -4375,3 +4584,23 @@ components:
         - going_count
         - rsvp
       additionalProperties: false
+    PushDevice:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        platform:
+          type: string
+          enum:
+            - android
+            - ios
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - platform
+        - updated_at
