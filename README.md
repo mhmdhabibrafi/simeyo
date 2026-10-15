@@ -4,7 +4,9 @@
 
 Current locally verified milestone: **v0.3.0 — campus experience**. The Expo/PWA v0.4.0 milestone and v1.0.0 production review remain in progress.
 
-The authorized server release candidate is available at **https://simeyo.mhmdhabibrafi.me**. SMTP is not configured, so registration and email recovery are temporarily unavailable. See [server operations and verified scope](docs/operations/mediasi-server.md); public availability does not mark v1.0.0 acceptance complete.
+The authorized server release candidate is available at **https://simeyo.mhmdhabibrafi.me**. There is no marketing landing page: `/` opens the feed and signed-out visitors continue to login. Firebase Google campus sign-in is deployed; real Google campus-account acceptance is pending Firebase Console setup/testing. Password registration creates pending accounts. SMTP email recovery/resend remain unavailable. See [authentication](AUTHENTICATION.md) and [server operations and verified scope](docs/operations/mediasi-server.md); public availability does not mark v1.0.0 acceptance complete.
+
+The consumer layout now has a centered feed, one menu beside the wordmark, a modal thread composer with a themed audience selector, and a quieter profile layout. See [actual UI and regression evidence](docs/testing/consumer-ui-2026-10-15.md); fixture-based visual checks and real API acceptance are identified separately.
 
 Social features use the Laravel API and PostgreSQL: text/images, nested threads, interactions, follows/private requests, bookmarks and cursor feeds. Campus modules include communities/events, Pulse/search, messaging, notifications and moderation. See [campus architecture](docs/architecture/campus-experience.md) and [mobile implementation and limits](MOBILE.md).
 
