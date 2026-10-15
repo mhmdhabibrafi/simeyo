@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
-[ "${CI:-}" = true ] || { echo 'This script is restricted to disposable CI runners.' >&2; exit 1; }
+[ "${CI:-}" = true ] && [ "${GITHUB_ACTIONS:-}" = true ] || { echo 'This script is restricted to disposable GitHub CI runners.' >&2; exit 1; }
+# Compose prioritizes inherited shell values over --env-file. Never inherit a real deployment target.
+unset SITE_HOST PUBLIC_TLS_PORT PUBLIC_ORIGIN STATEFUL_DOMAIN IMAGE_TAG SIMEYO_PRODUCTION_ENV_FILE APP_KEY
+unset DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD DB_SSLMODE REVERB_APP_KEY REVERB_APP_SECRET
+unset TLS_CERT_FILE TLS_KEY_FILE MAIL_MAILER DEMO_PASSWORD EXPO_PUSH_ENABLED
 umask 077
 mkdir -p .local/production-ci
 state=$(CDPATH= cd .local/production-ci && pwd)
