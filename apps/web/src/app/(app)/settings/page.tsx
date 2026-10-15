@@ -7,8 +7,20 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { ThemeToggle, useToast } from "@/components/providers";
 import { useMe } from "@/lib/auth";
-import { InfoPopover } from "@/components/ui/popover";
+import {
+  ChevronRight,
+  KeyRound,
+  UserRound,
+  Shield,
+  MessageCircle,
+  UserRoundPlus,
+  Monitor,
+  Download,
+} from "lucide-react";
 import { PwaControls } from "@/components/pwa";
+import { InfoPopover } from "@/components/ui/popover";
+import { AccountCampus } from "@/components/account-campus";
+
 type Session = {
   id: string;
   user_agent: string;
@@ -42,107 +54,165 @@ export default function Page() {
   }
   return (
     <>
-      <header className="border-b border-[var(--border)] px-6 py-6">
-        <h1 className="text-xl font-semibold">Pengaturan</h1>
+      <header className="border-b border-[var(--border)] px-5 py-5 sm:px-6">
+        <h1 className="text-xl font-semibold tracking-tight">Pengaturan</h1>
       </header>
-      <div className="space-y-7 p-6">
-        <PwaControls />
-        <section>
-          <h2 className="text-sm font-semibold">Akun</h2>
-          <p className="my-3 text-sm text-[var(--muted)]">{u?.email}</p>
+      <div className="divide-y divide-[var(--border)]">
+        <section
+          className="px-5 py-5 sm:px-6"
+          aria-labelledby="account-heading"
+        >
+          <h2
+            id="account-heading"
+            className="text-xs font-semibold text-[var(--muted)]"
+          >
+            Akun & kampus
+          </h2>
+          <p className="mb-4 mt-3 break-all text-sm">{u?.email}</p>
+          <AccountCampus />
           <Link
             href="/settings/password"
-            className="text-sm text-[var(--accent)]"
+            className="mt-3 flex min-h-12 items-center gap-3 rounded-xl px-2 text-sm transition-colors hover:bg-[var(--soft)]"
           >
-            Ubah kata sandi →
+            <KeyRound size={18} className="text-[var(--muted)]" />
+            <span className="flex-1">Ubah kata sandi</span>
+            <ChevronRight size={16} className="text-[var(--muted)]" />
           </Link>
         </section>
-        <section className="flex items-center justify-between border-y border-[var(--border)] py-5">
+        <section className="flex items-center justify-between gap-4 px-5 py-5 sm:px-6">
           <div>
-            <h2 className="text-sm font-semibold">Tampilan</h2>
-            <p className="mt-2 text-xs text-[var(--muted)]">
-              Pilih tema terang atau gelap.
+            <h2 className="text-sm font-medium">Tampilan</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Tema terang atau gelap
             </p>
           </div>
           <ThemeToggle />
         </section>
-        <section>
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Privasi profil</h2>
+        <section
+          className="px-3 py-4 sm:px-4"
+          aria-labelledby="privacy-heading"
+        >
+          <div className="mb-2 flex items-center justify-between px-2">
+            <h2
+              id="privacy-heading"
+              className="text-xs font-semibold text-[var(--muted)]"
+            >
+              Privasi & interaksi
+            </h2>
             <InfoPopover title="Tentang privasi akademik">
               Informasi fakultas, program studi, dan angkatan hanya dibagikan
               jika kamu mengaktifkan visibilitas akademik pada profil.
             </InfoPopover>
           </div>
-          <p className="my-3 text-sm leading-7 text-[var(--muted)]">
-            Pilih informasi akademik dan detail opsional yang ingin kamu
-            tampilkan.
-          </p>
-          <Link href="/profile/edit" className="text-sm text-[var(--accent)]">
-            Atur privasi profil →
-          </Link>
-          <Link
-            href="/settings/privacy"
-            className="mt-3 block min-h-10 text-sm text-[var(--accent)]"
-          >
-            Kelola akun diblokir & disenyapkan →
-          </Link>
-          <Link
-            href="/requests"
-            className="block min-h-10 text-sm text-[var(--accent)]"
-          >
-            Permintaan mengikuti →
-          </Link>
-          <Link
-            href="/settings/communications"
-            className="block min-h-10 text-sm text-[var(--accent)]"
-          >
-            Privasi pesan dan notifikasi →
-          </Link>
+          {[
+            {
+              href: "/profile/edit",
+              label: "Profil dan informasi akademik",
+              icon: UserRound,
+            },
+            {
+              href: "/settings/privacy",
+              label: "Akun diblokir & disenyapkan",
+              icon: Shield,
+            },
+            {
+              href: "/settings/communications",
+              label: "Pesan dan notifikasi",
+              icon: MessageCircle,
+            },
+            {
+              href: "/requests",
+              label: "Permintaan mengikuti",
+              icon: UserRoundPlus,
+            },
+          ].map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex min-h-12 items-center gap-3 rounded-xl px-2 text-sm transition-colors hover:bg-[var(--soft)]"
+            >
+              <Icon size={18} className="shrink-0 text-[var(--muted)]" />
+              <span className="flex-1">{label}</span>
+              <ChevronRight
+                size={16}
+                className="shrink-0 text-[var(--muted)]"
+              />
+            </Link>
+          ))}
         </section>
-        <section className="border-t border-[var(--border)] pt-6">
-          <h2 className="text-sm font-semibold">Sesi aktif</h2>
-          <p className="mb-5 mt-2 text-xs leading-6 text-[var(--muted)]">
-            Sesi web kedaluwarsa setelah 120 menit tidak aktif secara default.
-          </p>
-          {sessions.isPending ? (
-            <div className="skeleton h-24" />
-          ) : sessions.isError ? (
-            <>
-              <p role="alert" className="text-sm text-red-600">
-                Sesi belum dapat dimuat.
-              </p>
-              <Button variant="ghost" onClick={() => sessions.refetch()}>
-                Coba lagi
-              </Button>
-            </>
-          ) : (
-            sessions.data?.data.map((s) => (
-              <div
-                key={s.id}
-                className="mb-3 rounded-xl border border-[var(--border)] p-4"
-              >
-                <p className="truncate text-sm">
-                  {s.user_agent || "Browser tidak diketahui"}
-                </p>
-                <p className="my-2 text-xs text-[var(--muted)]">
-                  {new Date(s.last_activity * 1000).toLocaleString("id-ID")}
-                  {s.current && " · Perangkat ini"}
-                </p>
-                {!s.current && (
-                  <Button variant="outline" onClick={() => setSelected(s)}>
-                    Akhiri sesi
-                  </Button>
-                )}
-              </div>
-            ))
-          )}
-          {sessions.data?.data.length === 0 && (
-            <p className="text-sm text-[var(--muted)]">
-              Tidak ada sesi web tersimpan.
+        <details className="group px-5 py-4 sm:px-6">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+            <Monitor size={18} className="text-[var(--muted)]" />
+            <span className="flex-1">Sesi aktif</span>
+            <ChevronRight
+              size={16}
+              className="text-[var(--muted)] transition-transform group-open:rotate-90"
+            />
+          </summary>
+          <div className="pb-2 pt-3">
+            <p className="mb-4 text-xs leading-6 text-[var(--muted)]">
+              Kelola perangkat yang masuk ke akunmu. Sesi web berakhir setelah
+              tidak aktif sesuai kebijakan layanan.
             </p>
-          )}
-        </section>
+            {sessions.isPending ? (
+              <p role="status" className="text-sm">
+                Memuat sesi?
+              </p>
+            ) : sessions.isError ? (
+              <div>
+                <p role="alert" className="text-sm">
+                  Sesi belum dapat dimuat.
+                </p>
+                <Button variant="ghost" onClick={() => sessions.refetch()}>
+                  Coba lagi
+                </Button>
+              </div>
+            ) : (
+              sessions.data?.data.map((session) => (
+                <div
+                  key={session.id}
+                  className="border-t border-[var(--border)] py-4"
+                >
+                  <p className="break-words text-sm">
+                    {session.user_agent || "Browser tidak diketahui"}
+                  </p>
+                  <p className="my-2 text-xs text-[var(--muted)]">
+                    {new Date(session.last_activity * 1000).toLocaleString(
+                      "id-ID",
+                    )}
+                    {session.current && " ? Perangkat ini"}
+                  </p>
+                  {!session.current && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelected(session)}
+                    >
+                      Akhiri sesi
+                    </Button>
+                  )}
+                </div>
+              ))
+            )}
+            {sessions.data?.data.length === 0 && (
+              <p className="text-sm text-[var(--muted)]">
+                Tidak ada sesi web tersimpan.
+              </p>
+            )}
+          </div>
+        </details>
+        <details className="group px-5 py-4 sm:px-6">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+            <Download size={18} className="text-[var(--muted)]" />
+            <span className="flex-1">Pasang aplikasi</span>
+            <ChevronRight
+              size={16}
+              className="text-[var(--muted)] transition-transform group-open:rotate-90"
+            />
+          </summary>
+          <div className="pb-2 pt-3">
+            <PwaControls />
+          </div>
+        </details>
       </div>
       <ConfirmDialog
         open={!!selected}

@@ -51,11 +51,6 @@ export function AccountMenu({
             ...(user?.verified
               ? [{ href: "/bookmarks", label: "Tersimpan", icon: Bookmark }]
               : []),
-            {
-              href: "/verification",
-              label: "Status verifikasi",
-              icon: ShieldCheck,
-            },
             ...(user?.can_moderate
               ? [
                   {

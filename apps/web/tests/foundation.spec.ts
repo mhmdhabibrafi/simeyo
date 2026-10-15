@@ -124,7 +124,7 @@ test("registration, signed email verification, onboarding and administrator revi
   await page.getByLabel("Kata sandi", { exact: true }).fill("BrowserSecure123");
   await page.getByLabel("Ulangi kata sandi").fill("BrowserSecure123");
   await page.getByRole("button", { name: "Buat akun" }).click();
-  await expect(page).toHaveURL("/verification");
+  await expect(page).toHaveURL("/settings#account-campus");
   const campus = await page.request.get("/api/v1/campus", {
     headers: { Origin: "http://localhost:3000", Accept: "application/json" },
   });
@@ -151,7 +151,7 @@ test("registration, signed email verification, onboarding and administrator revi
     .getByLabel("Program studi (opsional)")
     .selectOption({ label: "Teknik Informatika" });
   await page.getByRole("button", { name: "Simpan dan lanjutkan" }).click();
-  await expect(page).toHaveURL("/verification");
+  await expect(page).toHaveURL("/settings#account-campus");
   await page
     .getByLabel("Jelaskan afiliasimu")
     .fill(

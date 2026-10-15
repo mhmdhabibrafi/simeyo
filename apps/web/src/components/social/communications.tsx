@@ -419,7 +419,7 @@ export function Notifications() {
                     : n.post_id
                       ? `/thread/${n.post_id}`
                       : n.kind === "verification"
-                        ? "/verification"
+                        ? "/settings#account-campus"
                         : `/u/${n.actor.username}`
                 }
                 onClick={() => { if (!n.read_at) read.mutate(n.id); }}

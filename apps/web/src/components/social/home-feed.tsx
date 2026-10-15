@@ -38,7 +38,7 @@ export function HomeFeed() {
               Percakapan kampus hanya tersedia bagi anggota yang disetujui.
             </p>
             <Link
-              href="/verification"
+              href="/settings#account-campus"
               className="inline-flex min-h-11 items-center text-sm text-[var(--accent)]"
             >
               Lihat status verifikasi →

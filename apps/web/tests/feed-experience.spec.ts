@@ -146,6 +146,60 @@ async function fixtures(page: Page) {
   });
 }
 
+test("settings groups account and campus, hides completed verification steps and keeps device controls usable", async ({ page }) => {
+  await fixtures(page);
+  await page.route("**/api/v1/me", (route) => route.fulfill({ json: { data: { ...user, email: "alya_pengujian@students.uin-suska.ac.id" } } }));
+  let revoked = false;
+  await page.route("**/api/v1/auth/sessions", (route) => route.fulfill({ json: { data: revoked ? [] : [{ id: "fixture-device", user_agent: "Browser pengujian", last_activity: 1792108800, current: false }] } }));
+  await page.route("**/api/v1/auth/sessions/fixture-device", (route) => { revoked = true; return route.fulfill({ status: 204 }); });
+  await page.goto("/verification");
+  await expect(page).toHaveURL(/\/settings#account-campus$/);
+  await expect(page.getByText("Kampus terverifikasi", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Periksa status", exact: true })).toHaveCount(0);
+  await page.goto("/settings");
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate((theme) => document.documentElement.dataset.theme = theme, theme);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await expect(page.getByRole("link", { name: "Ubah kata sandi", exact: true })).toBeVisible();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({ path: path.resolve(`../../docs/testing/screenshots/settings-${width}-${theme}.png`), fullPage: true, animations: "disabled" });
+    }
+  }
+  await page.locator("summary").filter({ hasText: "Sesi aktif" }).click();
+  await page.getByRole("button", { name: "Akhiri sesi", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Akhiri sesi", exact: true }).click();
+  await expect(page.getByText("Tidak ada sesi web tersimpan.", { exact: true })).toBeVisible();
+  expect(revoked).toBe(true);
+  await page.locator("summary").filter({ hasText: "Pasang aplikasi" }).click();
+  await expect(page.getByRole("heading", { name: "Aplikasi web", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Menu akun" }).filter({ visible: true }).click();
+  await expect(page.getByRole("menuitem", { name: "Status verifikasi", exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+});
+
+test("pending campus requests remain available in settings and retry failed status loading", async ({ page }) => {
+  await fixtures(page);
+  await page.route("**/api/v1/me", (route) => route.fulfill({ json: { data: { ...user, verified: false, verification_state: "pending", email: "alya_pengujian@students.uin-suska.ac.id" } } }));
+  let fail = true;
+  let sent = false;
+  await page.route("**/api/v1/verification", (route) => {
+    if (route.request().method() === "POST") { sent = true; return route.fulfill({ status: 201, json: { data: { state: "pending" } } }); }
+    return fail ? route.fulfill({ status: 503, json: { message: "Simulated failure" } }) : route.fulfill({ json: { data: sent ? { state: "pending" } : null } });
+  });
+  await page.goto("/settings#account-campus");
+  await expect(page.getByRole("alert").filter({ hasText: "Status pengajuan belum dapat dimuat" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Kirim pengajuan", exact: true })).toHaveCount(0);
+  fail = false;
+  await page.getByRole("alert").getByRole("button", { name: "Coba lagi", exact: true }).click();
+  await page.getByLabel("Jelaskan afiliasimu").fill("Saya anggota kampus pengujian fiktif untuk uji alur pengaturan.");
+  await page.getByRole("button", { name: "Kirim pengajuan", exact: true }).click();
+  await expect(page.getByText("Pengajuan sedang ditinjau. Periksa kembali nanti.", { exact: true })).toBeVisible();
+  expect(sent).toBe(true);
+});
+
 test("messaging supports a split inbox, recipient selection and safe send retry on mobile", async ({ page }) => {
   await fixtures(page);
   const recipient = { ...user, id: 902, name: "Raka Pratama", username: "raka_pengujian" };

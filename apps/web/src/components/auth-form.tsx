@@ -37,7 +37,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       await client.cancelQueries();
       client.clear();
       client.setQueryData(["me"], user);
-      router.push(registerMode ? "/verification" : "/home");
+      router.push(registerMode ? "/settings#account-campus" : "/home");
     } catch (e) {
       if (e instanceof ApiError) {
         Object.entries(e.errors).forEach(([key, value]) =>

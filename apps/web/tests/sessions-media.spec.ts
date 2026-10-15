@@ -20,6 +20,7 @@ test("one browser revokes another session and profile image stays authenticated"
   await login(first);
   await login(second);
   await first.goto("http://localhost:3000/settings");
+  await first.locator("summary").filter({ hasText: "Sesi aktif" }).click();
   await first
     .getByRole("button", { name: "Akhiri sesi", exact: true })
     .first()

@@ -122,7 +122,6 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
         ]
       : []),
     { href: "/profile", label: "Profil", icon: UserRound },
-    { href: "/verification", label: "Verifikasi", icon: ShieldCheck },
     { href: "/settings", label: "Pengaturan", icon: Settings },
     ...(user.can_moderate
       ? [{ href: "/admin/moderation", label: "Moderasi", icon: ShieldCheck }]

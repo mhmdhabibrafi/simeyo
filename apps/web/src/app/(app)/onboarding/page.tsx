@@ -36,7 +36,7 @@ export default function Page() {
     try {
       await api("onboarding", { method: "POST", body: JSON.stringify(values) });
       await client.invalidateQueries({ queryKey: ["me"] });
-      router.push("/verification");
+      router.push("/settings#account-campus");
     } catch (e) {
       setError(
         e instanceof ApiError
@@ -60,7 +60,7 @@ export default function Page() {
         dan disembunyikan secara default.
       </p>
       {!user?.email_verified ? (
-        <Link href="/verification" className="text-sm text-[var(--accent)]">
+        <Link href="/settings#account-campus" className="text-sm text-[var(--accent)]">
           Verifikasi email sebelum melanjutkan →
         </Link>
       ) : catalog.isPending ? (

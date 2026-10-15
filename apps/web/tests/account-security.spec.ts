@@ -91,7 +91,7 @@ test("campus registration remains pending and cannot read the campus feed", asyn
   await page.getByLabel("Kata sandi", { exact: true }).fill("PendingCampusPassword123");
   await page.getByLabel("Ulangi kata sandi", { exact: true }).fill("PendingCampusPassword123");
   await page.getByRole("button", { name: "Buat akun" }).click();
-  await expect(page).toHaveURL(/\/verification$/);
+  await expect(page).toHaveURL(/\/settings#account-campus$/);
   await expect(page.getByRole("button", { name: "Kirim ulang tautan" })).toBeDisabled();
   await expect(page.getByRole("status").filter({hasText: "Layanan verifikasi email belum tersedia"})).toBeVisible();
   expect((await page.request.get("/api/v1/feed", { headers: { Origin: "http://localhost:3000" } })).status()).toBe(403);
