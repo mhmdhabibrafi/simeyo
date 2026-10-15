@@ -6,7 +6,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_DATABASE:?Supply a dedicated database name}
-      POSTGRES_USER: ${DB_USERNAME:?Supply a dedicated database user}
+      # Bootstrap only: create DB_USERNAME as a separate non-superuser before migration.
+      POSTGRES_USER: simeyo_database_admin
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Supply a persistent database password}
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
     volumes:
