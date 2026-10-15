@@ -2,7 +2,9 @@
 
 **Satu kampus. Banyak cerita.**
 
-Latest UI correction: consistent form fields, compact mobile spacing, a full-width composer toolbar and chat sizing that respects navigation. Source 42c3c4d is deployed; [layout evidence and verification limits](docs/testing/layout-2026-10-16.md).
+Latest UI corrections include consistent form fields, compact mobile spacing, a full-width composer toolbar and bounded chat sizing. Earlier verification: [layout evidence](docs/testing/layout-2026-10-16.md).
+
+Latest deployed web source fb94389 includes retry-safe submissions, partial-upload recovery and read-on-open notifications. Settings now group account/campus, appearance, privacy and expandable device/install controls; `/verification` redirects into Settings. Community/Events shortcuts display "Segera hadir". See [posting/settings evidence and limits](docs/testing/posting-flow-2026-10-16.md).
 
 Current locally verified milestone: **v0.3.0 — campus experience**. The Expo/PWA v0.4.0 milestone and v1.0.0 production review remain in progress.
 

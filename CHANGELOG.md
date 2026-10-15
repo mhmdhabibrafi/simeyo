@@ -1,5 +1,11 @@
 # Changelog
 
+- Consolidate verification into account settings with a legacy-route redirect and updated registration/onboarding/notification destinations. Approved users see a compact campus status. Group settings into consistent rows and expandable device/install controls while preserving pending review, privacy and session functionality.
+
+- At the owner's request, mark Community and Events shortcuts in Explore as "Segera hadir" and disable navigation from those cards. Preserve existing module routes, APIs and data; keep Requests active.
+
+- Use existing API retry identities in the shared web post/reply/quote composer. Preserve successful attachments after partial upload failure, offer remaining-file retry/cancel, validate file type/size early and warn before closing unsaved work. Mark opened notifications read and route verification activity to its status page. No dependency or database changes; evidence: docs/testing/posting-flow-2026-10-16.md.
+
 - Correct missing shared form styling, bounded chat viewport sizing, nested navigation selection and mobile feed spacing. Use a mobile composer sheet with one full-width action row; clarify empty conversations and hide irrelevant read controls. Source 42c3c4d deployed; 12 local and 12 public-assets fixture UI checks passed. See docs/testing/layout-2026-10-16.md for scope and pending CI.
 
 - Removed the feed explanation strip and duplicate profile entry in the account menu. Profile remains available through the main desktop/mobile navigation.
