@@ -1,8 +1,10 @@
-FROM php:8.2-fpm-bookworm
-RUN apt-get update && apt-get install -y --no-install-recommends unzip libpq-dev libzip-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev libonig-dev \
+FROM php:8.2-fpm-alpine
+RUN apk upgrade --no-cache \
+    && apk add --no-cache libpq libzip libpng libjpeg-turbo freetype oniguruma \
+    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS postgresql-dev libzip-dev libpng-dev libjpeg-turbo-dev freetype-dev oniguruma-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql mbstring zip gd pcntl opcache \
-    && rm -rf /var/lib/apt/lists/*
+    && apk del .build-deps
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY infrastructure/docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 COPY infrastructure/production/php.ini /usr/local/etc/php/conf.d/production.ini

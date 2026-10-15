@@ -50,6 +50,11 @@ done
 compose exec -T gateway nginx -t
 BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") NODE_EXTRA_CA_CERTS="$state/cert.pem" node infrastructure/scripts/verify-production-stack.mjs
 BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") node infrastructure/scripts/verify-production-realtime.mjs
+compose exec -T api php artisan simeyo:operations-check --probe-queue
+compose stop worker
+if compose exec -T api php artisan simeyo:operations-check --probe-queue --wait=1; then echo 'Stopped worker was incorrectly reported healthy.' >&2; exit 1; fi
+compose up -d worker
+compose exec -T api php artisan simeyo:operations-check --probe-queue
 BENCH_ORIGIN=https://localhost:8443 BENCH_EMAIL=nadia@example.test BENCH_PASSWORD=$(sed -n 's/^DEMO_PASSWORD=//p' "$environment") NODE_EXTRA_CA_CERTS="$state/cert.pem" node infrastructure/scripts/benchmark-local-api.mjs > "$state/api-sample.json"
 cat "$state/api-sample.json"
 compose cp infrastructure/scripts/seed-production-load.php api:/tmp/seed-production-load.php

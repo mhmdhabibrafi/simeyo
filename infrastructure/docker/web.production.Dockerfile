@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS build
+FROM node:24-alpine AS build
 WORKDIR /repo
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
@@ -12,7 +12,10 @@ WORKDIR /repo/apps/web
 ENV NEXT_TELEMETRY_DISABLED=1 BUILD_STANDALONE=true
 RUN npm run build
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:24-alpine AS runtime
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=build --chown=node:node /repo/apps/web/.next/standalone ./
