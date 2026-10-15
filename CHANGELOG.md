@@ -2,6 +2,7 @@
 
 ## Unreleased — v0.4.0 work in progress
 
+- Extend isolated PostgreSQL recovery CI with profile-linked private media archive/content checksums, Laravel encrypted push-device recovery using a retained key, and wrong-key rejection. Production recovery remains a separate acceptance gate.
 - Rename the application to **Simeyo** as confirmed by the owner; update web/native branding, application icons, manifests and API documentation. Preserve database, volume, credential and session identifiers for compatibility.
 - Add a privacy-preserving PWA and Expo native client with scoped authentication, feeds, composer, profiles, activity, messaging, themes and guarded push registration.
 - Add encrypted push-device registration, queued generic notifications/receipt checks and idempotent post retry identities. Push provider tests use mocked HTTP; physical delivery remains untested.
@@ -37,7 +38,4 @@
 - Add API/security tests, real browser workflows and development infrastructure/documentation.
 
 Native-mobile and v1.0.0 releases are not declared.
-# Unreleased continuation
-
-- Extend isolated PostgreSQL recovery CI with profile-linked private media archive/content checksums, Laravel encrypted push-device recovery using a retained key, and wrong-key rejection. Production recovery remains a separate acceptance gate.
 
