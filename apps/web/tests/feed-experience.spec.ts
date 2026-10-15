@@ -97,6 +97,15 @@ async function fixtures(page: Page) {
       return route.fulfill({ json: { data: user } });
     if (url.pathname.endsWith("/realtime"))
       return route.fulfill({ json: { data: { enabled: false } } });
+    if (url.pathname.endsWith("/pulse"))
+      return route.fulfill({ json: { data: {
+        topics: [{ name: "proyekakhir", posts_count: 12 }],
+        posts, explanation: "Cerita terbaru dan interaksi dari kampusmu.",
+      } } });
+    if (url.pathname.endsWith("/search/posts"))
+      return route.fulfill({ json: { data: [post], meta: { next_cursor: null, has_more: false, feed: "search" } } });
+    if (url.pathname.endsWith("/people"))
+      return route.fulfill({ json: { data: [], meta: { next_cursor: null, has_more: false } } });
     if (url.pathname.endsWith("/feed"))
       return route.fulfill({
         json: {
@@ -130,6 +139,32 @@ async function fixtures(page: Page) {
     });
   });
 }
+
+test("explore stays readable across sizes and supports topic search and people", async ({ page }) => {
+  await fixtures(page);
+  await page.goto("/explore");
+  await expect(page.getByRole("heading", { name: "Jelajahi", exact: true })).toBeVisible();
+  await expect(page.locator("article")).toHaveCount(3);
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate((theme) => document.documentElement.dataset.theme = theme, theme);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await expect(page.getByRole("link", { name: "Komunitas", exact: true })).toBeVisible();
+      await page.screenshot({ path: path.resolve(process.cwd(), `../../docs/testing/screenshots/explore-${width}-${theme}.png`), fullPage: true });
+    }
+  }
+  await page.getByRole("button", { name: "#proyekakhir" }).click();
+  await expect(page.getByLabel("Cari cerita atau hashtag")).toHaveValue("#proyekakhir");
+  await expect(page.locator("article")).toHaveCount(1);
+  await page.getByRole("button", { name: "Hapus pencarian" }).click();
+  await expect(page.locator("article")).toHaveCount(3);
+  await page.getByRole("button", { name: "Temukan teman", exact: true }).click();
+  await expect(page.getByLabel("Cari teman kampus")).toBeVisible();
+  await page.getByRole("button", { name: "Cerita kampus", exact: true }).click();
+  await expect(page.getByLabel("Cari cerita atau hashtag")).toBeVisible();
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+});
 
 test("centered feed, compact composer, keyboard tabs and menus work across sizes and themes", async ({
   page,

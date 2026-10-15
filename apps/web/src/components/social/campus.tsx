@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Search, UsersRound, CalendarDays, UserRoundPlus, ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
@@ -59,30 +60,36 @@ export function CampusExplore({
   });
   return (
     <>
-      <header className="border-b border-[var(--border)] p-6">
-        <p className="text-xs text-[var(--muted)]">Campus Pulse</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          Cerita yang menghubungkan kita.
-        </h1>
-        <div className="mt-5 flex flex-wrap gap-4 text-sm">
-          <Link href="/communities">Komunitas →</Link>
-          <Link href="/events">Acara →</Link>
-          <Link href="/requests">Permintaan mengikuti →</Link>
+      <header className="px-5 pb-5 pt-6 sm:px-6">
+        <h1 className="text-xl font-semibold tracking-tight">Jelajahi</h1>
+        <p className="mt-1 text-sm text-[var(--muted)]">Temukan cerita dan teman di kampusmu.</p>
+        <div className="mt-5 grid grid-cols-3 gap-2">
+          {[
+            { href: "/communities", label: "Komunitas", icon: UsersRound },
+            { href: "/events", label: "Acara", icon: CalendarDays },
+            { href: "/requests", label: "Permintaan", icon: UserRoundPlus },
+          ].map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href} className="group flex min-h-16 flex-col items-start justify-center gap-2 rounded-2xl border border-[var(--border)] px-3 py-3 text-xs font-medium transition-colors hover:bg-[var(--soft)] sm:flex-row sm:items-center sm:justify-start sm:text-sm">
+              <Icon size={18} strokeWidth={1.6} className="shrink-0 text-[var(--muted)]" />
+              {label}
+              <ArrowUpRight size={13} className="ml-auto hidden text-[var(--muted)] sm:block" />
+            </Link>
+          ))}
         </div>
       </header>
       <div
-        className="flex gap-5 border-b border-[var(--border)] px-6"
+        className="grid grid-cols-2 border-b border-[var(--border)]"
         aria-label="Jelajahi"
       >
         <button
-          className="min-h-12 text-sm"
+          className={`min-h-12 border-b-2 text-sm font-medium transition-colors ${tab === "pulse" ? "border-[var(--foreground)] text-[var(--foreground)]" : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)]"}`}
           aria-pressed={tab === "pulse"}
           onClick={() => setTab("pulse")}
         >
-          Pulse & cerita
+          Cerita kampus
         </button>
         <button
-          className="min-h-12 text-sm"
+          className={`min-h-12 border-b-2 text-sm font-medium transition-colors ${tab === "people" ? "border-[var(--foreground)] text-[var(--foreground)]" : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)]"}`}
           aria-pressed={tab === "people"}
           onClick={() => setTab("people")}
         >
@@ -94,7 +101,8 @@ export function CampusExplore({
       ) : (
         <>
           <form
-            className="flex gap-2 p-6"
+            role="search"
+            className="mx-5 my-5 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-2 sm:mx-6"
             onSubmit={(e) => {
               e.preventDefault();
               setSearch(term.trim());
@@ -103,15 +111,17 @@ export function CampusExplore({
             <label className="sr-only" htmlFor="campus-search">
               Cari cerita atau hashtag
             </label>
+            <Search size={19} className="ml-2 shrink-0 text-[var(--muted)]" aria-hidden="true" />
             <input
               id="campus-search"
-              className="input min-w-0 flex-1"
+              type="search"
+              className="min-h-10 w-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted)]"
               value={term}
               onChange={(e) => setTerm(e.target.value)}
               placeholder="Cari cerita, #topik…"
               maxLength={80}
             />
-            <Button type="submit">Cari</Button>
+            <Button type="submit" variant="outline" className="min-h-10 px-4 text-xs">Cari</Button>
           </form>
           {search ? (
             <>
@@ -126,6 +136,7 @@ export function CampusExplore({
                   · Hapus pencarian
                 </button>
               </p>
+              {posts.isPending && <p role="status" className="px-6 py-8 text-center text-sm text-[var(--muted)]">Mencari cerita…</p>}
               {posts.data?.pages
                 .flatMap((p) => p.data)
                 .map((p) => (
@@ -150,22 +161,24 @@ export function CampusExplore({
             </>
           ) : (
             <>
+              {pulse.isPending && <p role="status" className="px-6 py-10 text-center text-sm text-[var(--muted)]">Memuat cerita kampus…</p>}
               {pulse.isError && (
-                <p role="alert" className="p-6">
-                  Pulse belum dapat dimuat.
-                </p>
+                <div className="px-6 py-8 text-center">
+                  <p role="alert" className="mb-3 text-sm text-[var(--muted)]">Cerita kampus belum dapat dimuat.</p>
+                  <Button variant="outline" onClick={() => pulse.refetch()}>Coba lagi</Button>
+                </div>
               )}
               {pulse.data && (
                 <>
-                  <section className="px-6 pb-6">
+                  <section className="border-b border-[var(--border)] px-5 pb-5 sm:px-6">
                     <h2 className="text-sm font-semibold">
-                      Sedang dibicarakan
+                      {pulse.data.data.topics.length ? "Sedang dibicarakan" : "Cerita terbaru"}
                     </h2>
-                    <div className="mt-4 flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
                       {pulse.data.data.topics.map((t) => (
                         <button
                           key={t.name}
-                          className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
+                          className="mt-3 rounded-xl border border-[var(--border)] px-3 py-2 text-sm transition-colors hover:bg-[var(--soft)]"
                           onClick={() => {
                             setSearch("#" + t.name);
                             setTerm("#" + t.name);
@@ -178,12 +191,7 @@ export function CampusExplore({
                         </button>
                       ))}
                     </div>
-                    {!pulse.data.data.topics.length && (
-                      <p className="mt-3 text-sm text-[var(--muted)]">
-                        Topik muncul dari cerita kampus, bukan daftar buatan.
-                      </p>
-                    )}
-                    <details className="mt-5 text-xs leading-6 text-[var(--muted)]">
+                    <details className="mt-2 text-xs leading-6 text-[var(--muted)]">
                       <summary className="cursor-pointer">
                         Mengapa cerita ini muncul?
                       </summary>
@@ -194,6 +202,7 @@ export function CampusExplore({
                     const p = postSchema.parse(raw);
                     return <PostCard key={p.id} post={p} />;
                   })}
+                  {!pulse.data.data.posts.length && <p className="px-6 py-12 text-center text-sm text-[var(--muted)]">Belum ada cerita. Mulai percakapan pertama di kampusmu.</p>}
                 </>
               )}
             </>
