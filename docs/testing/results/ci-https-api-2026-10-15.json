@@ -1,0 +1,66 @@
+{
+  "scope": "Bounded loopback read sample; not production capacity certification",
+  "requests": 80,
+  "concurrency": 4,
+  "seconds": 1.62,
+  "requests_per_second": 49.48,
+  "token_revoked": true,
+  "failed": 0,
+  "results": [
+    {
+      "path": "health",
+      "requests": 16,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 23,
+      "p95_ms": 291,
+      "max_ms": 291
+    },
+    {
+      "path": "feed?feed=campus&limit=20",
+      "requests": 16,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 55,
+      "p95_ms": 179,
+      "max_ms": 179
+    },
+    {
+      "path": "feed?feed=following&limit=20",
+      "requests": 16,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 65,
+      "p95_ms": 314,
+      "max_ms": 314
+    },
+    {
+      "path": "pulse",
+      "requests": 16,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 62,
+      "p95_ms": 314,
+      "max_ms": 314
+    },
+    {
+      "path": "notifications",
+      "requests": 16,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "p50_ms": 49,
+      "p95_ms": 301,
+      "max_ms": 301
+    }
+  ]
+}

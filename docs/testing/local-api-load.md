@@ -7,3 +7,10 @@ Defaults: 80 requests, four concurrent workers, ten-second request timeouts. `BE
 The JSON report contains actual duration, throughput, HTTP status/error counts and per-endpoint p50/p95/max response time. Non-200 responses and unconfirmed token revocation produce a failing exit code. Do not disable application rate limits to make this check pass.
 
 This is a reproducible local smoke/load sample, not a production capacity claim. The PHP local HTTP server serializes requests; PostgreSQL data size, cold/warm caches and concurrent manual use affect the result. Production load acceptance still requires a representative dataset, PHP-FPM/real worker topology, explicit latency/error objectives, sustained traffic, realtime/queue/media tests and resource monitoring in an isolated staging environment.
+
+## Recorded runs, 2026-10-15
+
+- [Windows local PHP server](results/local-api-2026-10-15.json): 80 requests, concurrency four, zero failures, 53.08 seconds, 1.51 requests/second, endpoint p95 2968–3689 ms. The scoped benchmark token was revoked. The database contained existing fictional test feeds.
+- [Isolated HTTPS/FPM CI stack](results/ci-https-api-2026-10-15.json): 80 requests, concurrency four, zero failures, 1.62 seconds, 49.48 requests/second, endpoint p95 179–314 ms. The scoped token was revoked. This run used a small, freshly seeded CI database and verified TLS trust with an ephemeral test certificate. [Source run](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38689917319).
+
+These datasets, hosts and HTTP server topologies differ. Do not report their ratio as an application optimization gain or extrapolate either result to real campus traffic.
