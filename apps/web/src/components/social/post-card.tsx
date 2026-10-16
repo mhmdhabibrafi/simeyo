@@ -12,12 +12,11 @@ import {
   MoreHorizontal,
   BadgeCheck,
   LockKeyhole,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  type Post,
-  type Media,
-} from "../../../../../packages/api-contracts/src/social";
+import { type Post } from "../../../../../packages/api-contracts/src/social";
 import { useInteraction } from "@/lib/social";
 import { api } from "@/lib/api";
 import { Avatar } from "@/components/app-shell";
@@ -77,7 +76,8 @@ export function PostCard({
   const [dialog, setDialog] = useState<
     "edit" | "quote" | "report" | "delete" | "media" | null
   >(null);
-  const [image, setImage] = useState<Media | null>(null);
+  const [imageIndex, setImageIndex] = useState(0);
+  const image = post.media[imageIndex];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const time = new Date(post.created_at);
@@ -252,13 +252,14 @@ export function PostCard({
               aria-label="Galeri gambar cerita"
               className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain rounded-2xl pb-1"
             >
-              {post.media.map((m) => (
+              {post.media.map((m, index) => (
                 <button
                   key={m.id}
                   className={`shrink-0 snap-start overflow-hidden rounded-2xl border border-[var(--border)] ${post.media.length > 1 ? "w-[85%]" : "w-full"}`}
                   aria-label="Lihat gambar cerita"
+                  title={`Gambar ${index + 1} dari ${post.media.length}`}
                   onClick={() => {
-                    setImage(m);
+                    setImageIndex(index);
                     open("media");
                   }}
                 >
@@ -392,15 +393,18 @@ export function PostCard({
                 ? "Laporkan cerita"
                 : dialog === "delete"
                   ? "Hapus cerita?"
-                  : "Gambar cerita"
+                  : `Gambar cerita · ${imageIndex + 1} dari ${post.media.length}`
         }
         description={
           dialog === "delete"
             ? "Cerita ini dan akses balasan/kutipan yang bergantung padanya akan dihapus dari tampilan."
             : dialog === "report"
               ? "Bantu menjaga percakapan kampus tetap nyaman."
-              : "Bagikan cerita dengan komunitas kampus yang terverifikasi."
+              : dialog === "media"
+                ? `Lampiran cerita ${post.author.name}. Gunakan tombol panah untuk berpindah gambar.`
+                : "Bagikan cerita dengan komunitas kampus yang terverifikasi."
         }
+        className={dialog === "media" ? "max-w-4xl" : undefined}
       >
         {dialog === "edit" && (
           <Composer
@@ -415,14 +419,65 @@ export function PostCard({
           <Composer quoteId={post.id} onDone={() => setDialog(null)} />
         )}{" "}
         {dialog === "media" && image && (
-          <Image
-            unoptimized
-            src={image.url}
-            alt="Gambar cerita diperbesar"
-            width={image.width}
-            height={image.height}
-            className="max-h-[60dvh] w-full rounded-xl object-contain"
-          />
+          <div
+            onKeyDown={(event) => {
+              if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                event.preventDefault();
+                setImageIndex((index) =>
+                  Math.max(
+                    0,
+                    Math.min(
+                      post.media.length - 1,
+                      index + (event.key === "ArrowRight" ? 1 : -1),
+                    ),
+                  ),
+                );
+              }
+            }}
+          >
+            <div
+              tabIndex={0}
+              aria-label="Gambar diperbesar; gunakan panah kiri dan kanan"
+              className="rounded-xl bg-[var(--soft)]"
+            >
+              <Image
+                unoptimized
+                src={image.url}
+                alt={`Gambar cerita diperbesar ${imageIndex + 1} dari ${post.media.length}`}
+                width={image.width}
+                height={image.height}
+                className="max-h-[60dvh] w-full rounded-xl object-contain"
+              />
+            </div>
+            {post.media.length > 1 && (
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <Button
+                  variant="outline"
+                  aria-label="Gambar sebelumnya"
+                  disabled={imageIndex === 0}
+                  onClick={() => setImageIndex((index) => index - 1)}
+                >
+                  <ChevronLeft size={18} />{" "}
+                  <span className="hidden sm:inline">Sebelumnya</span>
+                </Button>
+                <span
+                  role="status"
+                  className="text-sm tabular-nums text-[var(--muted)]"
+                >
+                  {imageIndex + 1} / {post.media.length}
+                </span>
+                <Button
+                  variant="outline"
+                  aria-label="Gambar berikutnya"
+                  disabled={imageIndex === post.media.length - 1}
+                  onClick={() => setImageIndex((index) => index + 1)}
+                >
+                  <span className="hidden sm:inline">Berikutnya</span>{" "}
+                  <ChevronRight size={18} />
+                </Button>
+              </div>
+            )}
+          </div>
         )}
         {dialog === "report" && (
           <form onSubmit={report} className="space-y-4">

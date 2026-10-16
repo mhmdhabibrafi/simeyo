@@ -224,6 +224,28 @@ test("gallery uploads accept six attachments including a file above the previous
   await expect(gallery.getByRole("button", { name: "Lihat gambar cerita", exact: true })).toHaveCount(6);
   expect(await gallery.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await gallery.getByRole("button").first().click();
+  const viewer = page.getByRole("dialog", { name: "Gambar cerita · 1 dari 6", exact: true });
+  await expect(viewer.getByRole("button", { name: "Gambar sebelumnya" })).toBeDisabled();
+  await viewer.getByRole("button", { name: "Gambar berikutnya" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "2 / 6" })).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByAltText("Gambar cerita diperbesar 3 dari 6")).toBeVisible();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByAltText("Gambar cerita diperbesar 2 dari 6")).toBeVisible();
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/gallery-viewer-mobile.png"), animations: "disabled" });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(gallery.getByRole("button").first()).toBeFocused();
+  await page.setViewportSize({ width: 320, height: 780 });
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+  await gallery.getByRole("button").last().click();
+  await expect(page.getByRole("button", { name: "Gambar berikutnya" })).toBeDisabled();
+  await waitForAnimations(page);
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.getByRole("dialog").evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.keyboard.press("Escape");
 });
 
 test("settings groups account and campus, hides completed verification steps and keeps device controls usable", async ({ page }) => {

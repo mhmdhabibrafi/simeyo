@@ -1,5 +1,7 @@
 # Changelog
 
+- Refine the web photo viewer with attachment navigation, position counts, keyboard controls and compact mobile actions. Restore keyboard focus to connected dialog openers. See docs/testing/gallery-2026-10-16.md for actual verification.
+
 - Add API-backed sent/read chat checks with bounded read cursors and private realtime invalidation; automatically read loaded Activity entries through an owned/visible batch endpoint. Extend shared/native contracts and clients.
 - Offer PWA installation when the browser reports availability, with session-level postponement. Remove four-image/application 4 MB quotas, raise release transport uploads to 64 MB, retain image validation and use bounded composer previews/swipe galleries. Add route/loading/dialog/button transitions respecting reduced motion. Evidence: docs/testing/experience-2026-10-16.md.
 

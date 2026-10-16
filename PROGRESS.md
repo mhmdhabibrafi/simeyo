@@ -162,3 +162,7 @@ UI layout correction: confirmed missing .input styling against public assets wit
 
 Final layout checkpoint, 2026-10-16: source 42c3c4d is deployed on web/gateway as layout-42c3c4d; API/worker/Reverb remain maturity-578e8af. Composer actions span the sheet and stay aligned at 320/390px; empty chat has an introduction without a read button. Final local UI 12 passed (34.3 seconds), public-assets UI 12 passed (40.9 seconds), lint/type checking/build passed, and fresh public screenshots were inspected. Internal trusted TLS/security/health/WSS checks passed. No migrations, seeding or production account mutation. Earlier 671f921 standard CI and 1d16c60 real-API privacy/messaging CI succeeded; exact-head standard 38774732396 and browser 38774751829 are still running at this checkpoint. Real campus account/inbox and physical-device acceptance remain BELUM DIUJI. See docs/testing/layout-2026-10-16.md.
 
+# Photo viewer follow-up, 2026-10-16
+
+Web gallery navigation and shared dialog focus restoration are implemented. Lint, production build and all 20 local fixture UI cases passed (1.0 minute), including 320px dark-theme accessibility and keyboard navigation. Deployment/public verification remains pending at this checkpoint. See docs/testing/gallery-2026-10-16.md.
+
