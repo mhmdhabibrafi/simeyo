@@ -16,3 +16,19 @@ Web lint, type checking and production build passed. Initial fixture regression 
 Earlier gallery-source standard CI 38896544145 is now confirmed successful across all four jobs, including the production-stack job that was pending in its earlier checkpoint.
 
 The corrected 25-case local presentation run passed (1.7 minutes), including actual draft reload/audience recovery, saved-close/discard, expired/account/reply isolation, blocked-storage feedback, unchanged retry IDs across reload, logout cleanup, new-story polling/manual reveal, offline cached content and browser Back with its selected feed/reading position. Fresh mobile draft recovery was visually inspected and passed WCAG AA checks. The final unload-warning refinement is undergoing a new regression with a stronger stale-cache Back assertion.
+
+Final source **002b3c8** passed **26 local fixture UI cases (1.3 minutes)** after the unload refinement and a cached-campus/reply isolation guard. The strengthened Back test advances beyond the 15-second main-query stale window, verifies the selected Following tab and reading position, and verifies no feed fetch on remount. A saved text-only reload causes zero unload prompts. Draft-recovery and new-story screenshots were visually inspected. Lint and the production build passed on this source; TypeScript checking also runs within the build.
+
+Standard CI [38900237577](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38900237577) and real-API settings/session/social browser regression [38900304106](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38900304106) were started on 002b3c8. Their results are pending at this checkpoint.
+
+## Deployment acceptance
+
+Both release image types built successfully. Web is active as `feed-drafts-002b3c8`; only web/gateway were recreated. API/worker/Reverb retain `experience-e4bbb57`; PostgreSQL and media volumes, application keys and Firebase/Resend configuration were preserved. A private environment rollback snapshot and earlier images were retained. No migration, seed or production-account mutation was performed.
+
+Trusted internal TLS, public/private route security responses, health checks and an actual WSS handshake passed after recreation. The worker queue probe passed with zero ready/failed jobs. **All 26 public-assets fixture cases passed (2.2 minutes)**, using fictional API data against the deployed JavaScript/CSS. The fresh mobile draft-recovery screenshot was visually inspected. This is not production-account or physical-device acceptance.
+
+CI API, web and mobile jobs have passed; the production-stack job and targeted real-API browser run remain in progress at this checkpoint. Installed-device behavior, real campus Google/email acceptance and v1 recovery/push gates remain outside this change. Drafts contain local text/audience only, not durable photo uploads or cross-device synchronization.
+
+## Final CI result
+
+Both exact-source runs completed successfully: standard CI **38900237577** passed all four jobs (API, web, mobile and production-stack); targeted real-API browser run **38900304106** passed all **four cases** across protected accessibility (9.0 seconds), device-session/media (5.3 seconds) and social/privacy (two cases, 18.2 seconds). These use the isolated PostgreSQL/API/realtime environment, not production accounts. This is a successful targeted regression, not a new complete full-browser workflow. Deployment runtime remains 002b3c8; final documentation-only commits need no application rebuild.
