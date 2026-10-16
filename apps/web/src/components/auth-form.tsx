@@ -78,11 +78,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </p>
           <FirebaseSignIn />
           <form onSubmit={submit} className="space-y-5" noValidate>
-            {registerMode && <div className="rounded-xl border border-[var(--border)] p-4 text-sm leading-6">
+            {registerMode && (policy.isPending || policy.isError || !policy.data?.registration_enabled || !policy.data?.email_delivery_enabled) && <div className="rounded-xl border border-[var(--border)] p-4 text-sm leading-6">
               {policy.isPending ? <p role="status">Memeriksa ketersediaan pendaftaran…</p> : policy.isError ? <><p role="alert">Informasi pendaftaran belum dapat dimuat.</p><button type="button" onClick={() => policy.refetch()} className="mt-2 font-semibold underline">Coba lagi</button></> : <>
                 {!policy.data.registration_enabled && <p role="status">Pendaftaran belum dibuka. Kamu tetap dapat masuk jika sudah memiliki akun.</p>}
                 {policy.data.registration_enabled && !policy.data.email_delivery_enabled && <p role="status">Email verifikasi belum tersedia. Akun baru tetap belum terverifikasi dan belum dapat mengakses percakapan kampus.</p>}
-                {!!policy.data.email_domains.length && <p className="mt-2 text-[var(--muted)]">Email kampus: {policy.data.email_domains.map(domain => `@${domain}`).join(" atau ")}. Domain yang cocok tidak otomatis memverifikasi akun.</p>}
               </>}
             </div>}
             {(registerMode

@@ -50,11 +50,11 @@ test("password rotation preserves current web login and revokes another browser 
   } finally { await other.close(); await native.dispose(); }
 });
 
-test("unavailable registration and recovery explain availability and permitted domains", async ({ page }) => {
+test("unavailable registration and recovery explain availability without domain guidance", async ({ page }) => {
   await page.route("**/api/v1/auth/options", route => route.fulfill({ json: { data: { registration_enabled: false, email_delivery_enabled: false, email_domains: ["students.uin-suska.ac.id", "uin-suska.ac.id"] } } }));
   await page.goto("/register");
   await expect(page.getByRole("status")).toContainText("Pendaftaran belum dibuka");
-  await expect(page.getByText(/Email kampus:/)).toContainText("@students.uin-suska.ac.id");
+  await expect(page.getByText(/Email kampus:/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Buat akun" })).toBeDisabled();
   await page.goto("/forgot-password");
   await expect(page.getByRole("status")).toContainText("Pemulihan melalui email belum tersedia");

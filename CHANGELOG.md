@@ -1,5 +1,7 @@
 # Changelog
 
+- Remove redundant domain guidance from registration and avoid an empty information card when registration/email are available. Keep actual availability/error feedback and server-side verification rules.
+
 - Refine the shared login/registration footer with a subtle divider, centered copyright with automatic year and compact independent-platform attribution. Lint/build and focused responsive browser acceptance passed; desktop/mobile light/dark screenshots inspected.
 
 - Center the sign-in heading/subtitle and Google button content, add the Google mark and remove redundant campus-domain guidance. Shared Google component also updates Settings. Web lint/build and focused browser acceptance passed at 390/1440 pixels in both themes; screenshots inspected. Authentication/domain verification logic is unchanged.
