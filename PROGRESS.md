@@ -164,5 +164,5 @@ Final layout checkpoint, 2026-10-16: source 42c3c4d is deployed on web/gateway a
 
 # Photo viewer follow-up, 2026-10-16
 
-Web gallery navigation and shared dialog focus restoration are implemented. Lint, production build and all 20 local fixture UI cases passed (1.0 minute), including 320px dark-theme accessibility and keyboard navigation. Deployment/public verification remains pending at this checkpoint. See docs/testing/gallery-2026-10-16.md.
+Web gallery navigation and shared dialog focus restoration are deployed as gallery-5d4c9b2 on web/gateway; API/worker/Reverb remain experience-e4bbb57. Lint, production build, all 20 local fixture UI cases (1.0 minute) and 20 public-assets cases (1.2 minutes) passed, including 320px dark-theme accessibility and keyboard navigation. Trusted internal TLS/security/health/WSS and queue probe passed. Standard CI 38896544145 has passed API/web/mobile while production-stack remains pending. See docs/testing/gallery-2026-10-16.md; real-account/native acceptance remains separate.
 

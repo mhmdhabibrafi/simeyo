@@ -2,6 +2,8 @@
 
 **Satu kampus. Banyak cerita.**
 
+Photo viewer update: previous/next attachment controls, position counts, keyboard navigation and restored dialog focus. See [verification and deployment](docs/testing/gallery-2026-10-16.md).
+
 Experience update: sent/read chat checks, automatic Activity read, an install offer when the browser supports it, flexible image counts, swipe galleries and reduced-motion-aware loading/transitions. Transport uploads support 64 MB per file; image format/dimension and rate protections remain. Exact implementation and test scope: [experience evidence](docs/testing/experience-2026-10-16.md).
 
 Latest UI corrections include consistent form fields, compact mobile spacing, a full-width composer toolbar and bounded chat sizing. Earlier verification: [layout evidence](docs/testing/layout-2026-10-16.md).
