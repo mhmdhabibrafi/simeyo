@@ -186,7 +186,7 @@ test("DM recipient discovery omits empty queries, retries, pages and searches ex
 
 test("explore empty stories offer account search and campus settings keep long identity readable", async ({ page }) => {
   await fixtures(page);
-  const email = "12450310985@students.uin-suska.ac.id";
+  const email = "alyaputri2026@students.uin-suska.ac.id";
   await page.route("**/api/v1/me", route => route.fulfill({ json: { data: { ...user, email } } }));
   await page.route("**/api/v1/search/posts?*", route => route.fulfill({ json: { data: [], meta: { next_cursor: null, has_more: false, feed: "search" } } }));
   for (const theme of ["light", "dark"]) {
@@ -284,6 +284,7 @@ test("DM shows sending and retry states, keeps new text and fits a reduced mobil
   await page.getByLabel("Tulis pesan", { exact: true }).fill("Pesan yang dicoba ulang");
   await page.getByRole("button", { name: "Kirim pesan", exact: true }).click();
   await expect(page.locator("[data-pending-message]").getByRole("status")).toHaveText("Mengirim…");
+  await expect.poll(() => typeof release).toBe("function");
   release!();
   await expect(page.getByRole("button", { name: "Coba kirim lagi", exact: true })).toBeVisible();
   await page.getByLabel("Tulis pesan", { exact: true }).fill("Draf pesan berikutnya");

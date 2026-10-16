@@ -1,5 +1,8 @@
 # Simeyo
 
+Latest DM recipient fix and Explore/settings polish: [verified deployment](docs/testing/discovery-2026-10-16.md).
+
+
 Latest activity/search/DM acceptance: [2026-10-16 report](docs/testing/activity-search-messaging-2026-10-16.md). Physical-device keyboard and OS installation remain untested; browser acceptance is recorded separately.
 
 
