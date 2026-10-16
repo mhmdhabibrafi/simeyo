@@ -1,5 +1,7 @@
 # Changelog
 
+- Align the administrator-approval browser assertion with the compact campus status in Settings, including its destination and removal of completed verification controls. Give the disposable browser CI PostgreSQL health probe an explicit database/user. Application runtime and production images are unchanged; actual rerun evidence is recorded in docs/testing/posting-flow-2026-10-16.md.
+
 - Consolidate verification into account settings with a legacy-route redirect and updated registration/onboarding/notification destinations. Approved users see a compact campus status. Group settings into consistent rows and expandable device/install controls while preserving pending review, privacy and session functionality.
 
 - At the owner's request, mark Community and Events shortcuts in Explore as "Segera hadir" and disable navigation from those cards. Preserve existing module routes, APIs and data; keep Requests active.
