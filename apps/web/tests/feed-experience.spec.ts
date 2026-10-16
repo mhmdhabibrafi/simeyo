@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import path from "node:path";
+import { waitForAnimations } from "./ui-ready";
 
 // Presentation and failure-state fixtures only; real API coverage remains in social.spec.ts.
 const user = {
@@ -257,6 +258,13 @@ test("settings groups account and campus, hides completed verification steps and
   await expect(page.getByRole("menuitem", { name: "Status verifikasi", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await page.evaluate(() => document.documentElement.dataset.theme = "light");
+  await page.getByRole("button", { name: "Menu akun" }).filter({ visible: true }).click();
+  await page.getByRole("menuitem", { name: "Keluar", exact: true }).click();
+  await waitForAnimations(page);
+  await expect(page.getByRole("dialog")).toHaveCSS("opacity", "1");
+  expect((await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await page.keyboard.press("Escape");
 });
 
 test("pending campus requests remain available in settings and retry failed status loading", async ({ page }) => {

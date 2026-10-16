@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { waitForAnimations } from "./ui-ready";
 const root = path.resolve(__dirname, "../../..");
 const password = readFileSync(path.join(root, "apps/api/.env"), "utf8")
   .match(/^DEMO_PASSWORD=(.+)$/m)?.[1]
@@ -23,6 +24,7 @@ test("authenticated screens, menus and privacy popover are accessible", async ({
   ]) {
     await page.goto(route);
     await page.getByRole("heading", { level: 1 }).waitFor();
+    await waitForAnimations(page);
     const result = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
       .analyze();
@@ -61,6 +63,8 @@ test("authenticated screens, menus and privacy popover are accessible", async ({
   await expect(page.getByRole("menu")).not.toBeVisible();
   await page.getByRole("button", { name: "Menu akun" }).filter({ visible: true }).click();
   await page.getByRole("menuitem", { name: "Keluar", exact: true }).click();
+  await waitForAnimations(page);
+  await expect(page.getByRole("dialog")).toHaveCSS("opacity", "1");
   const dialog = await new AxeBuilder({ page })
     .include('[role="dialog"]')
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
