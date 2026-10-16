@@ -1,8 +1,16 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, SquarePen, Send, ArrowLeft, SlidersHorizontal } from "lucide-react";
+import {
+  Search,
+  SquarePen,
+  Send,
+  ArrowLeft,
+  SlidersHorizontal,
+  Check,
+  CheckCheck,
+} from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { userSchema } from "../../../../../packages/api-contracts/src";
 import {
@@ -13,6 +21,7 @@ import {
 } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useMe } from "@/lib/auth";
+import { LoadingState } from "@/components/ui/loading-state";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/app-shell";
 import { useToast } from "@/components/providers";
@@ -57,33 +66,63 @@ export function Conversations({ selectedId }: { selectedId?: number }) {
     getNextPageParam: (p) => p.next_cursor,
     refetchInterval: 20000,
   });
-  const conversations = q.data?.pages.flatMap((p) => p.data).filter((c) =>
-    (!unread || c.unread_count > 0) &&
-    `${c.user.name} ${c.user.username}`.toLocaleLowerCase("id").includes(search.trim().toLocaleLowerCase("id")),
-  ) ?? [];
+  const conversations =
+    q.data?.pages
+      .flatMap((p) => p.data)
+      .filter(
+        (c) =>
+          (!unread || c.unread_count > 0) &&
+          `${c.user.name} ${c.user.username}`
+            .toLocaleLowerCase("id")
+            .includes(search.trim().toLocaleLowerCase("id")),
+      ) ?? [];
   return (
     <div className="message-workspace">
       <h1 className="sr-only">Pesan pribadi</h1>
-      <section aria-label="Daftar percakapan" className={`message-list min-w-0 ${selectedId ? "hidden lg:block" : ""}`}>
+      <section
+        aria-label="Daftar percakapan"
+        className={`message-list min-w-0 ${selectedId ? "hidden lg:block" : ""}`}
+      >
         <header className="px-5 pb-4 pt-6">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-xl font-semibold tracking-tight">Pesan</h2>
-            <button className="icon-button" aria-label="Buat pesan baru" onClick={() => setComposing(true)}><SquarePen size={21} /></button>
+            <button
+              className="icon-button"
+              aria-label="Buat pesan baru"
+              onClick={() => setComposing(true)}
+            >
+              <SquarePen size={21} />
+            </button>
           </div>
           <label className="flex items-center gap-2 rounded-full bg-[var(--soft)] px-4 py-2.5">
             <Search size={17} className="shrink-0 text-[var(--muted)]" />
             <span className="sr-only">Cari percakapan</span>
-            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari percakapan" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari percakapan"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            />
           </label>
           <div className="mt-4 flex gap-2" aria-label="Filter pesan">
-            {[{ label: "Kotak masuk", value: false }, { label: "Belum dibaca", value: true }].map((filter) => (
-              <button key={filter.label} aria-pressed={unread === filter.value} onClick={() => setUnread(filter.value)} className={`min-h-9 rounded-full border border-[var(--border)] px-4 text-xs font-medium transition-colors ${unread === filter.value ? "bg-[var(--soft)]" : "text-[var(--muted)] hover:bg-[var(--soft)]"}`}>{filter.label}</button>
+            {[
+              { label: "Kotak masuk", value: false },
+              { label: "Belum dibaca", value: true },
+            ].map((filter) => (
+              <button
+                key={filter.label}
+                aria-pressed={unread === filter.value}
+                onClick={() => setUnread(filter.value)}
+                className={`min-h-9 rounded-full border border-[var(--border)] px-4 text-xs font-medium transition-colors ${unread === filter.value ? "bg-[var(--soft)]" : "text-[var(--muted)] hover:bg-[var(--soft)]"}`}
+              >
+                {filter.label}
+              </button>
             ))}
           </div>
         </header>
-      <div>
-        {conversations
-          .map((c) => (
+        <div>
+          {conversations.map((c) => (
             <Link
               key={c.id}
               href={`/messages/${c.id}`}
@@ -93,51 +132,86 @@ export function Conversations({ selectedId }: { selectedId?: number }) {
               <Avatar name={c.user.name} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className={`truncate text-sm ${c.unread_count ? "font-semibold" : "font-medium"}`}>{c.user.name}</p>
-                  {c.last_message && <time dateTime={c.last_message.created_at} className="shrink-0 text-[10px] text-[var(--muted)]">{new Date(c.last_message.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</time>}
+                  <p
+                    className={`truncate text-sm ${c.unread_count ? "font-semibold" : "font-medium"}`}
+                  >
+                    {c.user.name}
+                  </p>
+                  {c.last_message && (
+                    <time
+                      dateTime={c.last_message.created_at}
+                      className="shrink-0 text-[10px] text-[var(--muted)]"
+                    >
+                      {new Date(c.last_message.created_at).toLocaleDateString(
+                        "id-ID",
+                        { day: "numeric", month: "short" },
+                      )}
+                    </time>
+                  )}
                 </div>
                 <p className="mt-1 truncate text-xs text-[var(--muted)]">
-                  {c.last_message ? `${c.last_message.sender_id === me?.id ? "Kamu: " : ""}${c.last_message.body}` : `@${c.user.username}`}
+                  {c.last_message
+                    ? `${c.last_message.sender_id === me?.id ? "Kamu: " : ""}${c.last_message.body}`
+                    : `@${c.user.username}`}
                 </p>
               </div>
               {c.unread_count > 0 && (
-                <span aria-label={`${c.unread_count} belum dibaca`} className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 text-[10px] font-semibold text-[var(--accent-foreground)]">
+                <span
+                  role="img"
+                  aria-label={`${c.unread_count} belum dibaca`}
+                  className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 text-[10px] font-semibold text-[var(--accent-foreground)]"
+                >
                   {c.unread_count > 99 ? "99+" : c.unread_count}
                 </span>
               )}
             </Link>
           ))}
-      </div>
-      <div className="p-6">
-        {q.isPending && <p role="status">Memuat percakapan…</p>}
-        {q.isError && (
-          <p role="alert">
-            Pesan belum dapat dimuat.{" "}
-            <button onClick={() => q.refetch()}>Coba lagi</button>
-          </p>
-        )}
-        {q.data && !conversations.length && (
-          <p className="py-5 text-center text-sm leading-6 text-[var(--muted)]">
-            {search ? "Tidak ada percakapan yang cocok." : unread ? "Semua pesan sudah dibaca." : "Belum ada percakapan."}
-          </p>
-        )}
-        {q.hasNextPage && (
-          <Button
-            variant="outline"
-            onClick={() => q.fetchNextPage()}
-            disabled={q.isFetchingNextPage}
-          >
-            Percakapan lainnya
-          </Button>
-        )}
-      </div>
+        </div>
+        <div className="p-6">
+          {q.isPending && <LoadingState label="Memuat percakapan…" />}
+          {q.isError && (
+            <p role="alert">
+              Pesan belum dapat dimuat.{" "}
+              <button onClick={() => q.refetch()}>Coba lagi</button>
+            </p>
+          )}
+          {q.data && !conversations.length && (
+            <p className="py-5 text-center text-sm leading-6 text-[var(--muted)]">
+              {search
+                ? "Tidak ada percakapan yang cocok."
+                : unread
+                  ? "Semua pesan sudah dibaca."
+                  : "Belum ada percakapan."}
+            </p>
+          )}
+          {q.hasNextPage && (
+            <Button
+              variant="outline"
+              onClick={() => q.fetchNextPage()}
+              disabled={q.isFetchingNextPage}
+            >
+              Percakapan lainnya
+            </Button>
+          )}
+        </div>
       </section>
-      <section aria-label="Percakapan" className={`message-detail min-w-0 ${selectedId ? "" : "hidden lg:flex"}`}>
-        {selectedId ? <MessageThread key={selectedId} id={selectedId} /> : (
+      <section
+        aria-label="Percakapan"
+        className={`message-detail min-w-0 ${selectedId ? "" : "hidden lg:flex"}`}
+      >
+        {selectedId ? (
+          <MessageThread key={selectedId} id={selectedId} />
+        ) : (
           <div className="flex flex-1 flex-col items-center justify-center px-8 py-16 text-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--soft)] text-[var(--muted)]"><Send size={32} strokeWidth={1.4} /></div>
-            <h2 className="text-lg font-semibold">Percakapan dimulai dari sini</h2>
-            <p className="mb-6 mt-2 max-w-xs text-sm leading-6 text-[var(--muted)]">Sapa teman kampus dan lanjutkan cerita lewat pesan pribadi.</p>
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--soft)] text-[var(--muted)]">
+              <Send size={32} strokeWidth={1.4} />
+            </div>
+            <h2 className="text-lg font-semibold">
+              Percakapan dimulai dari sini
+            </h2>
+            <p className="mb-6 mt-2 max-w-xs text-sm leading-6 text-[var(--muted)]">
+              Sapa teman kampus dan lanjutkan cerita lewat pesan pribadi.
+            </p>
             <Button onClick={() => setComposing(true)}>Pesan baru</Button>
           </div>
         )}
@@ -146,7 +220,13 @@ export function Conversations({ selectedId }: { selectedId?: number }) {
     </div>
   );
 }
-function NewMessage({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+function NewMessage({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const [term, setTerm] = useState("");
   const [search, setSearch] = useState("");
   const { data: me } = useMe();
@@ -154,34 +234,101 @@ function NewMessage({ open, onOpenChange }: { open: boolean; onOpenChange: (open
   const client = useQueryClient();
   const toast = useToast();
   const q = useQuery({
-    queryKey: ["message-recipients", search], enabled: open,
+    queryKey: ["message-recipients", search],
+    enabled: open,
     queryFn: async () => {
-      const r = await api<{ data: unknown[] }>(`people?q=${encodeURIComponent(search)}`);
-      return r.data.map((person) => userSchema.parse(person)).filter((person) => person.id !== me?.id);
+      const r = await api<{ data: unknown[] }>(
+        `people?q=${encodeURIComponent(search)}`,
+      );
+      return r.data
+        .map((person) => userSchema.parse(person))
+        .filter((person) => person.id !== me?.id);
     },
   });
   const start = useMutation({
-    mutationFn: (userId: number) => api<{ data: { id: number } }>("conversations", { method: "POST", body: JSON.stringify({ user_id: userId }) }),
-    onSuccess: (r) => { client.invalidateQueries({ queryKey: ["conversations"] }); onOpenChange(false); router.push(`/messages/${r.data.id}`); },
+    mutationFn: (userId: number) =>
+      api<{ data: { id: number } }>("conversations", {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId }),
+      }),
+    onSuccess: (r) => {
+      client.invalidateQueries({ queryKey: ["conversations"] });
+      onOpenChange(false);
+      router.push(`/messages/${r.data.id}`);
+    },
     onError: (e) => toast(e.message),
   });
-  return <ConfirmDialog open={open} onOpenChange={(value) => { if (!start.isPending) onOpenChange(value); }} title="Pesan baru" description="Pilih teman kampus untuk memulai percakapan.">
-    <form className="mb-3 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-2" onSubmit={(e) => { e.preventDefault(); setSearch(term.trim()); }}>
-      <Search size={18} className="ml-2 shrink-0 text-[var(--muted)]" />
-      <input aria-label="Cari penerima pesan" type="search" value={term} onChange={(e) => setTerm(e.target.value)} maxLength={80} placeholder="Nama atau username" className="min-h-10 min-w-0 flex-1 bg-transparent text-sm outline-none" />
-      <Button type="submit" variant="ghost" className="px-3">Cari</Button>
-    </form>
-    {q.isPending && <p role="status" className="py-6 text-sm text-[var(--muted)]">Mencari teman…</p>}
-    {q.isError && <p role="alert" className="py-6 text-sm">Daftar teman belum tersedia. <button className="underline" onClick={() => q.refetch()}>Coba lagi</button></p>}
-    <div className="max-h-80 space-y-1 overflow-y-auto">
-      {q.data?.map((person) => <button key={person.id} disabled={start.isPending} onClick={() => start.mutate(person.id)} className="flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-[var(--soft)] disabled:opacity-50">
-        <Avatar name={person.name} url={person.avatar_url} />
-        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{person.name}</span><span className="block truncate text-xs text-[var(--muted)]">@{person.username}</span></span>
-        <Send size={17} className="text-[var(--muted)]" />
-      </button>)}
-    </div>
-    {q.data?.length === 0 && <p className="py-8 text-center text-sm text-[var(--muted)]">Tidak ada teman yang cocok.</p>}
-  </ConfirmDialog>;
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!start.isPending) onOpenChange(value);
+      }}
+      title="Pesan baru"
+      description="Pilih teman kampus untuk memulai percakapan."
+    >
+      <form
+        className="mb-3 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSearch(term.trim());
+        }}
+      >
+        <Search size={18} className="ml-2 shrink-0 text-[var(--muted)]" />
+        <input
+          aria-label="Cari penerima pesan"
+          type="search"
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          maxLength={80}
+          placeholder="Nama atau username"
+          className="min-h-10 min-w-0 flex-1 bg-transparent text-sm outline-none"
+        />
+        <Button type="submit" variant="ghost" className="px-3">
+          Cari
+        </Button>
+      </form>
+      {q.isPending && (
+        <p role="status" className="py-6 text-sm text-[var(--muted)]">
+          Mencari teman…
+        </p>
+      )}
+      {q.isError && (
+        <p role="alert" className="py-6 text-sm">
+          Daftar teman belum tersedia.{" "}
+          <button className="underline" onClick={() => q.refetch()}>
+            Coba lagi
+          </button>
+        </p>
+      )}
+      <div className="max-h-80 space-y-1 overflow-y-auto">
+        {q.data?.map((person) => (
+          <button
+            key={person.id}
+            disabled={start.isPending}
+            onClick={() => start.mutate(person.id)}
+            className="flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-[var(--soft)] disabled:opacity-50"
+          >
+            <Avatar name={person.name} url={person.avatar_url} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">
+                {person.name}
+              </span>
+              <span className="block truncate text-xs text-[var(--muted)]">
+                @{person.username}
+              </span>
+            </span>
+            <Send size={17} className="text-[var(--muted)]" />
+          </button>
+        ))}
+      </div>
+      {q.data?.length === 0 && (
+        <p className="py-8 text-center text-sm text-[var(--muted)]">
+          Tidak ada teman yang cocok.
+        </p>
+      )}
+    </ConfirmDialog>
+  );
 }
 export function MessageThread({ id }: { id: number }) {
   const log = useRef<HTMLDivElement>(null);
@@ -221,10 +368,13 @@ export function MessageThread({ id }: { id: number }) {
     onError: (e) => toast(e.message),
   });
   const read = useMutation({
-    mutationFn: () => api(`conversations/${id}/read`, { method: "PUT" }),
+    mutationFn: (messageId: number) =>
+      api(`conversations/${id}/read`, {
+        method: "PUT",
+        body: JSON.stringify({ message_id: messageId }),
+      }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ["conversations"] });
-      toast("Percakapan ditandai dibaca.");
     },
   });
   const messages =
@@ -241,32 +391,88 @@ export function MessageThread({ id }: { id: number }) {
     }
     previousLastId.current = lastId;
   }, [lastId]);
+  const lastIncomingId = Math.max(
+    0,
+    ...messages
+      .filter((message) => message.sender_id !== me?.id)
+      .map((message) => message.id),
+  );
+  const markedRead = useRef(0);
+  const { mutate: markRead } = read;
+  const markVisible = useCallback(() => {
+    if (
+      !q.isError &&
+      document.visibilityState === "visible" &&
+      atBottom.current &&
+      lastIncomingId > markedRead.current
+    ) {
+      markedRead.current = lastIncomingId;
+      markRead(lastIncomingId, {
+        onError: () => {
+          markedRead.current = 0;
+        },
+      });
+    }
+  }, [q.isError, lastIncomingId, markRead]);
+  useEffect(() => {
+    markVisible();
+    document.addEventListener("visibilitychange", markVisible);
+    return () => document.removeEventListener("visibilitychange", markVisible);
+  }, [markVisible]);
   if (q.isError) {
-    return <div className="p-6">
-      <Link href="/messages" className="text-sm text-[var(--muted)]">← Semua pesan</Link>
-      <p role="alert" className="my-5 text-sm">Percakapan tidak tersedia atau kamu tidak memiliki akses.</p>
-      <Button variant="outline" onClick={() => q.refetch()}>Coba lagi</Button>
-    </div>;
+    return (
+      <div className="p-6">
+        <Link href="/messages" className="text-sm text-[var(--muted)]">
+          ← Semua pesan
+        </Link>
+        <p role="alert" className="my-5 text-sm">
+          Percakapan tidak tersedia atau kamu tidak memiliki akses.
+        </p>
+        <Button variant="outline" onClick={() => q.refetch()}>
+          Coba lagi
+        </Button>
+      </div>
+    );
   }
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-3 border-b border-[var(--border)] px-5 py-4">
-        <Link href="/messages" aria-label="Semua pesan" className="icon-button lg:hidden">
+        <Link
+          href="/messages"
+          aria-label="Semua pesan"
+          className="icon-button lg:hidden"
+        >
           <ArrowLeft size={20} />
         </Link>
         <h2 className="text-base font-semibold">
           {q.data?.pages[0].user.name ?? "Percakapan"}
         </h2>
       </header>
-      <div ref={log} onScroll={() => {
-        const element = log.current;
-        if (element) {
-          atBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
-          if (atBottom.current) setNewMessages(false);
-        }
-      }} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5" role="log" aria-label="Riwayat pesan" aria-relevant="additions">
-        {q.isPending && <p role="status">Memuat pesan…</p>}
-        {q.data && messages.length === 0 && <p className="py-10 text-center text-sm leading-6 text-[var(--muted)]">Belum ada pesan. Mulai percakapan dengan sapaan pertama.</p>}
+      <div
+        ref={log}
+        onScroll={() => {
+          const element = log.current;
+          if (element) {
+            atBottom.current =
+              element.scrollHeight - element.scrollTop - element.clientHeight <
+              80;
+            if (atBottom.current) {
+              setNewMessages(false);
+              markVisible();
+            }
+          }
+        }}
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5"
+        role="log"
+        aria-label="Riwayat pesan"
+        aria-relevant="additions"
+      >
+        {q.isPending && <LoadingState label="Memuat pesan…" />}
+        {q.data && messages.length === 0 && (
+          <p className="py-10 text-center text-sm leading-6 text-[var(--muted)]">
+            Belum ada pesan. Mulai percakapan dengan sapaan pertama.
+          </p>
+        )}
         {q.hasNextPage && (
           <Button
             variant="outline"
@@ -276,7 +482,9 @@ export function MessageThread({ id }: { id: number }) {
               const previousTop = element?.scrollTop ?? 0;
               await q.fetchNextPage();
               requestAnimationFrame(() => {
-                if (element) element.scrollTop = previousTop + element.scrollHeight - previousHeight;
+                if (element)
+                  element.scrollTop =
+                    previousTop + element.scrollHeight - previousHeight;
               });
             }}
             disabled={q.isFetchingNextPage}
@@ -296,30 +504,56 @@ export function MessageThread({ id }: { id: number }) {
               <p className="whitespace-pre-wrap break-words text-sm">
                 {m.body}
               </p>
-              <time className="mt-2 block text-[10px] opacity-70">
-                {new Date(m.created_at).toLocaleTimeString("id-ID", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </time>
+              <div className="mt-2 flex items-center justify-end gap-1 text-[10px] opacity-70">
+                <time>
+                  {new Date(m.created_at).toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </time>
+                {m.sender_id === me?.id && (
+                  <span
+                    role="img"
+                    aria-label={
+                      m.id <= (q.data?.pages[0].recipient_read_message_id ?? 0)
+                        ? "Dibaca"
+                        : "Terkirim"
+                    }
+                  >
+                    {m.id <=
+                    (q.data?.pages[0].recipient_read_message_id ?? 0) ? (
+                      <CheckCheck size={14} />
+                    ) : (
+                      <Check size={14} />
+                    )}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         ))}
-        {q.data && messages.length > 0 && (
+        {read.isError && lastIncomingId > 0 && (
           <button
             className="text-sm text-[var(--muted)]"
             disabled={read.isPending}
-            onClick={() => read.mutate()}
+            onClick={() => read.mutate(lastIncomingId)}
           >
-            Tandai dibaca
+            Coba tandai dibaca lagi
           </button>
         )}
       </div>
-      {newMessages && <button className="mx-auto my-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs" onClick={() => {
-        if (log.current) log.current.scrollTop = log.current.scrollHeight;
-        atBottom.current = true;
-        setNewMessages(false);
-      }}>Pesan baru ↓</button>}
+      {newMessages && (
+        <button
+          className="mx-auto my-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs"
+          onClick={() => {
+            if (log.current) log.current.scrollTop = log.current.scrollHeight;
+            atBottom.current = true;
+            setNewMessages(false);
+          }}
+        >
+          Pesan baru ↓
+        </button>
+      )}
       {q.data?.pages[0].can_send ? (
         <form
           className="shrink-0 space-y-3 border-t border-[var(--border)] p-4"
@@ -385,12 +619,40 @@ export function Notifications() {
     getNextPageParam: (p) => p.next_cursor,
     refetchInterval: 20000,
   });
+  const unreadIds =
+    q.data?.pages
+      .flatMap((page) => page.data)
+      .filter((item) => !item.read_at)
+      .map((item) => item.id)
+      .slice(0, 100) ?? [];
+  const unreadKey = unreadIds.join(",");
+  const attempted = useRef("");
   const read = useMutation({
-    mutationFn: (id: string) =>
-      api(`notifications/${id}/read`, { method: "PUT" }),
+    mutationFn: (ids: string[]) =>
+      api("notifications/read", {
+        method: "PUT",
+        body: JSON.stringify({ ids }),
+      }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["notifications"] }),
     onError: (e) => toast(e.message),
   });
+  const { mutate: markRead } = read;
+  useEffect(() => {
+    const mark = () => {
+      if (
+        document.visibilityState === "visible" &&
+        unreadKey &&
+        attempted.current !== unreadKey &&
+        !q.isError
+      ) {
+        attempted.current = unreadKey;
+        markRead(unreadKey.split(","));
+      }
+    };
+    mark();
+    document.addEventListener("visibilitychange", mark);
+    return () => document.removeEventListener("visibilitychange", mark);
+  }, [unreadKey, markRead, q.isError]);
   return (
     <>
       <header className="flex items-center justify-between border-b border-[var(--border)] px-6 py-5">
@@ -422,7 +684,7 @@ export function Notifications() {
                         ? "/settings#account-campus"
                         : `/u/${n.actor.username}`
                 }
-                onClick={() => { if (!n.read_at) read.mutate(n.id); }}
+
                 className="text-sm"
               >
                 <strong>{n.actor.name}</strong>{" "}
@@ -433,30 +695,41 @@ export function Notifications() {
                   {n.message}
                 </p>
               )}
-              <time dateTime={n.created_at} className="mt-2 block text-xs text-[var(--muted)]">
-                {new Date(n.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+              <time
+                dateTime={n.created_at}
+                className="mt-2 block text-xs text-[var(--muted)]"
+              >
+                {new Date(n.created_at).toLocaleString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </time>
-              {!n.read_at && (
-                <button
-                  className="mt-3 text-xs"
-                  disabled={read.isPending}
-                  onClick={() => read.mutate(n.id)}
-                >
-                  Tandai dibaca
-                </button>
-              )}
             </div>
-            {!n.read_at && <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--foreground)]"><span className="sr-only">Belum dibaca</span></span>}
+            {!n.read_at && (
+              <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--foreground)]">
+                <span className="sr-only">Belum dibaca</span>
+              </span>
+            )}
           </div>
         ))}
       <div className="p-6">
+        {read.isError && unreadIds.length > 0 && (
+          <button
+            className="min-h-11 text-sm underline"
+            onClick={() => read.mutate(unreadIds)}
+          >
+            Coba tandai aktivitas dibaca lagi
+          </button>
+        )}
         {q.isError && (
           <p role="alert">
             Aktivitas belum dapat dimuat.{" "}
             <button onClick={() => q.refetch()}>Coba lagi</button>
           </p>
         )}
-        {q.isPending && <p role="status">Memuat aktivitas…</p>}
+        {q.isPending && <LoadingState label="Memuat aktivitas…" />}
         {q.data && !q.data.pages[0].data.length && (
           <p className="text-sm text-[var(--muted)]">Belum ada aktivitas.</p>
         )}

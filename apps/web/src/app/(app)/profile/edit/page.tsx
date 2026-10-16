@@ -101,7 +101,7 @@ export default function Page() {
               className="max-w-full text-xs"
             />
             <p className="text-xs text-[var(--muted)]">
-              JPEG, PNG, atau WebP. Maksimal 4 MB / 4096 × 4096.
+              JPEG, PNG, atau WebP. Gambar dioptimalkan sebelum disimpan.
             </p>
           </div>
         </div>

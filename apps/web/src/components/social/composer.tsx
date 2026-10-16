@@ -78,19 +78,13 @@ export function Composer({
     const selected = Array.from(files);
     if (!selected.length) return;
     setExpanded(true);
-    if (selected.length + images.length > 4) {
-      setError("Maksimal 4 gambar.");
-      if (file.current) file.current.value = "";
-      return;
-    }
     if (
       selected.some(
         (image) =>
-          !["image/jpeg", "image/png", "image/webp"].includes(image.type) ||
-          image.size > 4 * 1024 * 1024,
+          !["image/jpeg", "image/png", "image/webp"].includes(image.type),
       )
     ) {
-      setError("Gunakan JPG, PNG, atau WebP, maksimal 4 MB per gambar.");
+      setError("Gunakan gambar JPG, PNG, atau WebP.");
       if (file.current) file.current.value = "";
       return;
     }
@@ -215,7 +209,7 @@ export function Composer({
             }
           />
           {images.length > 0 && (
-            <div className="col-start-2 mb-4 grid grid-cols-2 gap-2">
+            <div className="col-start-2 mb-4 grid max-h-64 grid-cols-2 gap-2 overflow-y-auto rounded-xl">
               {images.map((m) => (
                 <div key={m.id} className="relative">
                   <Image
@@ -259,9 +253,7 @@ export function Composer({
                       type="file"
                       ref={file}
                       multiple
-                      disabled={
-                        busy || pendingFiles.length > 0 || images.length >= 4
-                      }
+                      disabled={busy || pendingFiles.length > 0}
                       accept="image/jpeg,image/png,image/webp"
                       onChange={(e) => upload(e.target.files)}
                       aria-label="Lampirkan gambar"
@@ -270,9 +262,7 @@ export function Composer({
                       type="button"
                       className="icon-button text-[var(--muted)]"
                       aria-label="Tambah gambar"
-                      disabled={
-                        busy || pendingFiles.length > 0 || images.length >= 4
-                      }
+                      disabled={busy || pendingFiles.length > 0}
                       onClick={() => file.current?.click()}
                     >
                       <ImagePlus size={20} />

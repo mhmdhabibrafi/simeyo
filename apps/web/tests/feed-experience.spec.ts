@@ -88,6 +88,7 @@ const posts = [
 ];
 
 async function fixtures(page: Page) {
+  let fixtureRead = false;
   await page.route("**/sanctum/csrf-cookie", (route) =>
     route.fulfill({ status: 204 }),
   );
@@ -110,8 +111,9 @@ async function fixtures(page: Page) {
       return route.fulfill({ json: { data: [], next_cursor: null } });
     if (url.pathname.endsWith("/auth/sessions"))
       return route.fulfill({ json: { data: [] } });
+    if (url.pathname.endsWith("/notifications/read")) { fixtureRead = true; return route.fulfill({ status: 204 }); }
     if (url.pathname.endsWith("/notifications"))
-      return route.fulfill({ json: { data: [{ id: "11111111-1111-4111-8111-111111111111", kind: "messages", actor: { id: 902, name: "Raka Pratama", username: "raka_pengujian" }, post_id: null, conversation_id: 42, read_at: null, created_at: "2026-10-15T10:00:00Z" }], next_cursor: null, unread_count: 1 } });
+      return route.fulfill({ json: { data: [{ id: "11111111-1111-4111-8111-111111111111", kind: "messages", actor: { id: 902, name: "Raka Pratama", username: "raka_pengujian" }, post_id: null, conversation_id: 42, read_at: fixtureRead ? "2026-10-16T00:00:00Z" : null, created_at: "2026-10-15T10:00:00Z" }], next_cursor: null, unread_count: fixtureRead ? 0 : 1 } });
     if (url.pathname.endsWith("/feed"))
       return route.fulfill({
         json: {
@@ -145,6 +147,83 @@ async function fixtures(page: Page) {
     });
   });
 }
+
+test("install offer appears only when available, supports postponing and invokes the native prompt", async ({ page }) => {
+  await fixtures(page);
+  await page.goto("/home");
+  await expect(page.getByRole("heading", { name: "Beranda", exact: true })).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const offer = page.getByRole("dialog", { name: "Pasang Simeyo", exact: true });
+  await expect(offer).toHaveCount(0);
+  async function available() {
+    await page.evaluate(() => {
+      const event = new Event("beforeinstallprompt");
+      Object.defineProperties(event, {
+        prompt: { value: async () => { document.documentElement.dataset.installPrompted = "yes"; } },
+        userChoice: { value: Promise.resolve({ outcome: "accepted" }) },
+      });
+      window.dispatchEvent(event);
+    });
+  }
+  await available();
+  await expect(offer).toBeVisible();
+  await expect(offer).toHaveCSS("animation-name", "none");
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/pwa-install-offer.png"), animations: "disabled" });
+  await offer.getByRole("button", { name: "Nanti saja", exact: true }).click();
+  await page.reload();
+  await available();
+  await expect(offer).toHaveCount(0);
+  await page.evaluate(() => sessionStorage.removeItem("simeyo-install-dismissed"));
+  await available();
+  await offer.getByRole("button", { name: "Pasang", exact: true }).click();
+  await expect(offer).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.dataset.installPrompted)).toBe("yes");
+});
+
+test("messages show sent and read ticks and only acknowledge the visible incoming cursor", async ({ page }) => {
+  await fixtures(page);
+  await page.route("**/api/v1/conversations", (route) => route.fulfill({ json: { data: [{ id: 42, user: { id: 902, name: "Raka Pratama", username: "raka_pengujian" }, unread_count: 0 }], next_cursor: null } }));
+  await page.addInitScript(() => Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true }));
+  let recipientRead = 0;
+  const acknowledged: number[] = [];
+  await page.route("**/api/v1/conversations/42/read", (route) => { acknowledged.push(route.request().postDataJSON().message_id); return route.fulfill({ status: 204 }); });
+  await page.route("**/api/v1/conversations/42/messages*", (route) => route.fulfill({ json: { data: [{ id: 1, conversation_id: 42, sender_id: user.id, client_id: "11111111-1111-4111-8111-111111111111", body: "Pesanku", created_at: "2026-10-16T00:00:00Z" }, { id: 2, conversation_id: 42, sender_id: 902, client_id: "22222222-2222-4222-8222-222222222222", body: "Balasan teman", created_at: "2026-10-16T00:01:00Z" }], user: { id: 902, name: "Raka Pratama", username: "raka_pengujian" }, next_cursor: null, can_send: true, recipient_read_message_id: recipientRead } }));
+  await page.goto("/messages/42");
+  await expect(page.getByLabel("Terkirim", { exact: true })).toBeVisible();
+  expect(acknowledged).toEqual([]);
+  await page.evaluate(() => { Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true }); document.dispatchEvent(new Event("visibilitychange")); });
+  await expect.poll(() => acknowledged.includes(2)).toBe(true);
+  recipientRead = 1;
+  await page.reload();
+  await expect(page.getByLabel("Dibaca", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Terkirim", { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/message-read-receipt.png"), animations: "disabled" });
+});
+
+test("gallery uploads accept six attachments including a file above the previous size quota", async ({ page }) => {
+  await fixtures(page);
+  let uploads = 0;
+  await page.route("**/api/v1/media/posts", (route) => route.fulfill({ status: 201, json: { data: { id: ++uploads, url: "/gallery-test.png", width: 1, height: 1 } } }));
+  await page.route("**/gallery-test.png", (route) => route.fulfill({ contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") }));
+  let attachments: number[] = [];
+  await page.route("**/api/v1/posts", (route) => { attachments = route.request().postDataJSON().media_ids; return route.fulfill({ status: 201, json: { data: post } }); });
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Cerita baru", exact: true });
+  await dialog.getByLabel("Lampirkan gambar").setInputFiles(Array.from({ length: 6 }, (_, index) => ({ name: `foto-${index}.png`, mimeType: "image/png", buffer: Buffer.alloc(index === 0 ? 5 * 1024 * 1024 : 1) })));
+  await expect(dialog.getByAltText("Pratinjau lampiran")).toHaveCount(6);
+  await dialog.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(attachments).toHaveLength(6);
+  await page.route("**/api/v1/feed?**", (route) => route.fulfill({ json: { data: [{ ...post, media: Array.from({ length: 6 }, (_, index) => ({ id: index + 1, url: "/gallery-test.png", width: 600, height: 400 })) }], meta: { next_cursor: null, has_more: false, feed: "campus" } } }));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  const gallery = page.getByRole("region", { name: "Galeri gambar cerita", exact: true });
+  await expect(gallery.getByRole("button", { name: "Lihat gambar cerita", exact: true })).toHaveCount(6);
+  expect(await gallery.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
 
 test("settings groups account and campus, hides completed verification steps and keeps device controls usable", async ({ page }) => {
   await fixtures(page);
@@ -659,11 +738,11 @@ test("invalid uploads are rejected locally without losing text and can be replac
   await dialog
     .getByLabel("Lampirkan gambar")
     .setInputFiles({
-      name: "besar.png",
-      mimeType: "image/png",
-      buffer: Buffer.alloc(4 * 1024 * 1024 + 1),
+      name: "invalid.svg",
+      mimeType: "image/svg+xml",
+      buffer: Buffer.from("<svg />"),
     });
-  await expect(dialog.getByRole("alert")).toContainText("maksimal 4 MB");
+  await expect(dialog.getByRole("alert")).toContainText("JPG, PNG, atau WebP");
   expect(uploads).toBe(0);
   await expect(dialog.getByLabel("Tulis cerita", { exact: true })).toHaveValue(
     "Tulisan tetap ada.",
@@ -686,7 +765,7 @@ test("reply notifications open their thread, mark read and refresh the replies a
   let reply: { body: string; parent_id: number; client_id: string } | null =
     null;
   await page.route(
-    `**/api/v1/notifications/${notificationId}/read`,
+    "**/api/v1/notifications/read",
     (route) => {
       read = true;
       return route.fulfill({ status: 204 });

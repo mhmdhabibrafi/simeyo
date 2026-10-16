@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ActivityChanged;
 use App\Models\User;
 use App\Services\CampusActivity;
 use App\Services\NotificationVisibility;
@@ -10,6 +11,15 @@ use Illuminate\Support\Facades\DB;
 
 class ActivityController extends Controller
 {
+    public function readMany(Request $r)
+    {
+        $d = $r->validate(['ids' => 'required|array|min:1|max:100', 'ids.*' => 'required|uuid|distinct']);
+        app(NotificationVisibility::class)->query($r->user(), ! $r->user()->currentAccessToken() || $r->user()->tokenCan('campus'))->whereIn('id', $d['ids'])->whereNull('read_at')->update(['read_at' => now()]);
+        ActivityChanged::dispatch($r->user()->id);
+
+        return response()->noContent();
+    }
+
     public function index(Request $r)
     {
         $u = $r->user();

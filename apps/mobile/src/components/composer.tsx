@@ -46,18 +46,17 @@ export function Composer({
   const [draftId, setDraftId] = useState(() => Crypto.randomUUID());
   const changed = () => setDraftId(Crypto.randomUUID());
   const upload = async () => {
-    if (media.length >= 4) return;
     setError("");
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsMultipleSelection: true,
-      selectionLimit: 4 - media.length,
+      selectionLimit: 0,
       quality: 1,
     });
     if (result.canceled) return;
     setBusy(true);
     try {
-      for (const asset of result.assets.slice(0, 4 - media.length)) {
+      for (const asset of result.assets) {
         const context = ImageManipulator.manipulate(asset.uri);
         const scale = Math.min(1, 1920 / Math.max(asset.width, asset.height));
         context.resize({
@@ -206,7 +205,7 @@ export function Composer({
           <Button
             outline
             label="Tambahkan foto"
-            disabled={busy || media.length >= 4}
+            disabled={busy}
             onPress={() => void upload().catch((e) => setError(e.message))}
           />
         )}

@@ -90,12 +90,8 @@ test("real persisted messages, private Reverb delivery, notifications and mobile
   await expect(
     recipient.getByText("mengirim pesan", { exact: false }),
   ).toBeVisible();
-  await recipient
-    .getByRole("button", { name: "Tandai dibaca", exact: true })
-    .click();
-  await expect(
-    recipient.getByRole("button", { name: "Tandai dibaca", exact: true }),
-  ).toHaveCount(0);
+  await expect.poll(async () => (await (await recipient.request.get("/api/v1/notifications")).json()).unread_count).toBe(0);
+  await expect(page.getByLabel("Dibaca", { exact: true }).first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
     path: path.join(root, "docs/testing/screenshots/messages-mobile.png"),

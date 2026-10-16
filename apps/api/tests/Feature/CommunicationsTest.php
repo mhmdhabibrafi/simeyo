@@ -15,6 +15,39 @@ use Tests\TestCase;
 
 class CommunicationsTest extends TestCase
 {
+    public function test_read_receipts_are_scoped_monotonic_and_leave_unseen_messages_unread(): void
+    {
+        $a = $this->member();
+        $b = $this->member();
+        $id = $this->start($a, $b);
+        $first = $this->actingAs($a)->postJson("/api/v1/conversations/$id/messages", ['body' => 'Pertama', 'client_id' => (string) Str::uuid()])->assertCreated()->json('data.id');
+        $second = $this->postJson("/api/v1/conversations/$id/messages", ['body' => 'Kedua', 'client_id' => (string) Str::uuid()])->assertCreated()->json('data.id');
+        $this->getJson("/api/v1/conversations/$id/messages")->assertJsonPath('recipient_read_message_id', 0);
+        $this->actingAs($b)->putJson("/api/v1/conversations/$id/read", ['message_id' => $first])->assertNoContent();
+        $this->getJson('/api/v1/conversations')->assertJsonPath('data.0.unread_count', 1);
+        $this->actingAs($a)->getJson("/api/v1/conversations/$id/messages")->assertJsonPath('recipient_read_message_id', $first);
+        $this->actingAs($b)->putJson("/api/v1/conversations/$id/read", ['message_id' => $second])->assertNoContent();
+        $this->putJson("/api/v1/conversations/$id/read", ['message_id' => $first])->assertNoContent();
+        $this->actingAs($a)->getJson("/api/v1/conversations/$id/messages")->assertJsonPath('recipient_read_message_id', $second);
+        $this->actingAs($b)->putJson("/api/v1/conversations/$id/read", ['message_id' => 999999])->assertNotFound();
+    }
+
+    public function test_batch_activity_read_updates_only_visible_owned_ids(): void
+    {
+        $a = $this->member();
+        $b = $this->member();
+        $actor = $this->member();
+        app(CampusActivity::class)->send($a, $actor, 'follows');
+        app(CampusActivity::class)->send($b, $actor, 'follows');
+        $mine = $a->notifications()->first()->id;
+        $other = $b->notifications()->first()->id;
+        $this->actingAs($a)->putJson('/api/v1/notifications/read', ['ids' => [$mine, $other]])->assertNoContent();
+        $this->assertNotNull($a->notifications()->first()->read_at);
+        $this->assertNull($b->notifications()->first()->read_at);
+        $this->putJson('/api/v1/notifications/read', ['ids' => ['invalid']])->assertUnprocessable();
+        $this->putJson('/api/v1/notifications/read', ['ids' => []])->assertUnprocessable();
+    }
+
     public function test_native_login_token_reads_activity_using_the_existing_campus_ability(): void
     {
         $a = $this->member();

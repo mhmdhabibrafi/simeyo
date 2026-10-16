@@ -12,7 +12,7 @@ class MediaController extends Controller
 {
     public function upload(Request $r)
     {
-        $d = $r->validate(['kind' => 'required|in:avatar,cover', 'image' => 'required|file|mimes:jpg,jpeg,png,webp|max:4096|dimensions:max_width=4096,max_height=4096']);
+        $d = $r->validate(['kind' => 'required|in:avatar,cover', 'image' => 'required|file|mimes:jpg,jpeg,png,webp|dimensions:max_width=4096,max_height=4096']);
         $file = $r->file('image');
         $image = @imagecreatefromstring(file_get_contents($file->getRealPath()));
         abort_unless($image, 422, 'Gambar tidak dapat dibaca.');

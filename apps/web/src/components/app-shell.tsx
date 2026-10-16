@@ -248,8 +248,9 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main
+          key={pathname}
           id="main"
-          className={`min-h-[calc(100dvh-8rem)] ${pathname.startsWith("/messages") || pathname === "/home" || pathname === "/profile" || /^\/u\/[^/]+$/.test(pathname) ? "" : "feed-surface md:mt-4"}`}
+          className={`page-enter min-h-[calc(100dvh-8rem)] ${pathname.startsWith("/messages") || pathname === "/home" || pathname === "/profile" || /^\/u\/[^/]+$/.test(pathname) ? "" : "feed-surface md:mt-4"}`}
         >
           {children}
         </main>

@@ -248,12 +248,14 @@ export function PostCard({
           <PostBody body={post.body} />
           {post.media.length > 0 && (
             <div
-              className={`mt-3 grid gap-2 ${post.media.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+              role="region"
+              aria-label="Galeri gambar cerita"
+              className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain rounded-2xl pb-1"
             >
               {post.media.map((m) => (
                 <button
                   key={m.id}
-                  className="overflow-hidden rounded-2xl border border-[var(--border)]"
+                  className={`shrink-0 snap-start overflow-hidden rounded-2xl border border-[var(--border)] ${post.media.length > 1 ? "w-[85%]" : "w-full"}`}
                   aria-label="Lihat gambar cerita"
                   onClick={() => {
                     setImage(m);
@@ -267,7 +269,7 @@ export function PostCard({
                     width={m.width}
                     height={m.height}
                     sizes="(max-width: 768px) 80vw, 540px"
-                    className={`w-full object-cover ${post.media.length > 1 ? "max-h-60" : "max-h-[460px]"}`}
+                    className={`w-full object-cover ${post.media.length > 1 ? "h-72 sm:h-80" : "max-h-[460px]"}`}
                   />
                 </button>
               ))}

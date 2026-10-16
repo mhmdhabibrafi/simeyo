@@ -54,7 +54,7 @@ class MessageController extends Controller
         $other = $c->participants->firstWhere('id', '!=', $r->user()->id);
         $page = $c->messages()->orderByDesc('id')->cursorPaginate(30);
 
-        return ['data' => $page->items(), 'user' => $other->only('id', 'name', 'username'), 'next_cursor' => $page->nextCursor()?->encode(), 'can_send' => $this->access->canSend($r->user(), $other)];
+        return ['data' => $page->items(), 'user' => $other->only('id', 'name', 'username'), 'recipient_read_message_id' => (int) $other->pivot->last_read_message_id, 'next_cursor' => $page->nextCursor()?->encode(), 'can_send' => $this->access->canSend($r->user(), $other)];
     }
 
     public function store(Request $r, int $conversation)
@@ -85,8 +85,14 @@ class MessageController extends Controller
     public function read(Request $r, int $conversation)
     {
         $c = $this->access->find($r->user(), $conversation);
-        $id = $c->messages()->max('id') ?? 0;
-        DB::table('conversation_participants')->where('conversation_id', $c->id)->where('user_id', $r->user()->id)->where('last_read_message_id', '<', $id)->update(['last_read_message_id' => $id]);
+        $d = $r->validate(['message_id' => 'sometimes|required|integer|min:1']);
+        $id = isset($d['message_id']) ? $c->messages()->findOrFail($d['message_id'])->id : ($c->messages()->max('id') ?? 0);
+        $updated = DB::table('conversation_participants')->where('conversation_id', $c->id)->where('user_id', $r->user()->id)->where('last_read_message_id', '<', $id)->update(['last_read_message_id' => $id]);
+        if ($updated) {
+            foreach ($c->participants as $participant) {
+                ActivityChanged::dispatch($participant->id);
+            }
+        }
 
         return response()->noContent();
     }

@@ -26,7 +26,7 @@ class PostController extends Controller
 
     public function store(Request $r)
     {
-        $d = $r->validate(['body' => 'present|nullable|string|max:1000', 'visibility' => 'required|in:campus,followers', 'parent_id' => 'nullable|integer|min:1', 'quote_id' => 'nullable|integer|min:1', 'media_ids' => 'sometimes|array|max:4', 'media_ids.*' => 'required|integer|distinct|min:1']);
+        $d = $r->validate(['body' => 'present|nullable|string|max:1000', 'visibility' => 'required|in:campus,followers', 'parent_id' => 'nullable|integer|min:1', 'quote_id' => 'nullable|integer|min:1', 'media_ids' => 'sometimes|array', 'media_ids.*' => 'required|integer|distinct|min:1']);
         $d['body'] = (string) ($d['body'] ?? '');
         $r->validate(['client_id' => 'sometimes|nullable|uuid']);
         abort_unless(trim($d['body']) !== '' || count($d['media_ids'] ?? []) > 0, 422, 'Tulis cerita atau lampirkan gambar.');

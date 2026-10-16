@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
+  AppState,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -8,7 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import {
   useInfiniteQuery,
   useMutation,
@@ -23,6 +24,11 @@ import {
 } from "../lib/contracts";
 import { Avatar } from "./media";
 import { Screen, Heading, Button, Status } from "./ui";
+const MESSAGE_VIEWABILITY = {
+  itemVisiblePercentThreshold: 70,
+  minimumViewTime: 500,
+};
+
 export function Conversations() {
   const { api } = useSession();
   const { colors } = useTheme();
@@ -64,7 +70,10 @@ export function Conversations() {
               >
                 {c.user.name}
               </Text>
-              <Text numberOfLines={1} style={{ fontSize: 12, color: colors.muted }}>
+              <Text
+                numberOfLines={1}
+                style={{ fontSize: 12, color: colors.muted }}
+              >
                 {c.last_message?.body ?? `@${c.user.username}`}
               </Text>
             </View>
@@ -129,7 +138,11 @@ export function MessageThread({ id }: { id: number }) {
     },
   });
   const read = useMutation({
-    mutationFn: () => api(`conversations/${id}/read`, { method: "PUT" }),
+    mutationFn: (messageId: number) =>
+      api(`conversations/${id}/read`, {
+        method: "PUT",
+        body: JSON.stringify({ message_id: messageId }),
+      }),
     onSuccess: () =>
       void client.invalidateQueries({ queryKey: ["conversations"] }),
   });
@@ -140,6 +153,37 @@ export function MessageThread({ id }: { id: number }) {
         (m, index, rows) => rows.findIndex((row) => row.id === m.id) === index,
       )
       .sort((a, b) => b.id - a.id) ?? [];
+  const focused = useRef(false);
+  const readThrough = useRef(0);
+  const visibleIncoming = useRef(0);
+  const { mutate: markRead } = read;
+  const markVisible = useCallback(() => {
+    if (
+      focused.current &&
+      AppState.currentState === "active" &&
+      visibleIncoming.current > readThrough.current
+    ) {
+      readThrough.current = visibleIncoming.current;
+      markRead(visibleIncoming.current, {
+        onError: () => {
+          readThrough.current = 0;
+        },
+      });
+    }
+  }, [markRead]);
+  useFocusEffect(
+    useCallback(() => {
+      focused.current = true;
+      markVisible();
+      return () => {
+        focused.current = false;
+      };
+    }, [markVisible]),
+  );
+  useEffect(() => {
+    const listener = AppState.addEventListener("change", () => markVisible());
+    return () => listener.remove();
+  }, [markVisible]);
   if (q.isError)
     return (
       <Screen>
@@ -151,12 +195,12 @@ export function MessageThread({ id }: { id: number }) {
       <Heading
         title={q.data?.pages[0].user.name ?? "Percakapan"}
         action={
-          q.data ? (
+          read.isError ? (
             <Button
               outline
-              label="Tandai dibaca"
+              label="Coba tandai dibaca lagi"
               disabled={read.isPending}
-              onPress={() => read.mutate()}
+              onPress={() => read.mutate(visibleIncoming.current)}
             />
           ) : undefined
         }
@@ -168,6 +212,16 @@ export function MessageThread({ id }: { id: number }) {
       >
         <FlatList
           inverted
+          onViewableItemsChanged={({ viewableItems }) => {
+            visibleIncoming.current = Math.max(
+              0,
+              ...viewableItems
+                .filter(({ item }) => item.sender_id !== user?.id)
+                .map(({ item }) => item.id),
+            );
+            markVisible();
+          }}
+          viewabilityConfig={MESSAGE_VIEWABILITY}
           data={messages}
           keyExtractor={(m) => String(m.id)}
           contentContainerStyle={{ padding: 20, gap: 12 }}
@@ -202,6 +256,24 @@ export function MessageThread({ id }: { id: number }) {
                     minute: "2-digit",
                   })}
                 </Text>
+                {m.sender_id === user?.id && (
+                  <Text
+                    accessibilityLabel={
+                      m.id <= (q.data?.pages[0].recipient_read_message_id ?? 0)
+                        ? "Dibaca"
+                        : "Terkirim"
+                    }
+                    style={{
+                      fontSize: 12,
+                      color: colors.muted,
+                      alignSelf: "flex-end",
+                    }}
+                  >
+                    {m.id <= (q.data?.pages[0].recipient_read_message_id ?? 0)
+                      ? "✓✓"
+                      : "✓"}
+                  </Text>
+                )}
               </View>
             </View>
           )}
@@ -306,12 +378,42 @@ export function Notifications() {
     getNextPageParam: (p) => p.next_cursor,
     refetchInterval: 20000,
   });
+  const unreadKey = (
+    q.data?.pages
+      .flatMap((page) => page.data)
+      .filter((item) => !item.read_at)
+      .map((item) => item.id)
+      .slice(0, 100) ?? []
+  ).join(",");
+  const attempted = useRef("");
   const read = useMutation({
-    mutationFn: (id: string) =>
-      api(`notifications/${id}/read`, { method: "PUT" }),
+    mutationFn: (ids: string[]) =>
+      api("notifications/read", {
+        method: "PUT",
+        body: JSON.stringify({ ids }),
+      }),
     onSuccess: () =>
       void client.invalidateQueries({ queryKey: ["notifications"] }),
   });
+  const { mutate: markRead } = read;
+  useFocusEffect(
+    useCallback(() => {
+      const mark = () => {
+        if (
+          AppState.currentState === "active" &&
+          unreadKey &&
+          attempted.current !== unreadKey &&
+          !q.isError
+        ) {
+          attempted.current = unreadKey;
+          markRead(unreadKey.split(","));
+        }
+      };
+      mark();
+      const listener = AppState.addEventListener("change", mark);
+      return () => listener.remove();
+    }, [unreadKey, markRead, q.isError]),
+  );
   return (
     <Screen>
       <Heading
@@ -370,12 +472,11 @@ export function Notifications() {
                 </Text>
               </View>
             </Pressable>
-            {!n.read_at && (
+            {read.isError && unreadKey && (
               <Button
                 outline
-                label="Tandai dibaca"
-                disabled={read.isPending}
-                onPress={() => read.mutate(n.id)}
+                label="Coba tandai aktivitas dibaca lagi"
+                onPress={() => read.mutate(unreadKey.split(","))}
               />
             )}
           </View>

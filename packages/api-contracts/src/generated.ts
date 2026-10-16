@@ -1576,7 +1576,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Upload profile image: JPEG/PNG/WebP, max 4 MB, max 4096px; reencoded metadata-free JPEG */
+        /** @description Upload profile image: JPEG/PNG/WebP, server transport limits, max 4096px; reencoded metadata-free JPEG */
         post: {
             parameters: {
                 query?: never;
@@ -1595,7 +1595,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Upload profile image: JPEG/PNG/WebP, max 4 MB, max 4096px; reencoded metadata-free JPEG */
+                /** @description Upload profile image: JPEG/PNG/WebP, server transport limits, max 4096px; reencoded metadata-free JPEG */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2793,7 +2793,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Private JPEG/PNG/WebP upload, 4 MB / 4096px, resized 1920px and metadata reencoded */
+        /** @description Private JPEG/PNG/WebP upload, server transport limits / 4096px, resized 1920px and metadata reencoded */
         post: {
             parameters: {
                 query?: never;
@@ -2810,7 +2810,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Private JPEG/PNG/WebP upload, 4 MB / 4096px, resized 1920px and metadata reencoded */
+                /** @description Private JPEG/PNG/WebP upload, server transport limits / 4096px, resized 1920px and metadata reencoded */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -4075,7 +4075,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Server-chosen monotonic read watermark */
+        /** @description Monotonic read watermark, optionally bounded to a visible message in this conversation */
         put: {
             parameters: {
                 query?: never;
@@ -4085,9 +4085,90 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        message_id?: number;
+                    };
+                };
+            };
             responses: {
-                /** @description Server-chosen monotonic read watermark */
+                /** @description Monotonic read watermark, optionally bounded to a visible message in this conversation */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Mark visible owned notification IDs read without consuming future arrivals */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        ids: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Mark visible owned notification IDs read without consuming future arrivals */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -6488,6 +6569,8 @@ export interface components {
             };
             next_cursor: string | null;
             can_send: boolean;
+            /** @default 0 */
+            recipient_read_message_id: number;
         };
         Conversations: {
             data: {
@@ -6498,6 +6581,12 @@ export interface components {
                     username: string;
                 };
                 unread_count: number;
+                /** @default null */
+                last_message: {
+                    sender_id: number;
+                    body: string;
+                    created_at: string;
+                } | null;
             }[];
             next_cursor: string | null;
         };

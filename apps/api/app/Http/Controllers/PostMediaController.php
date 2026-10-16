@@ -12,7 +12,7 @@ class PostMediaController extends Controller
 {
     public function upload(Request $r, ImageStorage $images)
     {
-        $r->validate(['image' => 'required|file|mimes:jpg,jpeg,png,webp|max:4096|dimensions:max_width=4096,max_height=4096']);
+        $r->validate(['image' => 'required|file|mimes:jpg,jpeg,png,webp|dimensions:max_width=4096,max_height=4096']);
         $data = $images->save($r->file('image'), 'posts/'.$r->user()->id, 1920);
         try {
             $m = PostMedia::create($data + ['user_id' => $r->user()->id]);

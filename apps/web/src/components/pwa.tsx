@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import { Button } from "./ui/button";
+import { Download, X } from "lucide-react";
 type InstallEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: string }>;
@@ -19,6 +20,8 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
   const [install, setInstall] = useState<InstallEvent | null>(null);
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
   const [error, setError] = useState("");
+  const [offerInstall, setOfferInstall] = useState(false);
+  const [installing, setInstalling] = useState(false);
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     if (process.env.NODE_ENV !== "production") return;
@@ -27,8 +30,20 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     const prompt = (event: Event) => {
       event.preventDefault();
       setInstall(event as InstallEvent);
+      if (!matchMedia("(display-mode: standalone)").matches) {
+        try {
+          setOfferInstall(
+            sessionStorage.getItem("simeyo-install-dismissed") !== "1",
+          );
+        } catch {
+          setOfferInstall(true);
+        }
+      }
     };
-    const installed = () => setInstall(null);
+    const installed = () => {
+      setInstall(null);
+      setOfferInstall(false);
+    };
     const updating = () => {
       chosenUpdate = true;
     };
@@ -76,6 +91,77 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
   return (
     <Context.Provider value={{ install, waiting, error }}>
       {children}
+      {offerInstall && install && (
+        <aside
+          role="dialog"
+          aria-label="Pasang Simeyo"
+          aria-modal="false"
+          className="install-offer fixed bottom-[calc(var(--mobile-nav-height)+12px)] left-4 right-4 z-40 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xl sm:left-auto sm:w-80 md:bottom-6 md:right-6"
+        >
+          <div className="flex items-start gap-3">
+            <Download size={24} className="mt-1 shrink-0" />
+            <div className="flex-1">
+              <h2 className="text-sm font-semibold">Simeyo di layar utamamu</h2>
+              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                Buka lebih cepat, langsung seperti aplikasi.
+              </p>
+            </div>
+            <button
+              aria-label="Tutup ajakan instal"
+              className="icon-button -mr-3 -mt-3"
+              disabled={installing}
+              onClick={() => {
+                setOfferInstall(false);
+                try {
+                  sessionStorage.setItem("simeyo-install-dismissed", "1");
+                } catch {}
+              }}
+            >
+              <X size={17} />
+            </button>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              disabled={installing}
+              onClick={() => {
+                setOfferInstall(false);
+                try {
+                  sessionStorage.setItem("simeyo-install-dismissed", "1");
+                } catch {}
+              }}
+            >
+              Nanti saja
+            </Button>
+            <Button
+              disabled={installing}
+              onClick={async () => {
+                setInstalling(true);
+                try {
+                  await install.prompt();
+                  const result = await install.userChoice;
+                  setOfferInstall(false);
+                  setInstall(null);
+                  if (result.outcome !== "accepted") {
+                    try {
+                      sessionStorage.setItem("simeyo-install-dismissed", "1");
+                    } catch {}
+                  }
+                } catch {
+                  setError(
+                    "Pemasangan belum dapat dimulai. Coba lewat Pengaturan.",
+                  );
+                  setOfferInstall(false);
+                } finally {
+                  setInstalling(false);
+                }
+              }}
+            >
+              {installing ? "Membuka…" : "Pasang"}
+            </Button>
+          </div>
+        </aside>
+      )}
     </Context.Provider>
   );
 }

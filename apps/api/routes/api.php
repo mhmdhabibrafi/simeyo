@@ -39,6 +39,7 @@ Route::prefix('v1')->group(function () {
         Route::get('me', [ProfileController::class, 'me']);
         Route::put('me/password', [AuthController::class, 'changePassword'])->middleware('throttle:password-change');
         Route::get('notifications', [ActivityController::class, 'index']);
+        Route::put('notifications/read', [ActivityController::class, 'readMany']);
         Route::put('notifications/{notification}/read', [ActivityController::class, 'read'])->whereUuid('notification');
         Route::patch('me', [ProfileController::class, 'update']);
         Route::post('onboarding', [ProfileController::class, 'onboarding']);

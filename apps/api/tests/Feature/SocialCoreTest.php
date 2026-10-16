@@ -16,6 +16,18 @@ use Tests\TestCase;
 
 class SocialCoreTest extends TestCase
 {
+    public function test_posts_accept_more_than_four_images_and_uploads_above_four_megabytes(): void
+    {
+        Storage::fake('local');
+        $u = $this->member();
+        $ids = [];
+        $this->actingAs($u)->postJson('/api/v1/me/media', ['kind' => 'avatar', 'image' => UploadedFile::fake()->image('avatar.jpg', 64, 64)->size(6000)])->assertOk();
+        for ($i = 0; $i < 6; $i++) {
+            $ids[] = $this->actingAs($u)->postJson('/api/v1/media/posts', ['image' => UploadedFile::fake()->image("campus-$i.jpg", 64, 64)->size(6000)])->assertCreated()->json('data.id');
+        }
+        $this->postJson('/api/v1/posts', ['body' => 'Galeri kampus', 'visibility' => 'campus', 'media_ids' => $ids])->assertCreated()->assertJsonCount(6, 'data.media');
+    }
+
     public function test_mobile_post_retry_identity_prevents_duplicates_and_supports_attached_media_retry(): void
     {
         $u = $this->member();

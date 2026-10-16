@@ -965,12 +965,12 @@ paths:
           description: Rate limited
   /me/media:
     post:
-      description: "Upload profile image: JPEG/PNG/WebP, max 4 MB, max 4096px;
-        reencoded metadata-free JPEG"
+      description: "Upload profile image: JPEG/PNG/WebP, server transport limits, max
+        4096px; reencoded metadata-free JPEG"
       responses:
         "200":
-          description: "Upload profile image: JPEG/PNG/WebP, max 4 MB, max 4096px;
-            reencoded metadata-free JPEG"
+          description: "Upload profile image: JPEG/PNG/WebP, server transport limits, max
+            4096px; reencoded metadata-free JPEG"
         "401":
           description: Authentication required
         "403":
@@ -1216,7 +1216,6 @@ paths:
                   format: uuid
                 media_ids:
                   type: array
-                  maxItems: 4
                   uniqueItems: true
                   items:
                     type: integer
@@ -1803,12 +1802,12 @@ paths:
           description: Rate limited
   /media/posts:
     post:
-      description: Private JPEG/PNG/WebP upload, 4 MB / 4096px, resized 1920px and
-        metadata reencoded
+      description: Private JPEG/PNG/WebP upload, server transport limits / 4096px,
+        resized 1920px and metadata reencoded
       responses:
         "201":
-          description: Private JPEG/PNG/WebP upload, 4 MB / 4096px, resized 1920px and
-            metadata reencoded
+          description: Private JPEG/PNG/WebP upload, server transport limits / 4096px,
+            resized 1920px and metadata reencoded
           content:
             application/json:
               schema:
@@ -2554,7 +2553,18 @@ paths:
           description: Rate limited
   /conversations/{id}/read:
     put:
-      description: Server-chosen monotonic read watermark
+      description: Monotonic read watermark, optionally bounded to a visible message
+        in this conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message_id:
+                  type: integer
+                  minimum: 1
       parameters:
         - name: id
           in: path
@@ -2563,7 +2573,57 @@ paths:
             type: integer
       responses:
         "204":
-          description: Server-chosen monotonic read watermark
+          description: Monotonic read watermark, optionally bounded to a visible message
+            in this conversation
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /notifications/read:
+    put:
+      description: Mark visible owned notification IDs read without consuming future
+        arrivals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  uniqueItems: true
+                  items:
+                    type: string
+                    format: uuid
+              required:
+                - ids
+      responses:
+        "204":
+          description: Mark visible owned notification IDs read without consuming future
+            arrivals
         "401":
           description: Authentication required
         "403":
@@ -4501,11 +4561,17 @@ components:
             - "null"
         can_send:
           type: boolean
+        recipient_read_message_id:
+          default: 0
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
       required:
         - data
         - user
         - next_cursor
         - can_send
+        - recipient_read_message_id
       additionalProperties: false
     Conversations:
       $schema: https://json-schema.org/draft/2020-12/schema
@@ -4540,10 +4606,30 @@ components:
                 type: integer
                 minimum: -9007199254740991
                 maximum: 9007199254740991
+              last_message:
+                default: null
+                anyOf:
+                  - type: object
+                    properties:
+                      sender_id:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      body:
+                        type: string
+                      created_at:
+                        type: string
+                    required:
+                      - sender_id
+                      - body
+                      - created_at
+                    additionalProperties: false
+                  - type: "null"
             required:
               - id
               - user
               - unread_count
+              - last_message
             additionalProperties: false
         next_cursor:
           type:
