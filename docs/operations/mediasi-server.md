@@ -1,5 +1,8 @@
 # Mediasi server installation — 2026-10-15
 
+Google sign-in presentation (2026-10-16): source 31d67b5 is deployed on web as login-31d67b5; gateway recreated, API/worker/Reverb retain activity-b1bce71. Headings/subtitle are centered; shared Google button has a color mark and no redundant domain paragraph. Lint and production build passed. Focused local browser case passed (3.2 seconds) and public-assets case passed (6.6 seconds), each checking 390/1440 widths in both themes, icon visibility, centered heading, removed guidance and no overflow. Fresh screenshots inspected. Trusted server TLS/security/health/CSRF and actual WSS handshake passed. This is presentation acceptance; real Google provider login was not repeated. Exact-source standard CI 38918142088 was started; no pending result is claimed passed.
+
+
 Activity/search/DM update (2026-10-16): source b1bce71 deployed as activity-b1bce71 on API/web/worker/Reverb, with gateway recreated. Build succeeded and trusted TLS/security/health/WSS plus queue probe passed (zero ready/failed jobs). Fresh database archive inventory passed; rollback environment/images retained. All 34 public-assets UI cases passed (3.1 minutes), and fresh screenshots were inspected. Database/media volumes, keys and provider settings preserved; no migration or seed. Exact CI and final public-assets evidence: [test report](../testing/activity-search-messaging-2026-10-16.md).
 
 
