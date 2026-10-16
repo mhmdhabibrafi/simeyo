@@ -1,5 +1,7 @@
 # Simeyo
 
+Daily-use improvements and revised mobile photo/banner editing: [scope and verification](docs/testing/daily-use-2026-10-17.md). Server-only backup automation and local alarms are tracked there separately from off-host recovery and real-device acceptance.
+
 Latest profile/photo, post and private-chat improvements: [implementation, deployment and actual verification](docs/testing/profile-post-dm-2026-10-16.md). Real campus-account and physical-device acceptance remain pending.
 
 Latest DM recipient fix and Explore/settings polish: [verified deployment](docs/testing/discovery-2026-10-16.md).

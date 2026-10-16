@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\ConfirmQueueHealth;
+use App\Services\ErrorSignals;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -55,7 +56,8 @@ class CheckOperations extends Command
                     $state['worker_probe'] = 'timed_out';
                 }
             }
-            $state['healthy'] = $state['oldest_ready_age_seconds'] <= $maxAge && $state['failed_jobs'] === 0 && in_array($state['worker_probe'], ['not_requested', 'passed'], true);
+            $state['recent_5xx'] = app(ErrorSignals::class)->recent();
+            $state['healthy'] = $state['recent_5xx'] < 5 && $state['oldest_ready_age_seconds'] <= $maxAge && $state['failed_jobs'] === 0 && in_array($state['worker_probe'], ['not_requested', 'passed'], true);
         } catch (\Throwable) {
             $state['healthy'] = false;
             $state['error'] = 'Database/queue/cache check failed; inspect restricted server logs.';

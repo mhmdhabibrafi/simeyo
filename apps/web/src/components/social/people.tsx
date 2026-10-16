@@ -145,7 +145,7 @@ export function People({
   });
   return (
     <div>
-      {!relation && !hideSearch && (
+      {!hideSearch && (
         <form
           className="mx-6 my-6 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-2"
           onSubmit={(e) => {
@@ -159,7 +159,7 @@ export function People({
         >
           <Search size={19} className="ml-2 shrink-0 text-[var(--muted)]" />
           <label className="sr-only" htmlFor="people-search">
-            Cari teman kampus
+            {relation ? "Cari dalam daftar akun" : "Cari teman kampus"}
           </label>
           <input
             id="people-search"

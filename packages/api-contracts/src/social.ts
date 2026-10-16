@@ -12,3 +12,5 @@ export type Post=z.infer<typeof postSchema>;
 export type FeedPage=z.infer<typeof feedSchema>;
 export type Media=z.infer<typeof mediaSchema>;
 export type Relationship=z.infer<typeof relationshipSchema>;
+
+export const feedPreferencesSchema = z.object({data:z.object({hidden_count:z.number().int().nonnegative(),reduced_authors_count:z.number().int().nonnegative()})});

@@ -185,7 +185,7 @@ export function Feed({
           </p>
         </div>
       ) : (
-        posts.map((post) => <PostCard key={post.id} post={post} />)
+        posts.map((post) => <PostCard key={post.id} post={post} feedControls={isHomeFeed} />)
       )}
       <div ref={sentinel} className="flex justify-center p-6">
         {query.hasNextPage && (

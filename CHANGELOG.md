@@ -1,5 +1,7 @@
 # Changelog
 
+- Add persisted home feed hiding/reduced-author ranking with reset, network-free URL cards, scoped follower search, private typing expiry and global unread message badges. Add reduced-motion controls and a redesigned mobile profile/banner editor with explicit crop/save/removal. Add restricted same-host backup and local service/error alarms; owner chose server-only storage. Verification: docs/testing/daily-use-2026-10-17.md.
+
 - Add photo crop/pan/zoom previews with explicit save/cancel and retry, improve post edit/discard/delete flows, restore profile tabs/history reading position, and add private DM search/block/report actions. Add an evidence-only campus moderation queue with independent audited review and an additive conversation_reports table. Real-account acceptance is explicitly deferred by the owner; see docs/testing/profile-post-dm-2026-10-16.md for actual verification.
 
 - Fix empty DM recipient queries being rejected, include existing follows in messaging discovery, add recipient pagination/retry and correct literal username searches. Refresh Explore search/filter hierarchy and empty results; unify the search input across result types. Refine verified account/campus details and simplify the browser title to Simeyo. Verification: docs/testing/discovery-2026-10-16.md.

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ConfirmQueueHealth;
+use App\Services\ErrorSignals;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -12,6 +13,22 @@ use Tests\TestCase;
 class OperationsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_server_error_signal_expires_and_fails_health_without_private_content(): void
+    {
+        config(['queue.default' => 'database']);
+        $signals = app(ErrorSignals::class);
+        $signals->record(404);
+        $this->assertSame(0, $signals->recent());
+        for ($i = 0; $i < 5; $i++) {
+            $signals->record(500);
+        }
+        $this->assertSame(1, Artisan::call('simeyo:operations-check'));
+        $this->assertSame(5, json_decode(Artisan::output(), true)['recent_5xx']);
+        $this->travel(6)->minutes();
+        $this->assertSame(0, $signals->recent());
+        $this->assertSame(0, Artisan::call('simeyo:operations-check'));
+    }
 
     public function test_read_only_check_reports_ready_jobs_but_ignores_future_delivery_age(): void
     {

@@ -9,11 +9,43 @@ use App\Models\User;
 use App\Services\CampusActivity;
 use App\Services\ConversationAccess;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class MessageController extends Controller
 {
     public function __construct(private ConversationAccess $access) {}
+
+    public function unread(Request $r)
+    {
+        $u = $r->user();
+        $count = Message::whereIn('conversation_id', $this->access->query($u)->select('conversations.id'))->where('sender_id', '!=', $u->id)->where('id', '>', function ($q) use ($u) {
+            $q->select('last_read_message_id')->from('conversation_participants')->whereColumn('conversation_participants.conversation_id', 'messages.conversation_id')->where('user_id', $u->id);
+        })->count();
+
+        return ['data' => ['unread_count' => $count]];
+    }
+
+    public function typing(Request $r, int $conversation)
+    {
+        $c = $this->access->find($r->user(), $conversation);
+        $other = $c->participants->firstWhere('id', '!=', $r->user()->id);
+        $key = 'typing:'.$c->id.':'.$r->user()->id;
+        if ($r->isMethod('put')) {
+            $d = $r->validate(['typing' => 'required|boolean']);
+            abort_unless($this->access->canSend($r->user(), $other), 403);
+            if ($d['typing']) {
+                Cache::put($key, true, 6);
+            } else {
+                Cache::forget($key);
+            }
+
+            return response()->noContent();
+        }
+        $typing = $this->access->canSend($other, $r->user()) && Cache::get('typing:'.$c->id.':'.$other->id, false);
+
+        return ['data' => ['typing' => (bool) $typing]];
+    }
 
     public function index(Request $r)
     {
@@ -78,6 +110,7 @@ class MessageController extends Controller
 
                 return $existing;
             }
+            Cache::forget('typing:'.$c->id.':'.$r->user()->id);
             $m = Message::create(['sender_id' => $r->user()->id, 'conversation_id' => $c->id, 'client_id' => $d['client_id'], 'body' => trim($d['body'])]);
             app(CampusActivity::class)->send($other, $r->user(), 'messages', ['conversation_id' => $c->id]);
             ActivityChanged::dispatch($r->user()->id);

@@ -93,10 +93,16 @@ test("real persisted messages, private Reverb delivery, notifications and mobile
       r.status() === 201,
   );
   await page.getByLabel("Tulis pesan").fill(body);
+  await expect(recipient.getByText(/sedang mengetik/)).toBeVisible({timeout:6000});
+  await recipient.goto("http://localhost:3000/home");
   await page.getByRole("button", { name: "Kirim pesan", exact: true }).click();
   await sent;
   await expect(page.getByRole("log", { name: "Riwayat pesan" }).getByText(body, { exact: true })).toBeVisible();
+  await expect(recipient.getByLabel("1 pesan belum dibaca").filter({visible:true})).toBeVisible();
+  await recipient.goto(url);
   await expect(recipient.getByRole("log", { name: "Riwayat pesan" }).getByText(body, { exact: true })).toBeVisible();
+  await expect(recipient.getByLabel("1 pesan belum dibaca")).toHaveCount(0);
+  await expect(recipient.getByText(/sedang mengetik/)).toHaveCount(0);
   await expect.poll(() => events.length, { timeout: 15000 }).toBeGreaterThan(0);
   expect(events.some((e) => e.includes(body))).toBe(false);
   await page.reload();

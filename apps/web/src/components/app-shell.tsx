@@ -4,6 +4,7 @@ import { clearDraft } from "@/lib/drafts";
 import Link from "next/link";
 import Image from "next/image";
 import { AccountMenu } from "./ui/account-menu";
+import { UnreadMessages } from "./social/message-status";
 import { Realtime } from "./social/realtime";
 import {
   ThreadComposerProvider,
@@ -76,7 +77,8 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   const { data: user, isPending, error, refetch } = useMe();
   const router = useRouter();
   const pathname = usePathname();
-  const isActive = (href: string) => pathname === href || (href !== "/home" && pathname.startsWith(`${href}/`));
+  const isActive = (href: string) =>
+    pathname === href || (href !== "/home" && pathname.startsWith(`${href}/`));
   const client = useQueryClient();
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
@@ -90,13 +92,19 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
     const viewport = window.visualViewport;
     if (!viewport) return;
     const update = () => {
-      if (viewport.scale === 1) document.documentElement.style.setProperty("--message-viewport-height", `${Math.round(viewport.height)}px`);
+      if (viewport.scale === 1)
+        document.documentElement.style.setProperty(
+          "--message-viewport-height",
+          `${Math.round(viewport.height)}px`,
+        );
     };
     update();
     viewport.addEventListener("resize", update);
     return () => {
       viewport.removeEventListener("resize", update);
-      document.documentElement.style.removeProperty("--message-viewport-height");
+      document.documentElement.style.removeProperty(
+        "--message-viewport-height",
+      );
     };
   }, [pathname]);
   if (isPending)
@@ -167,7 +175,17 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
       await api("auth/logout", { method: "POST" });
       clearDraft();
       clearNavigationMemory();
-      try { Object.keys(sessionStorage).filter((key) => (key.startsWith("simeyo:explore:") || key.startsWith("simeyo-profile-tab:"))).forEach((key) => sessionStorage.removeItem(key)); } catch { /* Logout works without storage. */ }
+      try {
+        Object.keys(sessionStorage)
+          .filter(
+            (key) =>
+              key.startsWith("simeyo:explore:") ||
+              key.startsWith("simeyo-profile-tab:"),
+          )
+          .forEach((key) => sessionStorage.removeItem(key));
+      } catch {
+        /* Logout works without storage. */
+      }
       client.clear();
       router.replace("/login");
     } catch {
@@ -177,7 +195,11 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
     }
   }
   return (
-    <div className="app-frame min-h-dvh w-full" data-collapsed={collapsed} data-messaging={pathname.startsWith("/messages")}>
+    <div
+      className="app-frame min-h-dvh w-full"
+      data-collapsed={collapsed}
+      data-messaging={pathname.startsWith("/messages")}
+    >
       <NavigationMemory userId={user.id} />
       {user.verified && <Realtime userId={user.id} />}
       <aside
@@ -228,11 +250,9 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
                 className={`rail-link ${isActive(n.href) ? "active" : ""}`}
                 aria-current={isActive(n.href) ? "page" : undefined}
               >
-                <n.icon
-                  size={25}
-                  strokeWidth={isActive(n.href) ? 2.2 : 1.7}
-                />
+                <n.icon size={25} strokeWidth={isActive(n.href) ? 2.2 : 1.7} />
                 <span className="rail-label">{n.label}</span>
+                {n.href === "/messages" && <UnreadMessages />}
               </Link>
             ))}
         </nav>
@@ -246,8 +266,17 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
           />
         </div>
       </aside>
-      <div className={pathname.startsWith("/messages") ? "message-frame min-w-0 pb-24 md:pb-0" : "mx-auto w-full min-w-0 max-w-[640px] pb-24"}>
-        <header className="mobile-header sticky top-0 z-20 flex items-center justify-between border-b border-[var(--border)] bg-[var(--background)]/95 px-4 backdrop-blur-sm md:hidden">
+      <div
+        className={
+          pathname.startsWith("/messages")
+            ? "message-frame min-w-0 pb-24 md:pb-0"
+            : "mx-auto w-full min-w-0 max-w-[640px] pb-24"
+        }
+      >
+        <header
+          data-editor-hidden={pathname === "/profile/edit"}
+          className="mobile-header sticky top-0 z-20 flex items-center justify-between border-b border-[var(--border)] bg-[var(--background)]/95 px-4 backdrop-blur-sm md:hidden"
+        >
           <Brand />
           <div className="flex items-center">
             {user.verified && (
@@ -258,6 +287,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
                   aria-label="Pesan"
                 >
                   <MessageCircle size={19} />
+                  <UnreadMessages />
                 </Link>
               </>
             )}
@@ -277,6 +307,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <nav
+        data-editor-hidden={pathname === "/profile/edit"}
         className="mobile-navigation fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-md md:hidden"
         aria-label="Navigasi seluler"
       >
@@ -297,19 +328,22 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
           >
             <n.icon size={21} />
             {n.label}
+            {n.href === "/messages" && <UnreadMessages />}
           </Link>
         ))}
       </nav>
-      {user.verified && !pathname.startsWith("/messages") && pathname !== "/profile/edit" && (
-        <button
-          type="button"
-          onClick={openComposer}
-          aria-label="Cerita baru"
-          className="fixed bottom-6 right-6 z-20 hidden h-16 w-20 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm transition-colors hover:bg-[var(--soft)] md:flex"
-        >
-          <Plus size={28} />
-        </button>
-      )}
+      {user.verified &&
+        !pathname.startsWith("/messages") &&
+        pathname !== "/profile/edit" && (
+          <button
+            type="button"
+            onClick={openComposer}
+            aria-label="Cerita baru"
+            className="fixed bottom-6 right-6 z-20 hidden h-16 w-20 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm transition-colors hover:bg-[var(--soft)] md:flex"
+          >
+            <Plus size={28} />
+          </button>
+        )}
       <ConfirmDialog
         open={confirm}
         onOpenChange={setConfirm}

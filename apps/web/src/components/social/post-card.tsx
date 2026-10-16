@@ -20,6 +20,9 @@ import {
   Pencil,
   Trash2,
   Flag,
+  EyeOff,
+  ThumbsDown,
+  ExternalLink,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type Post } from "../../../../../packages/api-contracts/src/social";
@@ -30,6 +33,40 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/providers";
 import { Composer } from "./composer";
+function LinkPreview({ body }: { body: string }) {
+  const match = body
+    .match(/https?:\/\/[^\s<>]+/i)?.[0]
+    ?.replace(/[.,;!?)]+$/, "");
+  if (!match) return null;
+  let url: URL;
+  try {
+    url = new URL(match);
+  } catch {
+    return null;
+  }
+  if (url.username || url.password) return null;
+  return (
+    <a
+      href={url.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-3 flex min-h-20 items-center gap-3 rounded-2xl border border-[var(--border)] p-4 hover:bg-[var(--soft)]"
+      aria-label={`Buka tautan ${url.hostname}`}
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--soft)]">
+        <ExternalLink size={20} aria-hidden="true" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium">
+          {url.hostname}
+        </span>
+        <span className="mt-1 block truncate text-xs text-[var(--muted)]">
+          {url.pathname === "/" ? "Buka situs" : url.pathname}
+        </span>
+      </span>
+    </a>
+  );
+}
 export function PostBody({ body }: { body: string }) {
   return (
     <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.65]">
@@ -72,9 +109,11 @@ export function PostBody({ body }: { body: string }) {
 export function PostCard({
   post,
   detail = false,
+  feedControls = false,
 }: {
   post: Post;
   detail?: boolean;
+  feedControls?: boolean;
 }) {
   const interaction = useInteraction(post);
   const router = useRouter();
@@ -150,6 +189,34 @@ export function PostCard({
       setBusy(false);
     }
   }
+  async function feedback(reduce: boolean | null) {
+    setBusy(true);
+    try {
+      await api(`posts/${post.id}/feedback`, {
+        method: reduce === null ? "DELETE" : "PUT",
+        ...(reduce === null
+          ? {}
+          : { body: JSON.stringify({ reduce_author: reduce }) }),
+      });
+      toast(
+        reduce
+          ? "Cerita dari akun ini akan lebih jarang muncul di Untukmu."
+          : "Cerita disembunyikan dari beranda.",
+      );
+      await client.invalidateQueries({
+        predicate: (q) =>
+          q.queryKey[0] === "feed" &&
+          ["for-you", "following", "campus"].includes(String(q.queryKey[1])),
+      });
+      client.removeQueries({ queryKey: ["feed-latest"] });
+      client.invalidateQueries({ queryKey: ["feed-preferences"] });
+    } catch {
+      toast("Preferensi belum tersimpan. Coba lagi.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <article
       data-post-id={post.id}
@@ -206,8 +273,8 @@ export function PostCard({
               </div>
               <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
                 @{post.author.username}
-                {post.author.department && ` · ${post.author.department}`}
-                {post.edited_at && " · Diedit"}
+                {post.author.department && ` Â· ${post.author.department}`}
+                {post.edited_at && " Â· Diedit"}
                 {post.visibility === "followers" && (
                   <LockKeyhole
                     size={11}
@@ -232,6 +299,34 @@ export function PostCard({
                   align="end"
                   className="z-40 min-w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-lg"
                 >
+                  {feedControls && !post.can_edit && (
+                    <>
+                      <Menu.Item
+                        className="menu-choice"
+                        disabled={busy}
+                        onSelect={() => feedback(false)}
+                      >
+                        <EyeOff
+                          size={16}
+                          className="mr-2 inline"
+                          aria-hidden="true"
+                        />{" "}
+                        Sembunyikan cerita
+                      </Menu.Item>
+                      <Menu.Item
+                        className="menu-choice"
+                        disabled={busy}
+                        onSelect={() => feedback(true)}
+                      >
+                        <ThumbsDown
+                          size={16}
+                          className="mr-2 inline"
+                          aria-hidden="true"
+                        />{" "}
+                        Kurangi konten seperti ini
+                      </Menu.Item>
+                    </>
+                  )}
                   {post.can_edit && (
                     <>
                       <Menu.Item
@@ -278,10 +373,11 @@ export function PostCard({
               href={`/thread/${post.parent_id}`}
               className="mb-2 inline-flex min-h-8 items-center text-xs text-[var(--muted)]"
             >
-              Membalas percakapan ↗
+              Membalas percakapan â†—
             </Link>
           )}
           <PostBody body={post.body} />
+          <LinkPreview body={post.body} />
           {post.media.length > 0 && (
             <div
               role="region"
@@ -328,7 +424,7 @@ export function PostCard({
               </p>
               {post.quote.media.length > 0 && (
                 <p className="mt-2 text-xs text-[var(--muted)]">
-                  {post.quote.media.length} gambar · Lihat cerita
+                  {post.quote.media.length} gambar Â· Lihat cerita
                 </p>
               )}
             </Link>
@@ -434,7 +530,7 @@ export function PostCard({
                 ? "Laporkan cerita"
                 : dialog === "delete"
                   ? "Hapus cerita?"
-                  : `Gambar cerita · ${imageIndex + 1} dari ${post.media.length}`
+                  : `Gambar cerita Â· ${imageIndex + 1} dari ${post.media.length}`
         }
         description={
           dialog === "delete"

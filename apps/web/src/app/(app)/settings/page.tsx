@@ -1,4 +1,6 @@
 "use client";
+import { MotionPreference } from "@/components/accessibility";
+import { FeedPreferences } from "@/components/social/feed-preferences";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import Link from "next/link";
@@ -85,6 +87,10 @@ export default function Page() {
           </div>
           <ThemeToggle />
         </section>
+        <section className="px-5 py-5 sm:px-6">
+          <MotionPreference control />
+        </section>
+        <FeedPreferences />
         <section
           className="px-3 py-4 sm:px-4"
           aria-labelledby="privacy-heading"

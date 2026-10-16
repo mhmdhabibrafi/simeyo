@@ -29,3 +29,12 @@ The CI drill restores actual application tables plus a fictional user/profile wi
 The application recovery step additionally creates a fictional profile linked to a private PNG and an encrypted `PushDevice` token before dumping the database. It archives the fixture media in a restricted runner temporary directory, restores into a separate directory, and compares both archive and content SHA-256 hashes against the restored profile reference. Laravel must decrypt the restored database token with the retained CI `APP_KEY`; a different key must fail. No real push token or application key is written into the archive or logs. This checks application compatibility with retained keys, not recovery from a production secret manager, object-store version history, coordinated live snapshots or operator cutover. Those production drills remain outstanding.
 
 References: [PostgreSQL pg_dump](https://www.postgresql.org/docs/17/app-pgdump.html), [PostgreSQL pg_restore](https://www.postgresql.org/docs/17/app-pgrestore.html).
+
+
+## Scheduled server-only snapshots
+
+The owner selected server-only storage on 2026-10-17. `server-maintenance.py backup` uses `/srv/simeyo/compose` from `/srv/simeyo/app`, creates `/srv/simeyo/backups/scheduled/<UTC timestamp>-<random>/` with mode 0700, validates database/media inventories, and writes SHA-256 hashes for the database, private media and retained `.env.production` key/config snapshot. File creation uses umask 077. Run only from the intended production checkout; never publish the backup directory through the web gateway. Failed `.partial` directories remain private for investigation. No backup or old media retention cleanup is automated.
+
+The systemd templates in `infrastructure/production/systemd/` run as `mediasi`; adapt that user/path when installing elsewhere. The backup timer runs daily at 19:30 UTC (02:30 WIB), with up to five minutes jitter and Persistent catch-up. The monitor timer runs every five minutes. Installation/actual archive verification must be recorded in the current testing report before claiming those timers are active.
+
+`sha256.json` plus archive inventories establish integrity/readability, not an application restore or atomic live database/media snapshot. Concurrent replacement/deletion of media can affect a sequential snapshot. Same-host archives do not protect against host loss/ransomware; independent encrypted copies remain a production gate. Keep application keys private and preserve the matching key when restoring.

@@ -16,6 +16,63 @@ use Tests\TestCase;
 
 class SocialCoreTest extends TestCase
 {
+    public function test_feed_preferences_are_private_reversible_and_rank_reduced_authors_lower(): void
+    {
+        $viewer = $this->member();
+        $a = $this->member();
+        $b = $this->member();
+        $hidden = $this->fixturePost($a);
+        $a2 = $this->fixturePost($a);
+        $b1 = $this->fixturePost($b);
+        $this->actingAs($viewer)->putJson('/api/v1/posts/'.$hidden->id.'/feedback', ['reduce_author' => true])->assertNoContent();
+        $this->putJson('/api/v1/posts/'.$hidden->id.'/feedback', ['reduce_author' => true])->assertNoContent();
+        $this->getJson('/api/v1/feed/preferences')->assertJsonPath('data.hidden_count', 1)->assertJsonPath('data.reduced_authors_count', 1);
+        $this->assertSame([$b1->id, $a2->id], array_column($this->getJson('/api/v1/feed?feed=for-you')->assertOk()->json('data'), 'id'));
+        $this->assertNotContains($hidden->id, array_column($this->getJson('/api/v1/feed?feed=campus')->json('data'), 'id'));
+        $this->getJson('/api/v1/posts/'.$hidden->id)->assertOk();
+        $this->actingAs($b)->getJson('/api/v1/feed/preferences')->assertJsonPath('data.hidden_count', 0);
+        $private = $this->member(true);
+        $secret = $this->fixturePost($private);
+        $this->actingAs($viewer)->putJson('/api/v1/posts/'.$secret->id.'/feedback', ['reduce_author' => false])->assertNotFound();
+        $this->putJson('/api/v1/posts/'.$hidden->id.'/feedback', ['reduce_author' => 'bad'])->assertUnprocessable();
+        $this->deleteJson('/api/v1/feed/preferences')->assertNoContent();
+        $this->assertContains($hidden->id, array_column($this->getJson('/api/v1/feed?feed=campus')->json('data'), 'id'));
+    }
+
+    public function test_relationship_search_respects_private_and_block_boundaries(): void
+    {
+        $viewer = $this->member();
+        $owner = $this->member(true);
+        $follower = $this->member();
+        $follower->forceFill(['name' => 'Raka_100%'])->save();
+        DB::table('follows')->insert(['follower_id' => $follower->id, 'followed_id' => $owner->id, 'state' => 'accepted', 'created_at' => now(), 'updated_at' => now()]);
+        $path = '/api/v1/people?relation=followers&user_id='.$owner->id.'&q='.urlencode('_100%');
+        $this->actingAs($viewer)->getJson($path)->assertForbidden();
+        $this->actingAs($owner)->getJson($path)->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $follower->id);
+        $this->putJson('/api/v1/relationships/'.$follower->id.'/block')->assertNoContent();
+        $this->getJson($path)->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_cover_and_avatar_removal_are_owned_and_independent(): void
+    {
+        Storage::fake('local');
+        $u = $this->member();
+        $other = $this->member();
+        $this->actingAs($u)->postJson('/api/v1/me/media', ['kind' => 'cover', 'image' => UploadedFile::fake()->image('cover.jpg', 2048, 683)])->assertOk();
+        $cover = $u->profile->fresh()->cover_path;
+        $this->postJson('/api/v1/me/media', ['kind' => 'avatar', 'image' => UploadedFile::fake()->image('avatar.jpg', 1024, 1024)])->assertOk();
+        $avatar = $u->profile->fresh()->avatar_path;
+        $this->actingAs($other)->deleteJson('/api/v1/me/media/cover')->assertNoContent();
+        Storage::disk('local')->assertExists($cover);
+        $this->actingAs($u)->deleteJson('/api/v1/me/media/cover')->assertNoContent();
+        $this->assertNull($u->profile->fresh()->cover_path);
+        Storage::disk('local')->assertMissing($cover);
+        Storage::disk('local')->assertExists($avatar);
+        $this->deleteJson('/api/v1/me/media/avatar')->assertNoContent();
+        Storage::disk('local')->assertMissing($avatar);
+        $this->deleteJson('/api/v1/me/media/other')->assertNotFound();
+    }
+
     public function test_posts_accept_more_than_four_images_and_uploads_above_four_megabytes(): void
     {
         Storage::fake('local');

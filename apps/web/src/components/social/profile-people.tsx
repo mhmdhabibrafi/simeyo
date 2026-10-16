@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { userSchema } from "../../../../../packages/api-contracts/src";
 import { api } from "@/lib/api";
+import { BackButton } from "@/components/ui/back-button";
 import { People } from "./people";
 export function ProfilePeople({
   username,
@@ -21,8 +22,9 @@ export function ProfilePeople({
   });
   return (
     <>
-      <header className="border-b border-[var(--border)] p-6">
-        <h1 className="text-xl font-semibold">
+      <header className="flex items-center gap-3 border-b border-[var(--border)] p-4">
+        <BackButton />
+        <h1 className="min-w-0 break-words text-base font-semibold">
           {relation === "following" ? "Mengikuti" : "Pengikut"} · @{username}
         </h1>
       </header>

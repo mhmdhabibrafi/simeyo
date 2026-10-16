@@ -7,3 +7,6 @@ export const notificationsSchema = z.object({ data: z.array(z.object({ id: z.str
 export const communicationPreferencesSchema = z.object({ dm_policy: z.enum(['campus','followers','nobody']), notification_preferences: z.record(z.string(), z.boolean()).nullable() });
 
 export const conversationReportsSchema = z.object({ data: z.array(z.object({ id: z.number().int(), reporter_name: z.string(), author_name: z.string(), body: z.string().nullable(), reason: z.enum(["spam", "harassment", "hate", "other"]), details: z.string().nullable() })), next_cursor: z.string().nullable() });
+
+export const typingSchema = z.object({data:z.object({typing:z.boolean()})});
+export const unreadMessagesSchema = z.object({data:z.object({unread_count:z.number().int().nonnegative()})});

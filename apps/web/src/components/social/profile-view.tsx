@@ -106,7 +106,7 @@ export function ProfileView({ username }: { username?: string }) {
       </header>
       <div className="feed-surface">
         {u.cover_url && (
-          <div className="h-36 overflow-hidden">
+          <div className="aspect-[3/1] overflow-hidden">
             {
               <Image
                 unoptimized
@@ -119,7 +119,9 @@ export function ProfileView({ username }: { username?: string }) {
             }
           </div>
         )}
-        <div className="px-4 pt-5 sm:px-6 sm:pt-6">
+        <div
+          className={`relative px-4 sm:px-6 ${u.cover_url ? "pt-5" : "pt-6"}`}
+        >
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <h2 className="break-words text-[22px] font-semibold leading-tight tracking-tight sm:text-2xl">
@@ -139,7 +141,9 @@ export function ProfileView({ username }: { username?: string }) {
                 )}
               </p>
             </div>
-            <div className="shrink-0">
+            <div
+              className={`shrink-0 rounded-full border-4 border-[var(--surface)] bg-[var(--surface)] ${u.cover_url ? "-mt-14" : ""}`}
+            >
               <Avatar name={u.name} url={u.avatar_url} size={80} />
             </div>
           </div>
@@ -211,14 +215,26 @@ export function ProfileView({ username }: { username?: string }) {
             <div className="mt-2 flex flex-wrap gap-x-5 text-sm">
               <Link
                 className="inline-flex min-h-11 items-center gap-1 hover:underline"
-                href={`/u/${u.username}/followers`}
+                href={
+                  u.private_account &&
+                  !owner &&
+                  relation.data?.follow_state !== "accepted"
+                    ? "#private-profile"
+                    : `/u/${u.username}/followers`
+                }
               >
                 <strong>{relation.data.followers_count}</strong>{" "}
                 <span className="text-[var(--muted)]">pengikut</span>
               </Link>
               <Link
                 className="inline-flex min-h-11 items-center gap-1 hover:underline"
-                href={`/u/${u.username}/following`}
+                href={
+                  u.private_account &&
+                  !owner &&
+                  relation.data?.follow_state !== "accepted"
+                    ? "#private-profile"
+                    : `/u/${u.username}/following`
+                }
               >
                 <strong>{relation.data.following_count}</strong>{" "}
                 <span className="text-[var(--muted)]">mengikuti</span>
@@ -363,14 +379,13 @@ export function ProfileView({ username }: { username?: string }) {
               {u.private_account &&
               !owner &&
               relation.data?.follow_state !== "accepted" ? (
-                <div className="p-10 text-center">
+                <div id="private-profile" className="p-10 text-center">
                   <LockKeyhole className="mx-auto mb-4 text-[var(--muted)]" />
-                  <h3 className="text-sm font-semibold">
-                    Cerita untuk lingkaran terdekat.
-                  </h3>
+                  <h3 className="text-sm font-semibold">Akun ini privat</h3>
                   <p className="mt-2 text-xs text-[var(--muted)]">
-                    Kirim permintaan mengikuti untuk membaca cerita akun privat
-                    ini.
+                    {relation.data?.follow_state === "pending"
+                      ? "Permintaanmu sudah dikirim. Cerita dan daftar pengikut tersedia setelah disetujui."
+                      : "Ikuti akun ini untuk meminta akses ke cerita dan daftar pengikutnya."}
                   </p>
                 </div>
               ) : (

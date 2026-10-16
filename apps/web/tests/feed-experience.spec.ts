@@ -96,6 +96,9 @@ async function fixtures(page: Page) {
   );
   await page.route("**/api/v1/**", (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/conversations/unread")) return route.fulfill({json:{data:{unread_count:0}}});
+    if (url.pathname.endsWith("/typing")) return route.fulfill(route.request().method()==="PUT" ? {status:204} : {json:{data:{typing:false}}});
+    if (url.pathname.endsWith("/feed/preferences")) return route.fulfill({json:{data:{hidden_count:0,reduced_authors_count:0}}});
     if (url.pathname.endsWith("/me"))
       return route.fulfill({ json: { data: user } });
     if (url.pathname.endsWith("/realtime"))
@@ -151,6 +154,51 @@ async function fixtures(page: Page) {
     });
   });
 }
+
+test("home feedback persists, retries safely, previews links without fetching and can be reset", async ({page}) => {
+  await fixtures(page); let hidden=false;let attempts=0;let reset=0;const outside:string[]=[];
+  await page.route("https://example.test/**",route=>{outside.push(route.request().url());return route.abort();});
+  await page.route("**/api/v1/feed?**",route=>route.fulfill({json:{data:hidden?[]:[{...post,can_edit:false,body:"Referensi https://example.test/research?q=private"}],meta:{next_cursor:null,has_more:false,feed:"for-you"}}}));
+  await page.route("**/api/v1/posts/901/feedback",route=>{attempts++;expect(route.request().postDataJSON().reduce_author).toBe(true);if(attempts===1)return route.fulfill({status:503,json:{message:"Try again"}});hidden=true;return route.fulfill({status:204});});
+  await page.route("**/api/v1/feed/preferences",route=>{if(route.request().method()==="DELETE"){reset++;hidden=false;return route.fulfill({status:204});}return route.fulfill({json:{data:{hidden_count:hidden?1:0,reduced_authors_count:hidden?1:0}}});});
+  await page.goto("/home");await expect(page.getByRole("link",{name:"Buka tautan example.test",exact:true})).toBeVisible();expect(outside).toEqual([]);
+  await page.getByRole("button",{name:"Opsi cerita",exact:true}).click();await page.getByRole("menuitem",{name:"Kurangi konten seperti ini",exact:true}).click();await expect(page.getByRole("status")).toContainText("Preferensi belum tersimpan");await expect(page.locator('[data-post-id="901"]')).toBeVisible();
+  await page.getByRole("button",{name:"Opsi cerita",exact:true}).click();await page.getByRole("menuitem",{name:"Kurangi konten seperti ini",exact:true}).click();await expect(page.locator('[data-post-id="901"]')).toHaveCount(0);
+  await page.goto("/settings");await expect(page.getByText("1 cerita disembunyikan ? 1 akun dikurangi",{exact:true})).toBeVisible();await page.getByRole("button",{name:"Atur ulang preferensi",exact:true}).click();expect(reset).toBe(0);await page.getByRole("dialog").getByRole("button",{name:"Atur ulang",exact:true}).click();await page.goto("/home");await expect(page.locator('[data-post-id="901"]')).toBeVisible();expect(reset).toBe(1);
+});
+
+test("follower lists search within the selected relation and private profiles explain pending access", async ({page}) => {
+  await fixtures(page); const owner={...user,id:902,username:"raka",name:"Raka",private_account:false};
+  await page.route("**/api/v1/profiles/raka",route=>route.fulfill({json:{data:owner}}));
+  const searches:string[]=[];await page.route("**/api/v1/people?**",route=>{const params=new URL(route.request().url()).searchParams;expect(params.get("relation")).toBe("followers");expect(params.get("user_id")).toBe("902");searches.push(params.get("q")??"");return route.fulfill({json:{data:params.get("q")==="Alya"?[user]:[],meta:{next_cursor:null,has_more:false}}});});
+  await page.goto("/u/raka/followers");await page.getByRole("searchbox",{name:"Cari dalam daftar akun",exact:true}).fill("Alya");await page.getByRole("button",{name:"Cari",exact:true}).click();await expect(page.getByRole("link",{name:"Alya Putri",exact:true})).toBeVisible();expect(searches).toContain("Alya");
+  owner.private_account=true;await page.route("**/api/v1/relationships/902",route=>route.fulfill({json:{data:{followers_count:1,following_count:2,follow_state:"pending",muted:false}}}));await page.goto("/u/raka");await expect(page.getByRole("heading",{name:"Akun ini privat",exact:true})).toBeVisible();await expect(page.getByText(/Permintaanmu sudah dikirim/)).toBeVisible();await expect(page.getByRole("button",{name:"Diminta",exact:true})).toBeVisible();
+});
+
+test("chat typing stops on blur and global unread badges clear after the visible message is read", async ({page}) => {
+  await fixtures(page);let unread=1;const signals:boolean[]=[];const message={id:2,conversation_id:42,sender_id:902,client_id:"11111111-1111-4111-8111-111111111111",body:"Pesan baru",created_at:"2026-10-17T01:00:00Z"};
+  await page.route("**/api/v1/conversations/unread",route=>route.fulfill({json:{data:{unread_count:unread}}}));
+  await page.route("**/api/v1/conversations/42/messages",route=>route.fulfill({json:{data:[message],user:{id:902,name:"Raka",username:"raka"},next_cursor:null,can_send:true,recipient_read_message_id:0}}));
+  await page.route("**/api/v1/conversations/42/read",route=>{unread=0;return route.fulfill({status:204});});
+  await page.route("**/api/v1/conversations/42/typing",route=>{if(route.request().method()==="PUT"){signals.push(route.request().postDataJSON().typing);return route.fulfill({status:204});}return route.fulfill({json:{data:{typing:true}}});});
+  await page.setViewportSize({width:390,height:844});await page.goto("/home");await expect(page.getByLabel("1 pesan belum dibaca").filter({visible:true})).toBeVisible();await page.goto("/messages/42");await expect(page.getByText("Raka sedang mengetik...",{exact:true})).toBeVisible();await expect(page.getByLabel("1 pesan belum dibaca")).toHaveCount(0);
+  await page.getByLabel("Tulis pesan",{exact:true}).fill("Halo");await expect.poll(()=>signals.includes(true)).toBe(true);await page.getByRole("heading",{name:"Raka",exact:true}).click();await expect.poll(()=>signals.at(-1)).toBe(false);
+});
+
+test("motion preference survives reload and respects keyboard focus and touch targets", async ({page}) => {
+  await fixtures(page);await page.setViewportSize({width:390,height:844});await page.goto("/settings");await page.getByLabel("Animasi",{exact:true}).selectOption("reduce");await expect(page.locator("html")).toHaveAttribute("data-motion","reduce");await page.reload();await expect(page.getByLabel("Animasi",{exact:true})).toHaveValue("reduce");expect(await page.locator("main").evaluate(el=>getComputedStyle(el).animationName)).toBe("none");
+  await page.getByLabel("Animasi",{exact:true}).focus();await expect(page.getByLabel("Animasi",{exact:true})).toBeFocused();expect(await page.getByLabel("Animasi",{exact:true}).evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);await waitForAnimations(page);expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+});
+
+test("mobile banner crop uploads at three to one, survives reload and removes only after confirmation", async ({page}) => {
+  await fixtures(page);let owner={...user,cover_url:null as string|null};let uploads=0;let removes=0;let dimensions:number[]=[];
+  await page.route("**/api/v1/me",route=>route.fulfill({json:{data:owner}}));
+  await page.route("**/api/v1/me/media",async route=>{uploads++;const bytes=route.request().postDataBuffer()!;expect(bytes.toString()).toContain('name="kind"');const start=bytes.indexOf(Buffer.from([255,216,255])),end=bytes.lastIndexOf(Buffer.from([255,217]));dimensions=await page.evaluate(async data=>{const img=await createImageBitmap(await(await fetch("data:image/jpeg;base64,"+data)).blob());const size=[img.width,img.height];img.close();return size;},bytes.subarray(start,end+2).toString("base64"));owner={...owner,cover_url:"/icons/icon-512.png"};return route.fulfill({json:{data:{url:owner.cover_url}}});});
+  await page.route("**/api/v1/me/media/cover",route=>{removes++;owner={...owner,cover_url:null};return route.fulfill({status:204});});
+  await page.setViewportSize({width:320,height:640});await page.goto("/profile/edit");await expect(page.getByRole("navigation",{name:"Navigasi seluler",exact:true})).toBeHidden();await page.getByLabel("Bio",{exact:true}).fill("Bio masih dalam proses.");
+  const file={name:"banner.png",mimeType:"image/png",buffer:readFileSync(path.resolve("public/icons/icon-512.png"))};await page.getByLabel("Foto sampul",{exact:true}).setInputFiles(file);const dialog=page.getByRole("dialog");await expect(dialog.getByRole("button",{name:"Simpan foto",exact:true})).toBeEnabled();await dialog.getByRole("button",{name:"Simpan foto",exact:true}).click();await expect(dialog).toBeHidden();expect(dimensions).toEqual([2048,683]);await expect(page.getByAltText("Sampul profil saat ini",{exact:true})).toBeVisible();await expect(page.getByLabel("Bio",{exact:true})).toHaveValue("Bio masih dalam proses.");
+  await page.evaluate(()=>window.scrollTo(0,0));await page.getByRole("button",{name:"Tutup pemberitahuan",exact:true}).click();await page.screenshot({path:path.resolve("../../docs/testing/screenshots/profile-editor-mobile-banner.png"),animations:"disabled"});await page.reload();await expect(page.getByAltText("Sampul profil saat ini",{exact:true})).toBeVisible();await page.getByRole("button",{name:"Hapus sampul",exact:true}).click();expect(removes).toBe(0);await page.getByRole("dialog").getByRole("button",{name:"Batal",exact:true}).click();await page.getByRole("button",{name:"Hapus sampul",exact:true}).click();await page.getByRole("dialog").getByRole("button",{name:"Hapus foto",exact:true}).click();await expect(page.getByAltText("Sampul profil saat ini",{exact:true})).toHaveCount(0);expect(removes).toBe(1);expect(uploads).toBe(1);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
 
 test("mobile Back restores each profile tab and its reading position across a thread", async ({ page }) => {
   await fixtures(page);

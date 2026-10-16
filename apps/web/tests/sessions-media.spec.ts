@@ -65,6 +65,23 @@ test("one browser revokes another session and profile image stays authenticated"
   });
   expect(response.status()).toBe(401);
   await anonymous.close();
+  await first.setViewportSize({width:390,height:844});
+  await first.getByLabel("Foto sampul", {exact:true}).setInputFiles({name:"banner.png",mimeType:"image/png",buffer:Buffer.from(png,"base64")});
+  await first.getByRole("dialog").getByRole("button",{name:"Simpan foto",exact:true}).click();
+  await expect(first.getByRole("dialog")).toBeHidden();
+  await first.reload();
+  const cover=first.getByAltText("Sampul profil saat ini",{exact:true});
+  await expect(cover).toBeVisible();
+  await expect.poll(()=>cover.evaluate((img:HTMLImageElement)=>img.complete && img.naturalWidth===1600)).toBe(true);
+  const coverSrc=await cover.getAttribute("src");
+  await first.getByRole("button",{name:"Hapus sampul",exact:true}).click();
+  await first.getByRole("dialog").getByRole("button",{name:"Hapus foto",exact:true}).click();
+  await expect(cover).toHaveCount(0);
+  const removed=await first.request.get(`http://localhost:3000${coverSrc}`,{headers:{Accept:"application/json"}});
+  expect(removed.status()).toBe(404);
+  await first.reload();
+  await expect(first.getByAltText("Sampul profil saat ini",{exact:true})).toHaveCount(0);
+  await expect(first.locator(`img[src="${src}"]`)).toBeVisible();
   await first.getByLabel("Foto profil", { exact: true }).setInputFiles({
     name: "malicious.svg",
     mimeType: "image/svg+xml",

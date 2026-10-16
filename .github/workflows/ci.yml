@@ -55,6 +55,7 @@ jobs:
       - run: node infrastructure/scripts/validate-config.mjs
       - run: npm run test:contracts
       - run: node --test infrastructure/tests/benchmark.test.mjs
+      - run: python3 -m unittest discover -s infrastructure/tests -p "test_*.py"
   mobile:
     runs-on: ubuntu-latest
     steps:

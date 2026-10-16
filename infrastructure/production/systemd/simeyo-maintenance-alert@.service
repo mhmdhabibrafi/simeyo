@@ -1,0 +1,5 @@
+[Unit]
+Description=Local Simeyo maintenance failure alarm
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/logger -p daemon.err -t simeyo-maintenance Simeyo maintenance unit %i failed; inspect restricted service status

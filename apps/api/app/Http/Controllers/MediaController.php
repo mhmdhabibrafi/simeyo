@@ -29,7 +29,7 @@ class MediaController extends Controller
         imagedestroy($image);
         imagedestroy($output);
         $path = 'profiles/'.$r->user()->id.'/'.Str::uuid().'.jpg';
-        Storage::disk(config('ruang.media_disk'))->put($path, $bytes);
+        abort_unless(Storage::disk(config('ruang.media_disk'))->put($path, $bytes), 503, 'Foto belum dapat disimpan. Coba lagi.');
         $p = $r->user()->profile()->firstOrCreate([]);
         $column = $d['kind'].'_path';
         $old = $p->$column;
@@ -39,6 +39,22 @@ class MediaController extends Controller
         }
 
         return ['data' => ['url' => '/media/'.$path]];
+    }
+
+    public function destroy(Request $r, string $kind)
+    {
+        abort_unless(in_array($kind, ['avatar', 'cover'], true), 404);
+        $profile = $r->user()->profile()->first();
+        if ($profile) {
+            $column = $kind.'_path';
+            $old = $profile->$column;
+            $profile->update([$column => null]);
+            if ($old) {
+                Storage::disk(config('ruang.media_disk'))->delete($old);
+            }
+        }
+
+        return response()->noContent();
     }
 
     public function show(Request $r, string $userId, string $filename)

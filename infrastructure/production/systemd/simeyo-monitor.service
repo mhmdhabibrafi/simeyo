@@ -1,0 +1,10 @@
+[Unit]
+Description=Simeyo service queue error disk and backup monitor
+OnFailure=simeyo-maintenance-alert@%n.service
+[Service]
+Type=oneshot
+User=mediasi
+WorkingDirectory=/srv/simeyo/app
+UMask=0077
+ExecStart=/usr/bin/python3 /srv/simeyo/app/infrastructure/scripts/server-maintenance.py check
+TimeoutStartSec=2min

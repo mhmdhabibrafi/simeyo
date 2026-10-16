@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Moon, Sun, X } from "lucide-react";
+import { MotionPreference } from "./accessibility";
 import { PwaProvider } from "./pwa";
 const ToastContext = createContext<(message: string) => void>(() => {});
 export function useToast() {
@@ -35,14 +36,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <ToastContext.Provider value={setToast}>
-        <PwaProvider>{children}</PwaProvider>
+        <MotionPreference /><PwaProvider>{children}</PwaProvider>
         {toast && (
           <div
             role="status"
-            className="fixed bottom-24 left-1/2 z-[80] flex max-w-[90vw] -translate-x-1/2 items-center gap-4 rounded-2xl bg-[var(--foreground)] px-5 py-4 text-sm text-[var(--surface)] shadow-lg"
+            className="fixed bottom-24 left-1/2 z-[80] flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded-2xl bg-[var(--foreground)] px-5 py-4 text-sm text-[var(--surface)] shadow-lg"
           >
             {toast}
             <button
+              className="inline-flex min-h-11 min-w-11 items-center justify-center"
               aria-label="Tutup pemberitahuan"
               onClick={() => setToast("")}
             >

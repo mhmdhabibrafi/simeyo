@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/app-shell";
 import { useToast } from "@/components/providers";
 import {
+  typingSchema,
   conversationsSchema,
   messagesSchema,
   messageSchema,
@@ -244,15 +245,26 @@ function NewMessage({
       const params = new URLSearchParams({ context: "messages" });
       if (search) params.set("q", search);
       if (pageParam) params.set("cursor", pageParam);
-      const r = await api<{ data: unknown[]; meta: { next_cursor: string | null } }>(`people?${params}`);
+      const r = await api<{
+        data: unknown[];
+        meta: { next_cursor: string | null };
+      }>(`people?${params}`);
       return {
-        data: r.data.map((person) => userSchema.parse(person)).filter((person) => person.id !== me?.id),
+        data: r.data
+          .map((person) => userSchema.parse(person))
+          .filter((person) => person.id !== me?.id),
         next_cursor: r.meta.next_cursor,
       };
     },
     getNextPageParam: (page) => page.next_cursor,
   });
-  const recipients = Array.from(new Map(q.data?.pages.flatMap((page) => page.data).map((person) => [person.id, person]) ?? []).values());
+  const recipients = Array.from(
+    new Map(
+      q.data?.pages
+        .flatMap((page) => page.data)
+        .map((person) => [person.id, person]) ?? [],
+    ).values(),
+  );
   const start = useMutation({
     mutationFn: (userId: number) =>
       api<{ data: { id: number } }>("conversations", {
@@ -261,6 +273,7 @@ function NewMessage({
       }),
     onSuccess: (r) => {
       client.invalidateQueries({ queryKey: ["conversations"] });
+      client.invalidateQueries({ queryKey: ["message-unread"] });
       onOpenChange(false);
       router.push(`/messages/${r.data.id}`);
     },
@@ -330,7 +343,16 @@ function NewMessage({
           </button>
         ))}
       </div>
-      {q.hasNextPage && <Button variant="ghost" className="mt-2 w-full" disabled={q.isFetchingNextPage} onClick={() => q.fetchNextPage()}>Penerima lainnya</Button>}
+      {q.hasNextPage && (
+        <Button
+          variant="ghost"
+          className="mt-2 w-full"
+          disabled={q.isFetchingNextPage}
+          onClick={() => q.fetchNextPage()}
+        >
+          Penerima lainnya
+        </Button>
+      )}
       {q.data && recipients.length === 0 && (
         <p className="py-8 text-center text-sm text-[var(--muted)]">
           Tidak ada teman yang cocok.
@@ -360,6 +382,59 @@ export function MessageThread({ id }: { id: number }) {
     getNextPageParam: (p) => p.next_cursor,
     refetchInterval: 15000,
   });
+  const typingSentAt = useRef(0);
+  const typingActive = useRef(false);
+  const typingStop = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typing = useQuery({
+    queryKey: ["message-typing", id],
+    enabled: !!q.data && !q.isError,
+    queryFn: async () =>
+      typingSchema.parse(await api(`conversations/${id}/typing`)),
+    staleTime: 0,
+    refetchInterval: 2000,
+  });
+  function sendTyping(active: boolean) {
+    if (!active && !typingActive.current) return;
+    const now = Date.now();
+    if (active && typingActive.current && now - typingSentAt.current < 3000)
+      return;
+    typingSentAt.current = now;
+    typingActive.current = active;
+    void api(`conversations/${id}/typing`, {
+      method: "PUT",
+      body: JSON.stringify({ typing: active }),
+    }).catch(() => {
+      /* Typing never prevents sending a message. */
+    });
+  }
+  function changedTyping(value: string) {
+    if (typingStop.current) clearTimeout(typingStop.current);
+    sendTyping(!!value.trim());
+    if (value.trim())
+      typingStop.current = setTimeout(() => sendTyping(false), 4000);
+  }
+  useEffect(() => {
+    const stop = () => {
+      if (document.visibilityState === "hidden") {
+        typingActive.current = false;
+        void api(`conversations/${id}/typing`, {
+          method: "PUT",
+          body: JSON.stringify({ typing: false }),
+        }).catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", stop);
+    return () => {
+      document.removeEventListener("visibilitychange", stop);
+      if (typingStop.current) clearTimeout(typingStop.current);
+      // The server TTL removes status if the browser closes before the request completes.
+      if (typingActive.current)
+        void api(`conversations/${id}/typing`, {
+          method: "PUT",
+          body: JSON.stringify({ typing: false }),
+        }).catch(() => {});
+    };
+  }, [id]);
   const m = useMutation({
     mutationFn: async ({
       body,
@@ -407,6 +482,7 @@ export function MessageThread({ id }: { id: number }) {
       );
       client.invalidateQueries({ queryKey: ["messages", id] });
       client.invalidateQueries({ queryKey: ["conversations"] });
+      client.invalidateQueries({ queryKey: ["message-unread"] });
     },
   });
   useEffect(() => {
@@ -421,6 +497,7 @@ export function MessageThread({ id }: { id: number }) {
       }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ["conversations"] });
+      client.invalidateQueries({ queryKey: ["message-unread"] });
     },
   });
   const messages = Array.from(
@@ -499,7 +576,13 @@ export function MessageThread({ id }: { id: number }) {
         <h2 className="min-w-0 flex-1 truncate text-base font-semibold">
           {q.data?.pages[0].user.name ?? "Percakapan"}
         </h2>
-        {q.data && <ConversationActions id={id} user={q.data.pages[0].user} messages={messages} />}
+        {q.data && (
+          <ConversationActions
+            id={id}
+            user={q.data.pages[0].user}
+            messages={messages}
+          />
+        )}
       </header>
       <div
         ref={log}
@@ -617,7 +700,14 @@ export function MessageThread({ id }: { id: number }) {
                 <p role="status" className="mt-2 text-xs text-[var(--muted)]">
                   {m.isPending ? "Mengirim…" : "Belum terkirim"}
                 </p>
-                {m.isError && <p role="alert" className="mt-2 break-words text-xs text-[var(--muted)]">{m.error.message}</p>}
+                {m.isError && (
+                  <p
+                    role="alert"
+                    className="mt-2 break-words text-xs text-[var(--muted)]"
+                  >
+                    {m.error.message}
+                  </p>
+                )}
                 {m.isError && (
                   <button
                     type="button"
@@ -641,6 +731,14 @@ export function MessageThread({ id }: { id: number }) {
           </button>
         )}
       </div>
+      {typing.data?.data.typing && !typing.isError && !q.isError && (
+        <p role="status" className="px-5 py-2 text-xs text-[var(--muted)]">
+          {q.data?.pages[0].user.name} sedang mengetik
+          <span className="typing-dots" aria-hidden="true">
+            ...
+          </span>
+        </p>
+      )}
       {newMessages && (
         <button
           className="mx-auto my-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs"
@@ -661,6 +759,7 @@ export function MessageThread({ id }: { id: number }) {
             if (m.isPending || !body.trim()) return;
             const client_id = draftId ?? crypto.randomUUID();
             setDraftId(client_id);
+            sendTyping(false);
             m.mutate({ body, client_id });
           }}
         >
@@ -675,8 +774,10 @@ export function MessageThread({ id }: { id: number }) {
             disabled={m.isPending}
             maxLength={2000}
             placeholder="Tulis pesan…"
+            onBlur={() => sendTyping(false)}
             onChange={(e) => {
               setBody(e.target.value);
+              changedTyping(e.target.value);
               setDraftId(null);
             }}
           />

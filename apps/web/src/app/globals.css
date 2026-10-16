@@ -288,3 +288,17 @@ button:active:not(:disabled) { scale: .98; }
     scroll-behavior: auto !important;
   }
 }
+
+[data-motion="reduce"] *, [data-motion="reduce"] *::before, [data-motion="reduce"] *::after {
+  animation: none !important; transition: none !important; scroll-behavior: auto !important;
+}
+[data-motion="reduce"] button:active { scale: 1 !important; }
+@media (prefers-reduced-motion: reduce) { button:active { scale: 1 !important; } }
+@media (pointer: coarse) { .menu-choice { min-height: 44px; } .post-action { min-height: 44px; min-width: 44px; } }
+.typing-dots { animation: pulse 1.2s ease-in-out infinite; }
+
+@media (max-width: 767px) {
+  [data-editor-hidden="true"] { display: none; }
+  main[data-profile-editor="true"] { border: 0; border-radius: 0; min-height: 100dvh; }
+  main[data-profile-editor="true"] .field { font-size: 16px; }
+}

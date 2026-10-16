@@ -1,5 +1,7 @@
 # Simeyo implementation progress
 
+Daily-use/mobile-profile follow-up is in progress (2026-10-17): persisted feed feedback, safe address previews, scoped relationship search, ephemeral typing/global unread totals, motion controls, redesigned mobile photo/banner editing, and server-only backup/monitor automation. API 94 tests / 694 assertions and seven contracts passed. Final browser/deployment checks pending; see docs/testing/daily-use-2026-10-17.md.
+
 Profile/post/DM follow-up (2026-10-16): application source eaa424b is deployed on API/web/worker/Reverb as everyday-eaa424b; gateway recreated. Added photo crop/pan/zoom with explicit save, safer post edit/delete flows, private DM search/block/selected-message reports and moderator review, plus profile-tab/history scroll restoration. SQLite and PostgreSQL API: 89 tests / 635 assertions; 2 crop unit and 6 contract tests passed. All 42 public-assets UI cases passed (4.4 minutes); fresh screenshots inspected. Exact-source standard CI 38929169136 and real-API browser runs 38929229522/38929236306 passed. The additive conversation_reports migration was applied after restricted database/media backups; no reset/seed. TLS/health/CSRF/WSS and queue probe passed, zero ready/failed jobs. Two real campus accounts, inbox delivery and physical-device acceptance remain explicitly deferred. See docs/testing/profile-post-dm-2026-10-16.md.
 
 

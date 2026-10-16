@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {authFormSchema,registrationSchema,userSchema} from '../src/index.ts';
-import {messagesSchema,notificationsSchema,conversationReportsSchema} from '../src/communications.ts';
+import {messagesSchema,notificationsSchema,conversationReportsSchema,typingSchema,unreadMessagesSchema} from '../src/communications.ts';
 import {topicSearchSchema} from '../src/campus.ts';
 const valid={name:'Nadia Putri',username:'nadia',email:'nadia@example.test',password:'SecurePassword123',password_confirmation:'SecurePassword123'};
 test('activity follow state remains compatible with older APIs and topic counts are validated',()=>{
@@ -36,4 +36,11 @@ test('message reports allow empty evidence but require named actors and known re
  assert.equal(conversationReportsSchema.safeParse({data:[entry],next_cursor:null}).success,true);
  assert.equal(conversationReportsSchema.safeParse({data:[{...entry,reason:'unknown'}],next_cursor:null}).success,false);
  assert.equal(conversationReportsSchema.safeParse({data:[{...entry,author_name:null}],next_cursor:null}).success,false);
+});
+
+test('typing status and unread totals reject invalid private API responses',()=>{
+ assert.equal(typingSchema.parse({data:{typing:true}}).data.typing,true);
+ assert.equal(typingSchema.safeParse({data:{typing:'yes'}}).success,false);
+ assert.equal(unreadMessagesSchema.safeParse({data:{unread_count:-1}}).success,false);
+ assert.equal(unreadMessagesSchema.parse({data:{unread_count:37}}).data.unread_count,37);
 });

@@ -129,11 +129,12 @@ export function PhotoCropper({
   return (
     <ConfirmDialog
       open
+      className="max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[94dvh] max-sm:w-full max-sm:translate-y-0 max-sm:rounded-b-none max-sm:pb-[max(24px,env(safe-area-inset-bottom))]"
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
       title={kind === "avatar" ? "Atur foto profil" : "Atur foto sampul"}
-      description="Geser foto dan atur perbesaran. Gunakan tombol panah untuk menggeser dengan keyboard."
+      description="Geser foto untuk menyesuaikan, lalu atur perbesarannya."
     >
       {!image && !error && <p role="status">Membuka foto...</p>}
       <canvas
@@ -143,7 +144,7 @@ export function PhotoCropper({
         tabIndex={0}
         role="img"
         aria-label="Pratinjau foto; gunakan tombol panah untuk menggeser"
-        className={`mx-auto w-full max-w-80 touch-none bg-[var(--soft)] ${kind === "avatar" ? "rounded-full" : "rounded-xl"} ${locked ? "cursor-wait" : "cursor-grab active:cursor-grabbing"}`}
+        className={`mx-auto w-full touch-none bg-[var(--soft)] ${kind === "avatar" ? "max-w-72 rounded-full" : "rounded-xl"} ${locked ? "cursor-wait" : "cursor-grab active:cursor-grabbing"}`}
         onPointerDown={(event) => {
           if (!image || locked) return;
           event.currentTarget.setPointerCapture(event.pointerId);

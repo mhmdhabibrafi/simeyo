@@ -21,3 +21,10 @@ This explicitly enqueues one synthetic heartbeat. It requires the release databa
 The release CI checks an actual heartbeat, stops its disposable worker and requires the probe to fail, then restarts the worker and requires recovery. Local validation passed with the existing worker. Four automated API tests cover overdue versus future jobs, redaction, unsupported probe settings and cache expiry. Runtime CI acceptance must be recorded in PROGRESS.md before claiming it passed.
 
 Keep application/database/queue logs restricted: they can contain private request details. Route operational exit codes and generic health metrics to the operator's approved monitoring system, with documented ownership and escalation. Configure disk/media capacity, database connections, queue age, failed jobs and provider delivery-error alerts before public rollout. Do not automatically reset a database, replace application keys or delete media in response to a health alarm.
+
+
+## Local scheduled alarms
+
+The 2026-10-17 maintenance helper and systemd templates add a five-minute check for running API/web/worker/Reverb/gateway/PostgreSQL containers, a successful internal web login response, a queue round trip, disk space (2 GiB reserve) and the last complete scheduled backup (36-hour freshness). The API counts only server-error statuses in short-lived cache buckets; five or more responses across the current and previous four minutes make operations-check fail. No URLs, user IDs, request bodies or exception texts enter these counters. Restricted application stderr remains the diagnostic source.
+
+The owner selected server-only operation. Read `/srv/simeyo/private/monitor-state.json`, `systemctl status simeyo-monitor.service`, and `journalctl -t simeyo-monitor -t simeyo-maintenance` locally. Changed failures and recovery produce redacted journal alarms; systemd OnFailure also logs failed maintenance units. The script never retries jobs, changes data or deletes old backups. No external delivery/recipient is configured, and a failed host cannot notify from its own journal. External uptime and alert delivery remain separate release gates.

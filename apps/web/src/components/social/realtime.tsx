@@ -44,6 +44,7 @@ export function Realtime({ userId }: { userId: number }) {
     const refresh = () => {
       client.invalidateQueries({ queryKey: ["notifications"] });
       client.invalidateQueries({ queryKey: ["conversations"] });
+      client.invalidateQueries({ queryKey: ["message-unread"] });
       client.invalidateQueries({ queryKey: ["messages"] });
     };
     socket

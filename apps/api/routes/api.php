@@ -45,6 +45,7 @@ Route::prefix('v1')->group(function () {
         Route::post('onboarding', [ProfileController::class, 'onboarding']);
         Route::get('verification', [VerificationController::class, 'show']);
         Route::post('verification', [VerificationController::class, 'store'])->middleware('throttle:verification-submit');
+        Route::delete('me/media/{kind}', [MediaController::class, 'destroy'])->whereIn('kind', ['avatar', 'cover']);
         Route::post('me/media', [MediaController::class, 'upload'])->middleware('throttle:profile-media');
         Route::middleware('campus')->group(function () {
             Route::get('push-config', fn () => ['data' => ['enabled' => (bool) config('push.enabled')]]);
@@ -75,6 +76,8 @@ Route::prefix('v1')->group(function () {
             Route::delete('events/{event}', [EventController::class, 'destroy'])->whereNumber('event');
             Route::match(['PUT', 'DELETE'], 'events/{event}/rsvp', [EventController::class, 'rsvp'])->whereNumber('event');
             Route::post('conversations/{conversation}/report', [MessageController::class, 'report'])->whereNumber('conversation')->middleware('throttle:reports');
+            Route::get('conversations/unread', [MessageController::class, 'unread']);
+            Route::match(['GET', 'PUT'], 'conversations/{conversation}/typing', [MessageController::class, 'typing'])->whereNumber('conversation');
             Route::get('conversations', [MessageController::class, 'index']);
             Route::post('conversations', [MessageController::class, 'start'])->middleware('throttle:messages');
             Route::get('conversations/{conversation}/messages', [MessageController::class, 'show'])->whereNumber('conversation');
@@ -82,6 +85,8 @@ Route::prefix('v1')->group(function () {
             Route::put('conversations/{conversation}/read', [MessageController::class, 'read'])->whereNumber('conversation');
             Route::match(['GET', 'PATCH'], 'communication-preferences', [ActivityController::class, 'preferences']);
             Route::get('realtime', [ActivityController::class, 'realtime']);
+            Route::match(['GET', 'DELETE'], 'feed/preferences', [FeedController::class, 'preferences']);
+            Route::match(['PUT', 'DELETE'], 'posts/{post}/feedback', [FeedController::class, 'feedback'])->whereNumber('post');
             Route::get('feed', [FeedController::class, 'index']);
             Route::post('posts', [PostController::class, 'store'])->middleware('throttle:posts');
             Route::get('posts/{post}', [PostController::class, 'show'])->whereNumber('post');

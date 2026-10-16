@@ -15,6 +15,27 @@ use Tests\TestCase;
 
 class CommunicationsTest extends TestCase
 {
+    public function test_typing_expiry_privacy_and_authorized_unread_totals(): void
+    {
+        $a = $this->member();
+        $b = $this->member();
+        $outsider = $this->member();
+        $id = $this->start($a, $b);
+        $this->actingAs($a)->putJson('/api/v1/conversations/'.$id.'/typing', ['typing' => true])->assertNoContent();
+        $this->actingAs($b)->getJson('/api/v1/conversations/'.$id.'/typing')->assertJsonPath('data.typing', true);
+        $this->actingAs($outsider)->getJson('/api/v1/conversations/'.$id.'/typing')->assertNotFound();
+        $this->travel(7)->seconds();
+        $this->actingAs($b)->getJson('/api/v1/conversations/'.$id.'/typing')->assertJsonPath('data.typing', false);
+        $this->actingAs($a)->postJson('/api/v1/conversations/'.$id.'/messages', ['body' => 'Unread', 'client_id' => (string) Str::uuid()])->assertCreated();
+        $this->actingAs($b)->getJson('/api/v1/conversations/unread')->assertJsonPath('data.unread_count', 1);
+        $this->getJson('/api/v1/conversations')->assertJsonPath('data.0.unread_count', 1);
+        $this->putJson('/api/v1/conversations/'.$id.'/read')->assertNoContent();
+        $this->getJson('/api/v1/conversations/unread')->assertJsonPath('data.unread_count', 0);
+        $this->putJson('/api/v1/relationships/'.$a->id.'/block')->assertNoContent();
+        $this->getJson('/api/v1/conversations/'.$id.'/typing')->assertNotFound();
+        $this->getJson('/api/v1/conversations/unread')->assertJsonPath('data.unread_count', 0);
+    }
+
     public function test_message_search_is_private_literal_paginated_and_does_not_mark_read(): void
     {
         $a = $this->member();

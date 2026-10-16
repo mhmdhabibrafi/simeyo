@@ -16,6 +16,31 @@ class FeedController extends Controller
 {
     public function __construct(private PostVisibility $visibility) {}
 
+    public function preferences(Request $r)
+    {
+        if ($r->isMethod('delete')) {
+            DB::table('feed_preferences')->where('user_id', $r->user()->id)->delete();
+
+            return response()->noContent();
+        }
+
+        return ['data' => ['hidden_count' => DB::table('feed_preferences')->where('user_id', $r->user()->id)->count(), 'reduced_authors_count' => DB::table('feed_preferences')->join('posts', 'posts.id', '=', 'feed_preferences.post_id')->where('feed_preferences.user_id', $r->user()->id)->where('reduce_author', true)->distinct()->count('posts.user_id')]];
+    }
+
+    public function feedback(Request $r, int $post)
+    {
+        if ($r->isMethod('delete')) {
+            DB::table('feed_preferences')->where('user_id', $r->user()->id)->where('post_id', $post)->delete();
+
+            return response()->noContent();
+        }
+        $this->visibility->find($r->user(), $post);
+        $d = $r->validate(['reduce_author' => 'required|boolean']);
+        DB::table('feed_preferences')->upsert([['user_id' => $r->user()->id, 'post_id' => $post, 'reduce_author' => $d['reduce_author'], 'created_at' => now(), 'updated_at' => now()]], ['user_id', 'post_id'], ['reduce_author', 'updated_at']);
+
+        return response()->noContent();
+    }
+
     public function index(Request $r)
     {
         $d = $r->validate(['feed' => 'sometimes|in:for-you,following,campus,bookmarks,profile,replies,media', 'cursor' => 'nullable|string|max:4096', 'user_id' => 'sometimes|integer|min:1', 'parent_id' => 'sometimes|integer|min:1', 'limit' => 'sometimes|integer|min:1|max:30']);
@@ -62,6 +87,7 @@ class FeedController extends Controller
             $q->whereHas('bookmarks', fn ($b) => $b->where('user_id', $r->user()->id));
         }
         if (in_array($feed, ['for-you', 'following', 'campus'], true)) {
+            $q->whereNotIn('posts.id', DB::table('feed_preferences')->select('post_id')->where('user_id', $r->user()->id));
             $q->whereNotIn('posts.user_id', DB::table('mutes')->select('target_id')->where('user_id', $r->user()->id));
         }
         if ($feed === 'for-you') {
@@ -97,7 +123,8 @@ class FeedController extends Controller
             // Recommendation window is intentionally bounded; Campus exposes the full chronological history.
             $candidates = (clone $q)->where('posts.created_at', '>=', now()->subDays(7))->withCount(['reactions', 'reposts', 'replies' => fn ($x) => $this->visibility->query($r->user(), $x)])->orderByDesc('posts.id')->limit(1000)->get();
             $now = now();
-            $ids = $candidates->sortByDesc(fn ($p) => 24 / (1 + max(0, $p->created_at->diffInHours($now))) + min($p->reactions_count, 20) * 0.5 + min($p->reposts_count, 10) + min($p->replies_count, 10) * 1.5 + (in_array($p->user_id, $following, true) ? 4 : 0) + $p->id / 1e12)->pluck('id')->all();
+            $reduced = DB::table('feed_preferences')->join('posts', 'posts.id', '=', 'feed_preferences.post_id')->where('feed_preferences.user_id', $r->user()->id)->where('reduce_author', true)->pluck('posts.user_id')->all();
+            $ids = $candidates->sortByDesc(fn ($p) => (24 / (1 + max(0, $p->created_at->diffInHours($now))) + min($p->reactions_count, 20) * 0.5 + min($p->reposts_count, 10) + min($p->replies_count, 10) * 1.5 + (in_array($p->user_id, $following, true) ? 4 : 0) + $p->id / 1e12) * (in_array($p->user_id, $reduced, true) ? 0.25 : 1))->pluck('id')->all();
             $snapshot = FeedSnapshot::create(['id' => (string) Str::uuid(), 'user_id' => $r->user()->id, 'post_ids' => $ids, 'expires_at' => now()->addMinutes(15)]);
             $position = 0;
         }
@@ -117,6 +144,6 @@ class FeedController extends Controller
         $ordered = collect($selected)->map(fn ($id) => $posts->get($id))->filter()->values();
         $more = $position < count($ids);
 
-        return ['data' => PostResource::collection($ordered), 'meta' => ['next_cursor' => $more ? Crypt::encryptString(json_encode(['snapshot' => $snapshot->id, 'position' => $position])) : null, 'has_more' => $more, 'feed' => 'for-you', 'ranking' => 'recency + capped actual engagement + accepted follows; 7-day window, at most 1000 candidates, frozen for 15 minutes']];
+        return ['data' => PostResource::collection($ordered), 'meta' => ['next_cursor' => $more ? Crypt::encryptString(json_encode(['snapshot' => $snapshot->id, 'position' => $position])) : null, 'has_more' => $more, 'feed' => 'for-you', 'ranking' => 'hidden stories excluded; reduced authors score x0.25 on new snapshots; recency + capped actual engagement + accepted follows; 7-day window, at most 1000 candidates, frozen for 15 minutes']];
     }
 }

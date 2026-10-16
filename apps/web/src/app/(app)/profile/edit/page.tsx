@@ -22,6 +22,9 @@ export default function Page() {
     file: File;
     kind: "avatar" | "cover";
   } | null>(null);
+  const [removePhoto, setRemovePhoto] = useState<"avatar" | "cover" | null>(
+    null,
+  );
   const [dirty, setDirty] = useState(false);
   const [leave, setLeave] = useState(false);
   const [bioLength, setBioLength] = useState<number | null>(null);
@@ -143,44 +146,44 @@ export default function Page() {
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-base font-semibold sm:text-lg">Edit profil</h1>
+          <h1 className="whitespace-nowrap text-base font-semibold sm:text-lg">Edit profil</h1>
         </div>
         <Button
           form="profile-form"
           disabled={busy || !dirty}
-          className="min-h-9 px-3 text-xs sm:text-sm"
+          className="min-h-11 px-4 text-xs sm:text-sm"
         >
-          {busy && !uploading ? "Menyimpan…" : "Simpan perubahan"}
+          {busy && !uploading ? "Menyimpan…" : <><span className="sm:hidden" aria-hidden="true">Simpan</span><span className="sr-only sm:not-sr-only">Simpan perubahan</span></>}
         </Button>
       </header>
       <div className="px-4 pb-8 pt-5 sm:px-6">
         <section aria-label="Foto profil dan sampul" className="mb-7">
-          {u.cover_url && (
-            <div className="relative h-28 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--soft)] sm:h-32">
-              {u.cover_url && (
-                <Image
-                  unoptimized
-                  src={u.cover_url}
-                  alt="Sampul profil saat ini"
-                  width={1200}
-                  height={400}
-                  className="h-full w-full object-cover"
-                />
-              )}
-              <button
-                type="button"
-                onClick={() => document.getElementById("cover")?.click()}
-                disabled={busy}
-                className="absolute bottom-3 right-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-medium"
-              >
-                <ImagePlus size={16} />
-                {u.cover_url ? "Ubah sampul" : "Tambah sampul"}
-              </button>
-            </div>
-          )}
-          <div
-            className={`relative flex items-center gap-4 ${u.cover_url ? "-mt-9 ml-4" : ""}`}
-          >
+          <div className="relative aspect-[3/1] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--soft)]">
+            {u.cover_url ? (
+              <Image
+                unoptimized
+                src={u.cover_url}
+                alt="Sampul profil saat ini"
+                width={1600}
+                height={533}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center pb-5 text-[var(--muted)]">
+                <ImagePlus size={28} strokeWidth={1.4} aria-hidden="true" />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => document.getElementById("cover")?.click()}
+              disabled={busy}
+              className="absolute right-3 top-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-xs font-semibold shadow-sm"
+            >
+              <ImagePlus size={16} />
+              {u.cover_url ? "Ubah sampul" : "Tambah sampul"}
+            </button>
+          </div>
+          <div className="relative -mt-8 ml-3 flex items-end gap-3 sm:ml-4">
             <button
               type="button"
               aria-label="Ubah foto profil"
@@ -188,36 +191,44 @@ export default function Page() {
               onClick={() => document.getElementById("avatar")?.click()}
               className="relative shrink-0 rounded-full border-4 border-[var(--surface)] bg-[var(--surface)]"
             >
-              <Avatar name={u.name} url={u.avatar_url} size={72} />
-              <span className="absolute -bottom-1 -right-1 rounded-full border-2 border-[var(--surface)] bg-[var(--foreground)] p-1.5 text-[var(--surface)]">
-                <Camera size={14} />
+              <Avatar name={u.name} url={u.avatar_url} size={80} />
+              <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--surface)] bg-[var(--foreground)] text-[var(--surface)]">
+                <Camera size={15} />
               </span>
             </button>
-            <div>
-              <p className="mb-1 text-sm font-semibold">Foto profil</p>
-              <p className="text-xs leading-5 text-[var(--muted)]">
-                Atur potongan foto sebelum menyimpan.
-                <br />
-                JPEG, PNG, atau WebP.
+            <div className="min-w-0 pb-1">
+              <p className="truncate text-sm font-semibold">{u.name}</p>
+              <p className="mt-1 truncate text-xs text-[var(--muted)]">
+                @{u.username}
               </p>
             </div>
           </div>
-          {!u.cover_url && (
-            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] px-3 py-2">
-              <span className="text-xs text-[var(--muted)]">
-                Sampul profil · opsional
-              </span>
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
+            {u.avatar_url && (
               <button
                 type="button"
-                className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-xs font-semibold hover:bg-[var(--soft)]"
                 disabled={busy}
-                onClick={() => document.getElementById("cover")?.click()}
+                className="min-h-11 text-xs text-[var(--muted)] underline underline-offset-4"
+                onClick={() => setRemovePhoto("avatar")}
               >
-                <ImagePlus size={16} />
-                Tambah sampul
+                Hapus foto profil
               </button>
-            </div>
-          )}
+            )}
+            {u.cover_url && (
+              <button
+                type="button"
+                disabled={busy}
+                className="min-h-11 text-xs text-[var(--muted)] underline underline-offset-4"
+                onClick={() => setRemovePhoto("cover")}
+              >
+                Hapus sampul
+              </button>
+            )}
+          </div>
+          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+            Ketuk foto untuk mengubahnya. Foto dan sampul langsung tersimpan
+            setelah crop dikonfirmasi.
+          </p>
           {(["avatar", "cover"] as const).map((kind) => (
             <input
               key={kind}
@@ -275,7 +286,8 @@ export default function Page() {
         >
           <fieldset disabled={busy} className="min-w-0 space-y-5">
             <legend className="sr-only">Informasi profil</legend>
-            <div className="grid gap-5 sm:grid-cols-2">
+            <h2 className="text-sm font-semibold">Tentang kamu</h2>
+            <div className="grid gap-5">
               {[
                 {
                   name: "name",
@@ -326,7 +338,7 @@ export default function Page() {
                       name={f.name}
                       defaultValue={f.value}
                       maxLength={f.max}
-                      className="field min-h-24"
+                      className="field min-h-24 resize-y"
                       aria-invalid={Object.keys(errors).some(
                         (key) => key === f.name || key.startsWith(f.name + "."),
                       )}
@@ -399,9 +411,15 @@ export default function Page() {
               />
             </label>
             <label className="flex min-h-12 items-center justify-between gap-4 text-sm">
-              <span>Akun privat</span>
+              <span>
+                Akun privat
+                <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
+                  Setujui pengikut sebelum mereka melihat ceritamu.
+                </span>
+              </span>
               <input
                 name="private_account"
+                aria-label="Akun privat"
                 type="checkbox"
                 defaultChecked={u.private_account}
                 className="h-4 w-4 accent-[var(--accent)]"
@@ -414,6 +432,54 @@ export default function Page() {
           </fieldset>
         </form>
       </div>
+      <ConfirmDialog
+        open={!!removePhoto}
+        onOpenChange={(open) => {
+          if (!open && !busy) setRemovePhoto(null);
+        }}
+        title={
+          removePhoto === "cover"
+            ? "Hapus sampul profil?"
+            : "Hapus foto profil?"
+        }
+        description="Kamu dapat mengunggah foto baru kapan saja."
+      >
+        {error && (
+          <p role="alert" className="mb-3 text-sm">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => setRemovePhoto(null)}
+          >
+            Batal
+          </Button>
+          <Button
+            variant="danger"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                await api(`me/media/${removePhoto}`, { method: "DELETE" });
+                await client.invalidateQueries({ queryKey: ["me"] });
+                await client.invalidateQueries({ queryKey: ["profile"] });
+                setRemovePhoto(null);
+                toast("Foto dihapus.");
+              } catch {
+                setError("Foto belum dapat dihapus. Coba lagi.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Hapus foto
+          </Button>
+        </div>
+      </ConfirmDialog>
       <ConfirmDialog
         open={leave}
         onOpenChange={setLeave}
