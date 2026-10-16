@@ -1,5 +1,8 @@
 # Simeyo implementation progress
 
+Profile/post/DM follow-up is in progress (2026-10-16). Crop preview, post edit/delete guards, DM search/block/report with an additive moderation table, and profile/history restoration are implemented locally. Isolated API 89 tests / 631 assertions and crop geometry unit checks passed; browser/deployment acceptance remains pending. Real-account acceptance is explicitly deferred by the owner. See docs/testing/profile-post-dm-2026-10-16.md.
+
+
 Discovery/settings follow-up (2026-10-16): source 5f4e084 is deployed on API/web/worker/Reverb as discovery-5f4e084, with gateway recreated. Fixed rejected empty DM picker queries and followed-user omission using explicit messaging discovery; added recipient pagination/retry and literal underscore searches. Explore now uses one retained search field, compact filters and actionable empty results; account/campus rows wrap identity cleanly. Browser title is Simeyo without the slogan/em dash. API: 86 tests / 590 assertions; contracts: 5 passed; final local focused UI: 6 passed; all 36 public-assets UI cases passed (2.7 minutes). Exact-source standard CI 38922483284 passed all four jobs, and real-API/PostgreSQL communications run 38922500179 passed its extended case (9.7 seconds). Server TLS/security/health/WSS and queue probe passed, zero ready/failed jobs. Private backup inventory checked; data/keys/media retained, no migration/seed or production account mutations. Full evidence: docs/testing/discovery-2026-10-16.md.
 
 

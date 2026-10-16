@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { waitForAnimations } from "./ui-ready";
 
 // Presentation and failure-state fixtures only; real API coverage remains in social.spec.ts.
@@ -150,6 +151,125 @@ async function fixtures(page: Page) {
     });
   });
 }
+
+test("mobile Back restores each profile tab and its reading position across a thread", async ({ page }) => {
+  await fixtures(page);
+  const many = Array.from({length:22},(_,index)=>({...post,id:2000+index}));
+  await page.route("**/api/v1/feed?*",route=>route.fulfill({json:{data:many,meta:{next_cursor:null,has_more:false,feed:"profile"}}}));
+  await page.route("**/api/v1/profiles/alyap",route=>route.fulfill({json:{data:{...user,username:"alyap"}}}));
+  await page.route("**/api/v1/posts/2010",route=>route.fulfill({json:{data:many[10]}}));
+  await page.setViewportSize({width:390,height:844});await page.goto("/u/alyap");
+  await page.getByRole("tab",{name:"Balasan",exact:true}).click();
+  const reply=page.locator('[data-post-id="2010"]').getByRole("link",{name:"Balas cerita",exact:true});
+  await reply.scrollIntoViewIfNeeded();const position=await page.evaluate(()=>scrollY);expect(position).toBeGreaterThan(500);
+  await reply.click();await expect(page).toHaveURL(/\/thread\/2010$/);
+  await page.getByRole("button",{name:"Kembali",exact:true}).click();await expect(page).toHaveURL(/\/u\/alyap$/);
+  await expect(page.getByRole("tab",{name:"Balasan",exact:true})).toHaveAttribute("aria-selected","true");
+  await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(position-100);
+  await page.screenshot({path:path.resolve("../../docs/testing/screenshots/profile-scroll-restored.png"),animations:"disabled"});
+});
+
+test("profile cropping previews pan and zoom, cancels safely and uploads the selected square", async ({ page }) => {
+  await fixtures(page);
+  let uploads = 0; let dimensions: number[] = []; let owner = { ...user, avatar_url: null as string | null };
+  await page.route("**/api/v1/me", route => route.fulfill({ json: { data: owner } }));
+  await page.route("**/api/v1/me/media", async route => {
+    uploads++;
+    const data = route.request().postDataBuffer()!;
+    const start = data.indexOf(Buffer.from([255,216,255])), end = data.lastIndexOf(Buffer.from([255,217]));
+    expect(start).toBeGreaterThan(0);
+    dimensions = await page.evaluate(async base64 => { const image = await createImageBitmap(await (await fetch("data:image/jpeg;base64,"+base64)).blob()); const canvas=document.createElement("canvas");canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext("2d")!;ctx.drawImage(image,0,0);const size = [image.width,image.height,...ctx.getImageData(0,0,1,1).data]; image.close(); return size; }, data.subarray(start,end+2).toString("base64"));
+    owner = { ...owner, avatar_url: "/icons/icon-512.png" };
+    await route.fulfill({ json: { data: owner } });
+  });
+  await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/profile/edit");
+  await page.getByLabel("Foto profil", { exact: true }).setInputFiles({ name: "broken.png", mimeType: "image/png", buffer: Buffer.from("not an image") });
+  await expect(page.getByRole("dialog").getByRole("alert")).toHaveText("Gambar tidak dapat dibuka. Pilih foto lain.");
+  expect(uploads).toBe(0);
+  await page.getByRole("dialog").getByRole("button", { name: "Tutup", exact: true }).click();
+  const png = await page.evaluate(() => { const c = document.createElement("canvas"); c.width=600;c.height=300;const ctx=c.getContext("2d")!;ctx.fillStyle="red";ctx.fillRect(0,0,300,300);ctx.fillStyle="blue";ctx.fillRect(300,0,300,300);return c.toDataURL("image/png").split(",")[1]; });
+  const file = { name: "crop-test.png", mimeType: "image/png", buffer: Buffer.from(png,"base64") };
+  await page.getByLabel("Foto profil", { exact: true }).setInputFiles(file);
+  let dialog = page.getByRole("dialog"); await expect(dialog.getByRole("button", { name: "Simpan foto", exact: true })).toBeEnabled();
+  await dialog.getByRole("button", { name: "Tutup", exact: true }).click(); expect(uploads).toBe(0);
+  await page.getByLabel("Foto profil", { exact: true }).setInputFiles(file); dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: "Simpan foto", exact: true })).toBeEnabled();
+  const canvas = dialog.getByRole("img"); const box = (await canvas.boundingBox())!;
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2); await page.mouse.down(); await page.mouse.move(box.x+box.width/2+70,box.y+box.height/2); await page.mouse.up();
+  await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.getContext("2d")!.getImageData(300,300,1,1).data[0])).toBeGreaterThan(240);
+  await dialog.getByLabel("Perbesaran foto").focus(); await page.keyboard.press("End");
+  await canvas.focus(); for(let n=0;n<30;n++) await page.keyboard.press("ArrowRight");
+  await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.getContext("2d")!.getImageData(300,300,1,1).data[2])).toBeGreaterThan(240);
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/profile-crop-preview.png"), animations: "disabled" });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await dialog.getByRole("button", { name: "Simpan foto", exact: true }).click();
+  await expect(dialog).not.toBeVisible(); expect(uploads).toBe(1); expect(dimensions.slice(0,2)).toEqual([1024,1024]); expect(dimensions[4]).toBeGreaterThan(230); expect(dimensions[2]).toBeLessThan(30);
+});
+
+test("post edits keep failed drafts, confirm closing and confirm deletion before sending", async ({ page }) => {
+  await fixtures(page); let current: (Omit<typeof post, "edited_at"> & { edited_at: string | null }) | null = { ...post, can_edit: true }; let edits = 0; let deletes = 0;
+  await page.route("**/api/v1/feed?*", route => route.fulfill({ json: { data: current ? [current] : [], meta: { next_cursor: null, has_more: false, feed: "for-you" } } }));
+  await page.route("**/api/v1/posts/901", route => {
+    if (route.request().method() === "PATCH") { edits++; if(edits===1) return route.fulfill({status:503,json:{message:"Edit belum tersimpan."}}); current = { ...current!, body: route.request().postDataJSON().body, edited_at: "2026-10-16T12:00:00Z" }; return route.fulfill({json:{data:current}}); }
+    deletes++; if(deletes===1) return route.fulfill({status:503,json:{message:"Hapus belum berhasil."}}); current=null;return route.fulfill({status:204});
+  });
+  await page.goto("/home"); const card = page.locator('[data-post-id="901"]');
+  await card.getByRole("button", {name:"Opsi cerita"}).click(); await page.getByRole("menuitem",{name:"Edit cerita",exact:true}).click();
+  await expect(page.getByRole("dialog").getByRole("button",{name:"Simpan",exact:true})).toBeDisabled();
+  await page.getByRole("dialog").getByLabel("Tulis cerita",{exact:true}).fill("Perubahan cerita yang aman.");
+  await page.getByRole("dialog").getByRole("button",{name:"Tutup",exact:true}).click();
+  const confirm = page.getByRole("dialog",{name:"Tutup editor?"}); await expect(confirm).toBeVisible(); await confirm.getByRole("button",{name:"Simpan teks dan tutup",exact:true}).click();
+  await card.getByRole("button",{name:"Opsi cerita"}).click(); await page.getByRole("menuitem",{name:"Edit cerita",exact:true}).click();
+  await expect(page.getByRole("dialog").getByLabel("Tulis cerita",{exact:true})).toHaveValue("Perubahan cerita yang aman.");
+  await page.getByRole("dialog").getByRole("button",{name:"Simpan",exact:true}).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toHaveText("Edit belum tersimpan.");
+  await page.getByRole("dialog").getByRole("button",{name:"Simpan",exact:true}).click();
+  await expect(card.getByText("Perubahan cerita yang aman.",{exact:true})).toBeVisible();
+  await card.getByRole("button",{name:"Opsi cerita"}).click(); await page.getByRole("menuitem",{name:"Hapus cerita",exact:true}).click(); expect(deletes).toBe(0);
+  await page.getByRole("dialog").getByRole("button",{name:"Batal",exact:true}).click(); await expect(card).toBeVisible();
+  await card.getByRole("button",{name:"Opsi cerita"}).click(); await page.getByRole("menuitem",{name:"Hapus cerita",exact:true}).click();
+  await page.getByRole("dialog").getByRole("button",{name:"Hapus cerita",exact:true}).click(); await expect(page.getByRole("dialog").getByRole("alert")).toHaveText("Hapus belum berhasil.");
+  await page.getByRole("dialog").getByRole("button",{name:"Hapus cerita",exact:true}).click(); await expect(card).toHaveCount(0);
+});
+
+test("chat searches without marking results read, reports with retry and blocks with confirmation", async ({ page }) => {
+  await fixtures(page); const peer = { id:902,name:"Raka",username:"raka_kampus" }; let blocked=false; let reports=0;let blocks=0;const reads:number[]=[];
+  await page.route("**/api/v1/conversations", route => route.fulfill({json:{data:[],next_cursor:null}}));
+  const message = { id:2,conversation_id:42,sender_id:902,client_id:"11111111-1111-4111-8111-111111111111",body:"Pesan pribadi awal",created_at:"2026-10-16T10:00:00Z" };
+  await page.route("**/api/v1/conversations/42/messages*", route => blocked ? route.fulfill({status:404,json:{message:"Not found"}}) : route.fulfill({json:{data:[new URL(route.request().url()).searchParams.has("q") ? {...message,id:99,body:"Rapat kampus ditemukan"}:message],user:peer,can_send:true,next_cursor:null}}));
+  await page.route("**/api/v1/conversations/42/read", route => {reads.push(route.request().postDataJSON().message_id);return route.fulfill({status:204});});
+  await page.route("**/api/v1/conversations/42/report", route => {reports++;expect(route.request().postDataJSON().reason).toBe("harassment");expect(route.request().postDataJSON().message_id).toBe("2");return reports===1?route.fulfill({status:503,json:{message:"Laporan belum terkirim."}}):route.fulfill({status:201,json:{message:"Laporan diterima."}});});
+  await page.route("**/api/v1/relationships/902/block", route => {blocks++;blocked=true;return route.fulfill({status:204});});
+  await page.setViewportSize({width:390,height:844});await page.goto("/messages/42");await expect(page.getByRole("log").getByText(message.body,{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Cari pesan dalam percakapan",exact:true}).click();let dialog=page.getByRole("dialog");await dialog.getByLabel("Cari dalam percakapan").fill("Rapat");await dialog.getByRole("button",{name:"Cari",exact:true}).click();await expect(dialog.getByText("Rapat kampus ditemukan",{exact:true})).toBeVisible();expect(reads).not.toContain(99);
+  await page.screenshot({path:path.resolve("../../docs/testing/screenshots/message-search.png"),animations:"disabled"});await dialog.getByRole("button",{name:"Tutup",exact:true}).click();
+  await page.getByRole("button",{name:"Opsi percakapan",exact:true}).click();await page.getByRole("menuitem",{name:"Laporkan percakapan",exact:true}).click();dialog=page.getByRole("dialog");await dialog.getByLabel("Alasan laporan").selectOption("harassment");await dialog.getByLabel("Keterangan (opsional)").fill("Mohon tinjau pesan ini.");await dialog.getByRole("button",{name:"Kirim laporan",exact:true}).click();await expect(dialog.getByRole("alert")).toHaveText("Laporan belum terkirim.");await expect(dialog.getByLabel("Keterangan (opsional)")).toHaveValue("Mohon tinjau pesan ini.");await dialog.getByRole("button",{name:"Kirim laporan",exact:true}).click();await expect(dialog).not.toBeVisible();
+  await page.getByRole("button",{name:"Opsi percakapan",exact:true}).click();await page.getByRole("menuitem",{name:"Blokir akun",exact:true}).click();dialog=page.getByRole("dialog");expect(blocks).toBe(0);await dialog.getByRole("button",{name:"Batal",exact:true}).click();
+  await page.getByRole("button",{name:"Opsi percakapan",exact:true}).click();await page.getByRole("menuitem",{name:"Blokir akun",exact:true}).click();await page.getByRole("dialog").getByRole("button",{name:"Blokir akun",exact:true}).click();await expect(page).toHaveURL(/\/messages$/);expect(blocks).toBe(1);await expect(page.getByText(message.body,{exact:true})).toHaveCount(0);
+});
+
+test("blocking from chat removes a previously cached story before browser Back", async ({ page }) => {
+  await fixtures(page); let blocked=false; const peer={id:902,name:"Raka",username:"raka"};
+  const privatePost={...post,author:{...post.author,...peer},body:"Jangan tampilkan setelah diblokir"};
+  await page.route("**/api/v1/posts/901",route=>blocked?route.fulfill({status:404,json:{message:"Not found"}}):route.fulfill({json:{data:privatePost}}));
+  await page.route("**/api/v1/conversations",route=>route.fulfill({json:{data:blocked?[]:[{id:42,user:peer,unread_count:0}],next_cursor:null}}));
+  await page.route("**/api/v1/conversations/42/messages",route=>blocked?route.fulfill({status:404,json:{message:"Not found"}}):route.fulfill({json:{data:[],user:peer,can_send:true,next_cursor:null}}));
+  await page.route("**/api/v1/relationships/902/block",route=>{blocked=true;return route.fulfill({status:204});});
+  await page.setViewportSize({width:390,height:844});await page.goto("/thread/901");await expect(page.getByText(privatePost.body,{exact:true})).toBeVisible();
+  await page.getByRole("link",{name:"Pesan",exact:true}).filter({visible:true}).click();await page.getByRole("link",{name:/Raka/}).click();
+  await page.getByRole("button",{name:"Opsi percakapan",exact:true}).click();await page.getByRole("menuitem",{name:"Blokir akun",exact:true}).click();await page.getByRole("dialog").getByRole("button",{name:"Blokir akun",exact:true}).click();await expect(page).toHaveURL(/\/messages$/);
+  await page.goBack();await page.goBack();await expect(page).toHaveURL(/\/thread\/901$/);await expect(page.getByRole("alert").filter({hasText:"Cerita tidak ditemukan"})).toBeVisible();await expect(page.getByText(privatePost.body,{exact:true})).toHaveCount(0);
+});
+
+test("moderation displays reported evidence and reviews a message without opening the chat", async ({ page }) => {
+  await fixtures(page); let reviewed=false;
+  await page.route("**/api/v1/me", route=>route.fulfill({json:{data:{...user,can_moderate:true,can_review_verifications:true}}}));
+  await page.route("**/api/v1/admin/moderation",route=>route.fulfill({json:{data:[],next_cursor:null,stats:{pending_reports:0,active_members:4,communities:0}}}));
+  await page.route("**/api/v1/admin/organizations",route=>route.fulfill({json:{data:[]}}));
+  await page.route("**/api/v1/admin/message-reports",route=>route.fulfill({json:{data:reviewed?[]:[{id:7,reporter_name:"Alya",author_name:"Raka",reason:"harassment",details:"Mohon ditinjau",body:"Bukti yang dilaporkan"}],next_cursor:null}}));
+  await page.route("**/api/v1/admin/message-reports/7",route=>{expect(route.request().postDataJSON().action).toBe("warn");reviewed=true;return route.fulfill({status:204});});
+  await page.goto("/admin/moderation");await expect(page.getByText("Bukti yang dilaporkan",{exact:true})).toBeVisible();await page.screenshot({path:path.resolve("../../docs/testing/screenshots/moderation-message-evidence.png"),animations:"disabled"});await page.getByRole("button",{name:"Tinjau laporan pesan",exact:true}).click();const dialog=page.getByRole("dialog");await dialog.getByLabel("Keputusan").selectOption("warn");await dialog.getByLabel("Alasan tinjauan").fill("Peringatan sesuai bukti laporan.");await dialog.getByRole("button",{name:"Simpan tinjauan pesan",exact:true}).click();await expect(page.getByText("Tidak ada laporan pesan menunggu.",{exact:true})).toBeVisible();
+});
 
 test("DM recipient discovery omits empty queries, retries, pages and searches existing connections", async ({ page }) => {
   await fixtures(page);
@@ -403,13 +523,15 @@ test("profile photos validate locally, retry the same file and preserve unsaved 
   await page.getByLabel("Foto profil", { exact: true }).setInputFiles({ name: "bad.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg/>") });
   await expect(page.getByRole("alert").filter({ hasText: "Gunakan gambar" })).toBeVisible();
   expect(uploads).toBe(0);
-  const file = { name: "avatar.png", mimeType: "image/png", buffer: Buffer.from("fixture") };
+  const file = { name: "avatar.png", mimeType: "image/png", buffer: readFileSync(path.resolve("public/icons/icon-512.png")) };
   await page.getByLabel("Foto profil", { exact: true }).setInputFiles(file);
+  await page.getByRole("dialog").getByRole("button", { name: "Simpan foto", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Upload sedang bermasalah" })).toBeVisible();
-  await page.getByLabel("Foto profil", { exact: true }).setInputFiles(file);
+  await page.getByRole("dialog").getByRole("button", { name: "Simpan foto", exact: true }).click();
   await expect.poll(() => uploads).toBe(2);
   await expect(page.locator('img[src="/icons/icon-512.png"]')).toBeVisible();
   await page.getByLabel("Foto sampul", { exact: true }).setInputFiles(file);
+  await page.getByRole("dialog").getByRole("button", { name: "Simpan foto", exact: true }).click();
   await expect(page.getByAltText("Sampul profil saat ini", { exact: true })).toHaveAttribute("src", "/icons/icon-512.png");
   await expect(page.getByLabel("Bio", { exact: true })).toHaveValue("Jangan hilangkan bio yang belum disimpan.");
   await expect(page.getByRole("button", { name: "Simpan perubahan", exact: true })).toBeEnabled();
@@ -485,7 +607,7 @@ test("drafts isolate accounts and reply contexts, ignore expired data and tolera
   await page.route("**/api/v1/posts/901", (route) => route.fulfill({ json: { data: post } }));
   await page.goto("/thread/901");
   await expect(page.getByLabel("Tulis balasan", { exact: true })).toHaveValue("Draf balasan");
-  await page.getByRole("link", { name: "Kembali ke beranda", exact: true }).click();
+  await page.getByRole("button", { name: "Kembali", exact: true }).click();
   await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
   await expect(composer.getByLabel("Tulis cerita", { exact: true })).toHaveValue("");
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException("Blocked", "SecurityError"); }; });

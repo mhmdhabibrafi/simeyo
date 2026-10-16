@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {authFormSchema,registrationSchema,userSchema} from '../src/index.ts';
-import {messagesSchema,notificationsSchema} from '../src/communications.ts';
+import {messagesSchema,notificationsSchema,conversationReportsSchema} from '../src/communications.ts';
 import {topicSearchSchema} from '../src/campus.ts';
 const valid={name:'Nadia Putri',username:'nadia',email:'nadia@example.test',password:'SecurePassword123',password_confirmation:'SecurePassword123'};
 test('activity follow state remains compatible with older APIs and topic counts are validated',()=>{
@@ -29,4 +29,11 @@ test('response schema rejects malformed resource data and strips unexpected fiel
  assert.equal(userSchema.safeParse({...user,id:'1'}).success,false);
  const result=userSchema.parse({...user,password:'must-never-exist',role:'administrator'});
  assert.equal('password' in result,false);assert.equal('role' in result,false);
+});
+
+test('message reports allow empty evidence but require named actors and known reasons',()=>{
+ const entry={id:1,reporter_name:'Alya',author_name:'Raka',body:null,reason:'spam',details:null};
+ assert.equal(conversationReportsSchema.safeParse({data:[entry],next_cursor:null}).success,true);
+ assert.equal(conversationReportsSchema.safeParse({data:[{...entry,reason:'unknown'}],next_cursor:null}).success,false);
+ assert.equal(conversationReportsSchema.safeParse({data:[{...entry,author_name:null}],next_cursor:null}).success,false);
 });

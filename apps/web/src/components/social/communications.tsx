@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { ConversationActions } from "./conversation-actions";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -495,9 +496,10 @@ export function MessageThread({ id }: { id: number }) {
         >
           <ArrowLeft size={20} />
         </Link>
-        <h2 className="text-base font-semibold">
+        <h2 className="min-w-0 flex-1 truncate text-base font-semibold">
           {q.data?.pages[0].user.name ?? "Percakapan"}
         </h2>
+        {q.data && <ConversationActions id={id} user={q.data.pages[0].user} messages={messages} />}
       </header>
       <div
         ref={log}

@@ -52,7 +52,13 @@ class MessageController extends Controller
     {
         $c = $this->access->find($r->user(), $conversation);
         $other = $c->participants->firstWhere('id', '!=', $r->user()->id);
-        $page = $c->messages()->orderByDesc('id')->cursorPaginate(30);
+        $d = $r->validate(['q' => 'sometimes|string|max:80', 'cursor' => 'nullable|string|max:4096']);
+        $query = $c->messages();
+        if (isset($d['q'])) {
+            $term = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($d['q']));
+            $query->whereRaw("LOWER(body) LIKE ? ESCAPE '!'", ['%'.$term.'%']);
+        }
+        $page = $query->orderByDesc('id')->cursorPaginate(30, ['*'], 'cursor', $d['cursor'] ?? null);
 
         return ['data' => $page->items(), 'user' => $other->only('id', 'name', 'username'), 'recipient_read_message_id' => (int) $other->pivot->last_read_message_id, 'next_cursor' => $page->nextCursor()?->encode(), 'can_send' => $this->access->canSend($r->user(), $other)];
     }
@@ -80,6 +86,23 @@ class MessageController extends Controller
         });
 
         return response()->json(['data' => $message], 201);
+    }
+
+    public function report(Request $r, int $conversation)
+    {
+        $d = $r->validate(['reason' => 'required|in:spam,harassment,hate,other', 'details' => 'nullable|string|max:1000', 'message_id' => 'nullable|integer|min:1']);
+        DB::transaction(function () use ($r, $conversation, $d) {
+            $c = $this->access->find($r->user(), $conversation);
+            DB::table('users')->whereIn('id', [$c->first_user_id, $c->second_user_id])->orderBy('id')->lockForUpdate()->get();
+            $c = $this->access->find($r->user(), $conversation);
+            $other = $c->participants->firstWhere('id', '!=', $r->user()->id);
+            $incoming = $c->messages()->where('sender_id', $other->id);
+            $evidence = isset($d['message_id']) ? $incoming->findOrFail($d['message_id']) : $incoming->orderByDesc('id')->first();
+            unset($d['message_id']);
+            DB::table('conversation_reports')->insertOrIgnore($d + ['institution_id' => $c->institution_id, 'conversation_id' => $c->id, 'user_id' => $r->user()->id, 'reported_user_id' => $other->id, 'message_id' => $evidence?->id ?? 0, 'body' => $evidence?->body, 'created_at' => now(), 'updated_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Laporan diterima.'], 201);
     }
 
     public function read(Request $r, int $conversation)

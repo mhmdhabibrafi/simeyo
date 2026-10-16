@@ -15,6 +15,86 @@ use Tests\TestCase;
 
 class CommunicationsTest extends TestCase
 {
+    public function test_message_search_is_private_literal_paginated_and_does_not_mark_read(): void
+    {
+        $a = $this->member();
+        $b = $this->member();
+        $outsider = $this->member();
+        $id = $this->start($a, $b);
+        for ($i = 0; $i < 31; $i++) {
+            Message::create(['conversation_id' => $id, 'sender_id' => $b->id, 'client_id' => (string) Str::uuid(), 'body' => 'Rapat%_ '.$i]);
+        }
+        $first = $this->actingAs($a)->getJson('/api/v1/conversations/'.$id.'/messages?q=%25')->assertOk()->assertJsonCount(30, 'data');
+        $next = $this->getJson('/api/v1/conversations/'.$id.'/messages?q=%25&cursor='.urlencode($first->json('next_cursor')))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('next_cursor', null);
+        $this->assertEmpty(array_intersect(array_column($first->json('data'), 'id'), array_column($next->json('data'), 'id')));
+        $this->getJson('/api/v1/conversations/'.$id.'/messages?q=TidakAda')->assertOk()->assertJsonCount(0, 'data');
+        $this->assertSame(0, (int) DB::table('conversation_participants')->where('conversation_id', $id)->where('user_id', $a->id)->value('last_read_message_id'));
+        $this->actingAs($outsider)->getJson('/api/v1/conversations/'.$id.'/messages?q=Rapat')->assertNotFound();
+        $this->actingAs($b)->putJson('/api/v1/relationships/'.$a->id.'/block')->assertNoContent();
+        $this->actingAs($a)->getJson('/api/v1/conversations/'.$id.'/messages?q=Rapat')->assertNotFound();
+    }
+
+    public function test_conversation_reports_limit_evidence_and_require_scoped_independent_review(): void
+    {
+        $a = $this->member();
+        $b = $this->member();
+        $other = $this->member();
+        $id = $this->start($a, $b);
+        foreach ([[$b, 'Pesan lama tidak dilampirkan'], [$a, 'Pesan pelapor tidak dilampirkan'], [$b, 'Pesan bukti terbaru']] as [$sender, $body]) {
+            Message::create(['conversation_id' => $id, 'sender_id' => $sender->id, 'client_id' => (string) Str::uuid(), 'body' => $body]);
+        }
+        $this->actingAs($other)->postJson('/api/v1/conversations/'.$id.'/report', ['reason' => 'spam'])->assertNotFound();
+        $this->actingAs($a)->postJson('/api/v1/conversations/'.$id.'/report', ['reason' => 'harassment', 'details' => 'Mohon tinjau pesan ini.'])->assertCreated();
+        $this->postJson('/api/v1/conversations/'.$id.'/report', ['reason' => 'harassment'])->assertCreated();
+        $this->assertSame(1, DB::table('conversation_reports')->count());
+        $report = DB::table('conversation_reports')->first();
+        $this->assertSame('Pesan bukti terbaru', $report->body);
+        $ownMessage = Message::where('conversation_id', $id)->where('sender_id', $a->id)->value('id');
+        $this->postJson('/api/v1/conversations/'.$id.'/report', ['reason' => 'spam', 'message_id' => $ownMessage])->assertNotFound();
+        $this->getJson('/api/v1/admin/message-reports')->assertForbidden();
+        $a->forceFill(['role' => 'moderator'])->save();
+        $this->actingAs($a)->patchJson('/api/v1/admin/message-reports/'.$report->id, ['action' => 'dismiss', 'note' => 'Tinjauan laporan sendiri.'])->assertForbidden();
+        $foreign = $this->member();
+        $foreign->forceFill(['role' => 'moderator'])->save();
+        $institution = Institution::create(['name' => 'Kampus pengujian lain', 'slug' => 'other-test']);
+        $foreign->affiliation->update(['institution_id' => $institution->id]);
+        $this->actingAs($foreign)->getJson('/api/v1/admin/message-reports')->assertOk()->assertJsonCount(0, 'data');
+        $this->patchJson('/api/v1/admin/message-reports/'.$report->id, ['action' => 'warn', 'note' => 'Tinjauan lintas kampus.'])->assertNotFound();
+        $other->forceFill(['role' => 'moderator'])->save();
+        $list = $this->actingAs($other)->getJson('/api/v1/admin/message-reports')->assertOk()->assertJsonPath('data.0.body', 'Pesan bukti terbaru');
+        $this->assertStringNotContainsString('Pesan pelapor tidak dilampirkan', $list->getContent());
+        $this->patchJson('/api/v1/admin/message-reports/'.$report->id, ['action' => 'suspend', 'note' => 'Memerlukan administrator.'])->assertForbidden();
+        $b->affiliation->update(['institution_id' => $institution->id]);
+        $this->patchJson('/api/v1/admin/message-reports/'.$report->id, ['action' => 'warn', 'note' => 'Peringatan lintas kampus.'])->assertForbidden();
+        $b->affiliation->update(['institution_id' => $a->affiliation->institution_id]);
+        $this->patchJson('/api/v1/admin/message-reports/'.$report->id, ['action' => 'warn', 'note' => 'Peringatan karena pelecehan.'])->assertNoContent();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'moderation.message.warn', 'subject_id' => $b->id]);
+        $this->patchJson('/api/v1/admin/message-reports/'.$report->id, ['action' => 'dismiss', 'note' => 'Tidak boleh tinjau ulang.'])->assertConflict();
+        $oldMessage = Message::where('conversation_id', $id)->where('sender_id', $b->id)->orderBy('id')->value('id');
+        $this->actingAs($a)->postJson('/api/v1/conversations/'.$id.'/report', ['reason' => 'spam', 'message_id' => $oldMessage])->assertCreated();
+        $this->assertDatabaseHas('conversation_reports', ['message_id' => $oldMessage, 'body' => 'Pesan lama tidak dilampirkan']);
+    }
+
+    public function test_message_report_suspension_revokes_sessions_and_tokens_but_protects_staff_roles(): void
+    {
+        $a = $this->member();
+        $b = $this->member();
+        $admin = $this->member();
+        $admin->forceFill(['role' => 'administrator'])->save();
+        $b->forceFill(['role' => 'moderator'])->save();
+        $id = $this->start($a, $b);
+        $this->actingAs($a)->postJson('/api/v1/conversations/'.$id.'/report', ['reason' => 'spam'])->assertCreated();
+        $reportId = DB::table('conversation_reports')->value('id');
+        $this->actingAs($admin)->patchJson('/api/v1/admin/message-reports/'.$reportId, ['action' => 'suspend', 'note' => 'Tinjauan administrator.'])->assertForbidden();
+        $b->forceFill(['role' => 'student'])->save();
+        $b->createToken('isolated-report-test', ['campus']);
+        DB::table('sessions')->insert(['id' => Str::random(40), 'user_id' => $b->id, 'payload' => 'isolated-fixture', 'last_activity' => time()]);
+        $this->patchJson('/api/v1/admin/message-reports/'.$reportId, ['action' => 'suspend', 'note' => 'Tinjauan administrator.'])->assertNoContent();
+        $this->assertSame('suspended', $b->fresh()->verification_state);
+        $this->assertSame(0, $b->tokens()->count());
+        $this->assertSame(0, DB::table('sessions')->where('user_id', $b->id)->count());
+    }
+
     public function test_message_recipient_discovery_includes_existing_connections_without_changing_suggestions(): void
     {
         $a = $this->member();

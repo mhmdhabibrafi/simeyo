@@ -1,4 +1,5 @@
 "use client";
+import { MessageReports } from "@/components/social/message-reports";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -80,7 +81,7 @@ export default function Page() {
         )}
         {q.data && (
           <p className="text-sm text-[var(--muted)]">
-            {q.data.pages[0].stats.pending_reports} laporan menunggu ·{" "}
+            {q.data.pages[0].stats.pending_reports} laporan cerita menunggu ·{" "}
             {q.data.pages[0].stats.active_members} anggota aktif ·{" "}
             {q.data.pages[0].stats.communities} komunitas
           </p>
@@ -115,6 +116,7 @@ export default function Page() {
       {q.hasNextPage && (
         <Button onClick={() => q.fetchNextPage()}>Laporan lainnya</Button>
       )}
+      <MessageReports />
       {orgs.data && (
         <section className="p-6">
           <h2 className="font-semibold">Verifikasi organisasi</h2>

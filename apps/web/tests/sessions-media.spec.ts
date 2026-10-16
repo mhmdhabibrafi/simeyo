@@ -47,6 +47,7 @@ test("one browser revokes another session and profile image stays authenticated"
     mimeType: "image/png",
     buffer: Buffer.from(png, "base64"),
   });
+  await first.getByRole("dialog").getByRole("button", { name: "Simpan foto", exact: true }).click();
   await expect(first.getByRole("status")).toContainText("Foto diperbarui.");
   const image = first.locator("img").last();
   await expect(image).toHaveAttribute("src", /\/media\/profiles\//);

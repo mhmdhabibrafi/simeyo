@@ -39,6 +39,7 @@ export function Feed({
   );
   const query = useInfiniteQuery({
     queryKey: ["feed", feed, userId, parentId, communityId],
+    gcTime: 30 * 60 * 1000,
     initialPageParam: null as string | null,
     refetchOnWindowFocus: !isHomeFeed,
     refetchOnMount: !isHomeFeed,

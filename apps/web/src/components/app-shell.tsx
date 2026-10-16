@@ -1,4 +1,5 @@
 "use client";
+import { NavigationMemory, clearNavigationMemory } from "./navigation-memory";
 import { clearDraft } from "@/lib/drafts";
 import Link from "next/link";
 import Image from "next/image";
@@ -165,7 +166,8 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
     try {
       await api("auth/logout", { method: "POST" });
       clearDraft();
-      try { Object.keys(sessionStorage).filter((key) => key.startsWith("simeyo:explore:")).forEach((key) => sessionStorage.removeItem(key)); } catch { /* Logout works without storage. */ }
+      clearNavigationMemory();
+      try { Object.keys(sessionStorage).filter((key) => (key.startsWith("simeyo:explore:") || key.startsWith("simeyo-profile-tab:"))).forEach((key) => sessionStorage.removeItem(key)); } catch { /* Logout works without storage. */ }
       client.clear();
       router.replace("/login");
     } catch {
@@ -176,6 +178,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   }
   return (
     <div className="app-frame min-h-dvh w-full" data-collapsed={collapsed} data-messaging={pathname.startsWith("/messages")}>
+      <NavigationMemory userId={user.id} />
       {user.verified && <Realtime userId={user.id} />}
       <aside
         aria-label="Navigasi akun"

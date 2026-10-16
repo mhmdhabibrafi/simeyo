@@ -1,5 +1,7 @@
 # Changelog
 
+- Add photo crop/pan/zoom previews with explicit save/cancel and retry, improve post edit/discard/delete flows, restore profile tabs/history reading position, and add private DM search/block/report actions. Add an evidence-only campus moderation queue with independent audited review and an additive conversation_reports table. Real-account acceptance is explicitly deferred by the owner; see docs/testing/profile-post-dm-2026-10-16.md for actual verification.
+
 - Fix empty DM recipient queries being rejected, include existing follows in messaging discovery, add recipient pagination/retry and correct literal username searches. Refresh Explore search/filter hierarchy and empty results; unify the search input across result types. Refine verified account/campus details and simplify the browser title to Simeyo. Verification: docs/testing/discovery-2026-10-16.md.
 
 - Share one auth layout across login, registration, recovery and reset, including header/theme control, centered titles, consistent width and copyright footer. Refine submitted recovery/reset feedback and login return action. Remove the home header refresh icon; retain new-story notices and failure retry. Evidence: docs/testing/auth-consistency-2026-10-16.md.

@@ -13,6 +13,13 @@ import {
   type FeedPage,
 } from "../../../../packages/api-contracts/src/social";
 import { useToast } from "@/components/providers";
+export async function clearBlockedContent(client: QueryClient) {
+  const keys = new Set(["messages", "message-search", "conversations", "notifications", "message-recipients", "profile", "people", "feed", "feed-latest", "post", "pulse", "post-search", "topic-search"]);
+  const predicate = (query: { queryKey: readonly unknown[] }) => keys.has(String(query.queryKey[0]));
+  await client.cancelQueries({ predicate });
+  client.removeQueries({ predicate });
+  client.invalidateQueries({ queryKey: ["relationship"] });
+}
 export function updatePost(
   client: QueryClient,
   id: number,

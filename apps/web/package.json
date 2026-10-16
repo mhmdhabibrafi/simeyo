@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
+    "test:unit": "node --test unit/*.test.mjs",
     "test:e2e": "playwright test",
     "format": "prettier --write src tests next.config.ts playwright.config.ts"
   },

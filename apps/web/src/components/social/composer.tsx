@@ -103,7 +103,12 @@ function ComposerEditor({
   const request = useRef<{ payload: string; id: string } | null>(
     restored?.request ?? null,
   );
-  const dirty = !!body.trim() || images.length > 0 || pendingFiles.length > 0;
+  const dirty =
+    (editId
+      ? body !== initialBody || visibility !== initialVisibility
+      : !!body.trim()) ||
+    images.length > 0 ||
+    pendingFiles.length > 0;
   useEffect(() => {
     onStateChange?.({ dirty, busy, saved: saved !== false });
   }, [dirty, busy, saved, onStateChange]);
@@ -209,6 +214,8 @@ function ComposerEditor({
       await Promise.all([
         client.invalidateQueries({ queryKey: ["feed"] }),
         client.invalidateQueries({ queryKey: ["post"] }),
+        client.invalidateQueries({ queryKey: ["post-search"] }),
+        client.invalidateQueries({ queryKey: ["pulse"] }),
       ]);
       toast(editId ? "Cerita diperbarui." : "Cerita dibagikan.");
       onDone?.();
@@ -411,6 +418,7 @@ function ComposerEditor({
                   disabled={
                     busy ||
                     pendingFiles.length > 0 ||
+                    (!!editId && !dirty) ||
                     (!body.trim() && !images.length && !existingImageCount)
                   }
                 >

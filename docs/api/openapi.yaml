@@ -2392,6 +2392,167 @@ paths:
                   - errors
         "429":
           description: Rate limited
+  /conversations/{id}/report:
+    post:
+      description: Participant report with one selected incoming message as evidence
+        (latest by default); duplicate retries are idempotent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  enum:
+                    - spam
+                    - harassment
+                    - hate
+                    - other
+                message_id:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                details:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 1000
+              required:
+                - reason
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Participant report with one selected incoming message as evidence
+            (latest by default); duplicate retries are idempotent
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /admin/message-reports:
+    get:
+      description: Campus moderator evidence-only report queue
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Campus moderator evidence-only report queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationReports"
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
+  /admin/message-reports/{id}:
+    patch:
+      description: Audited independent same-campus review; suspend requires
+        administrator and revokes sessions/tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - dismiss
+                    - warn
+                    - suspend
+                note:
+                  type: string
+                  minLength: 10
+                  maxLength: 1000
+              required:
+                - action
+                - note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Audited independent same-campus review; suspend requires
+            administrator and revokes sessions/tokens
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
   /conversations:
     get:
       description: Participant-only same-campus conversations; bilateral blocks hide
@@ -2470,16 +2631,27 @@ paths:
           description: Rate limited
   /conversations/{id}/messages:
     get:
-      description: Authorized immutable ID cursor history
+      description: Authorized ID cursor history or literal message search; GET never
+        marks messages read
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 80
+        - name: cursor
+          in: query
+          schema:
+            type: string
       responses:
         "200":
-          description: Authorized immutable ID cursor history
+          description: Authorized ID cursor history or literal message search; GET never
+            marks messages read
           content:
             application/json:
               schema:
@@ -4641,6 +4813,54 @@ components:
         - next_cursor
         - can_send
         - recipient_read_message_id
+      additionalProperties: false
+    ConversationReports:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                minimum: -9007199254740991
+                maximum: 9007199254740991
+              reporter_name:
+                type: string
+              author_name:
+                type: string
+              body:
+                type:
+                  - string
+                  - "null"
+              reason:
+                type: string
+                enum:
+                  - spam
+                  - harassment
+                  - hate
+                  - other
+              details:
+                type:
+                  - string
+                  - "null"
+            required:
+              - id
+              - reporter_name
+              - author_name
+              - body
+              - reason
+              - details
+            additionalProperties: false
+        next_cursor:
+          type:
+            - string
+            - "null"
+      required:
+        - data
+        - next_cursor
       additionalProperties: false
     Conversations:
       $schema: https://json-schema.org/draft/2020-12/schema

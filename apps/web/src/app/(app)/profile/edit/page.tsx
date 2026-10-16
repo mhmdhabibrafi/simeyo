@@ -9,6 +9,7 @@ import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/providers";
 import { Avatar } from "@/components/app-shell";
+import { PhotoCropper } from "@/components/photo-cropper";
 import { ConfirmDialog } from "@/components/ui/dialog";
 export default function Page() {
   const { data: u } = useMe();
@@ -17,6 +18,10 @@ export default function Page() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState("");
+  const [crop, setCrop] = useState<{
+    file: File;
+    kind: "avatar" | "cover";
+  } | null>(null);
   const [dirty, setDirty] = useState(false);
   const [leave, setLeave] = useState(false);
   const [bioLength, setBioLength] = useState<number | null>(null);
@@ -32,13 +37,13 @@ export default function Page() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, busy]);
   useEffect(() => {
-    if (busy || !error) return;
+    if (busy || !error || crop) return;
     const field = Object.keys(errors)[0]?.split(".")[0];
     (
       document.getElementById(field || "profile-error") ??
       document.getElementById("profile-error")
     )?.focus();
-  }, [busy, error, errors]);
+  }, [busy, error, errors, crop]);
   if (!u) return null;
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -81,11 +86,11 @@ export default function Page() {
     }
   }
   async function upload(file: File | undefined, kind: string) {
-    if (!file || busy) return;
+    if (!file || busy) return false;
     setErrors({});
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("Gunakan gambar JPEG, PNG, atau WebP.");
-      return;
+      return false;
     }
     setBusy(true);
     setUploading(kind);
@@ -98,12 +103,14 @@ export default function Page() {
       await client.invalidateQueries({ queryKey: ["me"] });
       await client.invalidateQueries({ queryKey: ["profile"] });
       toast("Foto diperbarui.");
+      return true;
     } catch (e) {
       setError(
         e instanceof ApiError
           ? Object.values(e.errors).flat().join(" ") || e.message
           : "Upload belum berhasil.",
       );
+      return false;
     } finally {
       setBusy(false);
       setUploading("");
@@ -111,6 +118,20 @@ export default function Page() {
   }
   return (
     <>
+      {crop && (
+        <PhotoCropper
+          key={crop.file.name + crop.file.lastModified}
+          file={crop.file}
+          kind={crop.kind}
+          busy={busy}
+          uploadError={error}
+          onSave={(file) => upload(file, crop.kind)}
+          onClose={() => {
+            setCrop(null);
+            setError("");
+          }}
+        />
+      )}
       <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 backdrop-blur sm:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -175,7 +196,7 @@ export default function Page() {
             <div>
               <p className="mb-1 text-sm font-semibold">Foto profil</p>
               <p className="text-xs leading-5 text-[var(--muted)]">
-                Foto langsung disimpan.
+                Atur potongan foto sebelum menyimpan.
                 <br />
                 JPEG, PNG, atau WebP.
               </p>
@@ -209,7 +230,21 @@ export default function Page() {
               disabled={busy}
               onChange={async (event) => {
                 const input = event.currentTarget;
-                await upload(input.files?.[0], kind);
+                const selected = input.files?.[0];
+                if (selected) {
+                  if (
+                    !["image/jpeg", "image/png", "image/webp"].includes(
+                      selected.type,
+                    )
+                  )
+                    setError("Gunakan gambar JPEG, PNG, atau WebP.");
+                  else if (selected.size > 64 * 1024 * 1024)
+                    setError("Ukuran foto melebihi batas unggahan 64 MB.");
+                  else {
+                    setError("");
+                    setCrop({ file: selected, kind });
+                  }
+                }
                 input.value = "";
               }}
             />

@@ -23,3 +23,16 @@ DM retry reuses the original `client_id` and body; changing the draft creates a 
 ## DM recipient discovery
 
 `GET /api/v1/people?context=messages` lists visible same-campus verified accounts, including existing followers/following, excluding the caller and both directions of blocking. The default suggestion list is unchanged. Omit `q` when empty; nonempty searches use literal wildcard escaping and cursor pagination (20 users). This discovery context does not grant messaging permission: conversation creation and sending retain recipient DM policy, block and campus checks.
+
+
+## Profile/post/DM follow-up
+
+Profile uploads remain authenticated multipart `POST /me/media`; the web cropper exports metadata-free JPEG before the existing server validation/reencoding. Avatars use square crops, covers use 3:1 crops. Selecting/cancelling a crop does not upload. Photo save is independent from the profile text form.
+
+Post PATCH/DELETE contracts and owner policies are unchanged. Web now guards unsaved edit/quote closure, preserves failed edits and confirms deletion; successful mutations refresh feed/search/pulse caches.
+
+`GET /conversations/{id}/messages?q=...&cursor=...` searches only an authorized conversation with literal wildcard escaping, 30 messages per cursor page. Omit empty q. GET/search never changes read cursors; existing explicit PUT read remains authoritative.
+
+`POST /conversations/{id}/report` accepts reason (`spam`, `harassment`, `hate`, `other`), optional details (1000 chars), and optional incoming `message_id`. The selected message must belong to this conversation and the other participant; latest incoming is the default. Only that message is snapshotted for review. Retry for the same reporter/conversation/evidence is deduplicated. No message may be attached if none exists.
+
+`GET /admin/message-reports` exposes a cursor-paginated evidence queue only to same-campus moderators/admins. `PATCH /admin/message-reports/{id}` accepts action (`dismiss`, `warn`, `suspend`) and note (10-1000 chars). Review must be independent from reporter/subject. Suspension requires an administrator, cannot target staff moderator/admin roles, revokes sessions/tokens and records audit/decision notifications. Actions cannot target a member who has moved campuses. This requires the additive conversation_reports migration. Chat block uses the existing graph API and clears all affected private caches.

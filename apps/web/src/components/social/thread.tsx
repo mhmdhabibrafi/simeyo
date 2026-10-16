@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 import { api } from "@/lib/api";
 import { postSchema } from "../../../../../packages/api-contracts/src/social";
 import { PostCard } from "./post-card";
@@ -19,13 +19,7 @@ export function Thread({ id }: { id: number }) {
   return (
     <>
       <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-[var(--border)] bg-[var(--surface)]/95 px-5 py-4 backdrop-blur">
-        <Link
-          href="/home"
-          className="icon-button"
-          aria-label="Kembali ke beranda"
-        >
-          <ArrowLeft size={20} />
-        </Link>
+        <BackButton />
         <h1 className="text-lg font-semibold">Percakapan</h1>
       </header>
       {q.isPending ? (

@@ -1,6 +1,9 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useMe } from "@/lib/auth";
+import { clearDraft, draftKey } from "@/lib/drafts";
 import { useState } from "react";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import {
@@ -14,6 +17,9 @@ import {
   LockKeyhole,
   ChevronLeft,
   ChevronRight,
+  Pencil,
+  Trash2,
+  Flag,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type Post } from "../../../../../packages/api-contracts/src/social";
@@ -71,6 +77,14 @@ export function PostCard({
   detail?: boolean;
 }) {
   const interaction = useInteraction(post);
+  const router = useRouter();
+  const { data: me } = useMe();
+  const [discard, setDiscard] = useState(false);
+  const [editor, setEditor] = useState({
+    dirty: false,
+    busy: false,
+    saved: true,
+  });
   const client = useQueryClient();
   const toast = useToast();
   const [dialog, setDialog] = useState<
@@ -96,6 +110,7 @@ export function PostCard({
             });
   function open(type: typeof dialog) {
     setError("");
+    setEditor({ dirty: false, busy: false, saved: true });
     setDialog(type);
   }
   async function remove() {
@@ -103,9 +118,15 @@ export function PostCard({
     try {
       await api(`posts/${post.id}`, { method: "DELETE" });
       client.removeQueries({ queryKey: ["post", post.id] });
-      await client.invalidateQueries({ queryKey: ["feed"] });
+      if (me) clearDraft(draftKey(me.id, `edit:${post.id}`));
+      await Promise.all(
+        ["feed", "post-search", "pulse", "topic-search"].map((key) =>
+          client.invalidateQueries({ queryKey: [key] }),
+        ),
+      );
       setDialog(null);
       toast("Cerita dihapus.");
+      if (detail) router.replace("/home");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Cerita belum dapat dihapus.");
     } finally {
@@ -217,12 +238,22 @@ export function PostCard({
                         className="menu-choice"
                         onSelect={() => open("edit")}
                       >
+                        <Pencil
+                          size={16}
+                          className="mr-2 inline"
+                          aria-hidden="true"
+                        />{" "}
                         Edit cerita
                       </Menu.Item>
                       <Menu.Item
                         className="menu-choice text-red-600"
                         onSelect={() => open("delete")}
                       >
+                        <Trash2
+                          size={16}
+                          className="mr-2 inline"
+                          aria-hidden="true"
+                        />{" "}
                         Hapus cerita
                       </Menu.Item>
                     </>
@@ -231,6 +262,11 @@ export function PostCard({
                     className="menu-choice"
                     onSelect={() => open("report")}
                   >
+                    <Flag
+                      size={16}
+                      className="mr-2 inline"
+                      aria-hidden="true"
+                    />{" "}
                     Laporkan cerita
                   </Menu.Item>
                 </Menu.Content>
@@ -382,6 +418,11 @@ export function PostCard({
       <ConfirmDialog
         open={dialog !== null}
         onOpenChange={(v) => {
+          if (!v && (busy || editor.busy)) return;
+          if (!v && editor.dirty && (dialog === "edit" || dialog === "quote")) {
+            setDiscard(true);
+            return;
+          }
           if (!v) setDialog(null);
         }}
         title={
@@ -412,11 +453,17 @@ export function PostCard({
             initialBody={post.body}
             initialVisibility={post.visibility}
             existingImageCount={post.media.length}
+            onStateChange={setEditor}
+            autoFocus
             onDone={() => setDialog(null)}
           />
         )}{" "}
         {dialog === "quote" && (
-          <Composer quoteId={post.id} onDone={() => setDialog(null)} />
+          <Composer
+            quoteId={post.id}
+            onStateChange={setEditor}
+            onDone={() => setDialog(null)}
+          />
         )}{" "}
         {dialog === "media" && image && (
           <div
@@ -505,7 +552,11 @@ export function PostCard({
         )}
         {dialog === "delete" && (
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setDialog(null)}>
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => setDialog(null)}
+            >
               Batal
             </Button>
             <Button variant="danger" onClick={remove} disabled={busy}>
@@ -518,6 +569,44 @@ export function PostCard({
             {error}
           </p>
         )}
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={discard}
+        onOpenChange={setDiscard}
+        title="Tutup editor?"
+        description="Perubahan belum dipublikasikan. Kamu bisa menyimpan teks untuk dilanjutkan nanti atau membuangnya."
+      >
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button variant="outline" onClick={() => setDiscard(false)}>
+            Lanjut menulis
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!editor.saved}
+            onClick={() => {
+              setDiscard(false);
+              setDialog(null);
+            }}
+          >
+            Simpan teks dan tutup
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              if (me)
+                clearDraft(
+                  draftKey(
+                    me.id,
+                    dialog === "edit" ? `edit:${post.id}` : `quote:${post.id}`,
+                  ),
+                );
+              setDiscard(false);
+              setDialog(null);
+            }}
+          >
+            Buang perubahan
+          </Button>
+        </div>
       </ConfirmDialog>
     </article>
   );

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BackButton } from "@/components/ui/back-button";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useState } from "react";
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { useMe } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { clearBlockedContent } from "@/lib/social";
 import { userSchema } from "../../../../../packages/api-contracts/src";
 import { Avatar } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -43,7 +45,25 @@ export function ProfileView({ username }: { username?: string }) {
     u?.id ?? 0,
     (!!u?.verified && !!u.email_verified) || (!!username && !!u),
   );
-  const [tab, setTab] = useState("profile");
+  const tabKey = `simeyo-profile-tab:${me.data?.id}:${username ?? "me"}`;
+  const [tab, updateTab] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(tabKey);
+      if (saved && ["profile", "replies", "media"].includes(saved))
+        return saved;
+    } catch {
+      /* Navigation works without storage. */
+    }
+    return "profile";
+  });
+  function setTab(value: string) {
+    updateTab(value);
+    try {
+      sessionStorage.setItem(tabKey, value);
+    } catch {
+      /* Optional preference. */
+    }
+  }
   const [block, setBlock] = useState(false);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -57,12 +77,7 @@ export function ProfileView({ username }: { username?: string }) {
       await client.invalidateQueries({ queryKey: ["feed"] });
       toast(kind === "block" ? "Akun diblokir." : "Preferensi diperbarui.");
       if (kind === "block") {
-        for (const key of ["messages", "conversations", "notifications"]) {
-          await client.cancelQueries({ queryKey: [key] });
-          client.removeQueries({ queryKey: [key] });
-        }
-        client.removeQueries({ queryKey: ["profile"] });
-        client.invalidateQueries({ queryKey: ["people"] });
+        await clearBlockedContent(client);
         router.replace("/explore");
       }
     } catch (e) {
@@ -85,7 +100,8 @@ export function ProfileView({ username }: { username?: string }) {
     );
   return (
     <>
-      <header className="flex h-12 items-center px-5 md:h-16 md:px-6">
+      <header className="flex h-12 items-center gap-3 px-5 md:h-16 md:px-6">
+        {username && <BackButton />}
         <h1 className="text-lg font-semibold">{owner ? "Profilmu" : u.name}</h1>
       </header>
       <div className="feed-surface">

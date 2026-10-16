@@ -52,6 +52,8 @@ Route::prefix('v1')->group(function () {
             Route::put('push-devices', [PushDeviceController::class, 'store'])->middleware('throttle:profile-media');
             Route::delete('push-devices/{device}', [PushDeviceController::class, 'destroy'])->whereNumber('device');
             Route::get('admin/moderation', [ModerationController::class, 'index']);
+            Route::get('admin/message-reports', [ModerationController::class, 'messageReports']);
+            Route::patch('admin/message-reports/{report}', [ModerationController::class, 'reviewMessage'])->whereNumber('report');
             Route::patch('admin/moderation/{report}', [ModerationController::class, 'review'])->whereNumber('report');
             Route::get('admin/organizations', [ModerationController::class, 'organizations']);
             Route::patch('admin/organizations/{community}', [ModerationController::class, 'verify'])->whereNumber('community');
@@ -72,6 +74,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('events/{event}', [EventController::class, 'update'])->whereNumber('event');
             Route::delete('events/{event}', [EventController::class, 'destroy'])->whereNumber('event');
             Route::match(['PUT', 'DELETE'], 'events/{event}/rsvp', [EventController::class, 'rsvp'])->whereNumber('event');
+            Route::post('conversations/{conversation}/report', [MessageController::class, 'report'])->whereNumber('conversation')->middleware('throttle:reports');
             Route::get('conversations', [MessageController::class, 'index']);
             Route::post('conversations', [MessageController::class, 'start'])->middleware('throttle:messages');
             Route::get('conversations/{conversation}/messages', [MessageController::class, 'show'])->whereNumber('conversation');

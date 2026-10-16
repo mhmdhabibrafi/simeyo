@@ -3803,6 +3803,238 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/conversations/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Participant report with one selected incoming message as evidence (latest by default); duplicate retries are idempotent */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        reason: "spam" | "harassment" | "hate" | "other";
+                        message_id?: number | null;
+                        details?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Participant report with one selected incoming message as evidence (latest by default); duplicate retries are idempotent */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/message-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Campus moderator evidence-only report queue */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Campus moderator evidence-only report queue */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConversationReports"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/message-reports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Audited independent same-campus review; suspend requires administrator and revokes sessions/tokens */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        action: "dismiss" | "warn" | "suspend";
+                        note: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Audited independent same-campus review; suspend requires administrator and revokes sessions/tokens */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
     "/conversations": {
         parameters: {
             query?: never;
@@ -3940,10 +4172,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Authorized immutable ID cursor history */
+        /** @description Authorized ID cursor history or literal message search; GET never marks messages read */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    q?: string;
+                    cursor?: string;
+                };
                 header?: never;
                 path: {
                     id: number;
@@ -3952,7 +4187,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Authorized immutable ID cursor history */
+                /** @description Authorized ID cursor history or literal message search; GET never marks messages read */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -6653,6 +6888,18 @@ export interface components {
             can_send: boolean;
             /** @default 0 */
             recipient_read_message_id: number;
+        };
+        ConversationReports: {
+            data: {
+                id: number;
+                reporter_name: string;
+                author_name: string;
+                body: string | null;
+                /** @enum {string} */
+                reason: "spam" | "harassment" | "hate" | "other";
+                details: string | null;
+            }[];
+            next_cursor: string | null;
         };
         Conversations: {
             data: {
