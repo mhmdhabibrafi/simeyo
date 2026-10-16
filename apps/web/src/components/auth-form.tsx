@@ -204,11 +204,16 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               <ArrowRight size={17} />
             </Button>
           </form>
-          <p className="mt-6 text-center text-xs leading-6 text-[var(--muted)]">
-            Simeyo adalah platform komunitas independen.
-            <br />
-            Tidak mewakili layanan resmi universitas.
-          </p>
+          <footer className="mt-10 border-t border-[var(--border)] pt-6 text-center">
+            <p className="text-xs font-medium tracking-wide text-[var(--foreground)]">
+              &copy; {new Date().getFullYear()} Simeyo
+            </p>
+            <p className="mx-auto mt-3 max-w-[300px] text-xs leading-5 text-[var(--muted)]">
+              Platform komunitas independen.
+              <br />
+              Tidak mewakili layanan resmi universitas.
+            </p>
+          </footer>
         </section>
       </main>
     </div>
