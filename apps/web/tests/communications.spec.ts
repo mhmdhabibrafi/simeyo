@@ -90,7 +90,11 @@ test("real persisted messages, private Reverb delivery, notifications and mobile
   await expect(
     recipient.getByText("mengirim pesan", { exact: false }),
   ).toBeVisible();
-  await expect.poll(async () => (await (await recipient.request.get("/api/v1/notifications")).json()).unread_count).toBe(0);
+  await expect.poll(async () => {
+    const response = await recipient.request.get("/api/v1/notifications", { headers: { Origin: "http://localhost:3000", Accept: "application/json" } });
+    expect(response.status()).toBe(200);
+    return (await response.json()).unread_count;
+  }).toBe(0);
   await expect(page.getByLabel("Dibaca", { exact: true }).first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({

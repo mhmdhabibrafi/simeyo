@@ -815,6 +815,8 @@ test("reply notifications open their thread, mark read and refresh the replies a
     });
   });
   await page.goto("/notifications");
+  await expect.poll(() => read).toBe(true);
+  await expect(page.getByText("Belum dibaca", { exact: true })).toHaveCount(0);
   await page
     .getByRole("link", { name: "Raka Pratama membalas ceritamu." })
     .click();
