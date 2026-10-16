@@ -273,8 +273,8 @@ export function PostCard({
               </div>
               <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
                 @{post.author.username}
-                {post.author.department && ` Â· ${post.author.department}`}
-                {post.edited_at && " Â· Diedit"}
+                {post.author.department && ` · ${post.author.department}`}
+                {post.edited_at && " · Diedit"}
                 {post.visibility === "followers" && (
                   <LockKeyhole
                     size={11}
@@ -373,7 +373,7 @@ export function PostCard({
               href={`/thread/${post.parent_id}`}
               className="mb-2 inline-flex min-h-8 items-center text-xs text-[var(--muted)]"
             >
-              Membalas percakapan â†—
+              Membalas percakapan ↗
             </Link>
           )}
           <PostBody body={post.body} />
@@ -424,7 +424,7 @@ export function PostCard({
               </p>
               {post.quote.media.length > 0 && (
                 <p className="mt-2 text-xs text-[var(--muted)]">
-                  {post.quote.media.length} gambar Â· Lihat cerita
+                  {post.quote.media.length} gambar · Lihat cerita
                 </p>
               )}
             </Link>
@@ -530,7 +530,7 @@ export function PostCard({
                 ? "Laporkan cerita"
                 : dialog === "delete"
                   ? "Hapus cerita?"
-                  : `Gambar cerita Â· ${imageIndex + 1} dari ${post.media.length}`
+                  : `Gambar cerita · ${imageIndex + 1} dari ${post.media.length}`
         }
         description={
           dialog === "delete"

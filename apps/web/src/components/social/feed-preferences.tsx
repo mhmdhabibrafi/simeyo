@@ -37,7 +37,7 @@ export function FeedPreferences() {
         q.data && (
           <>
             <p className="mt-2 text-xs text-[var(--muted)]">
-              {q.data.data.hidden_count} cerita disembunyikan ?{" "}
+              {q.data.data.hidden_count} cerita disembunyikan,{" "}
               {q.data.data.reduced_authors_count} akun dikurangi
             </p>
             <Button
