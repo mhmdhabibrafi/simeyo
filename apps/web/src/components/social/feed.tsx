@@ -1,11 +1,20 @@
 "use client";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
 import { feedSchema } from "../../../../../packages/api-contracts/src/social";
 import { PostCard } from "./post-card";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
+
+const subscribeConnection = (notify: () => void) => {
+  window.addEventListener("online", notify);
+  window.addEventListener("offline", notify);
+  return () => {
+    window.removeEventListener("online", notify);
+    window.removeEventListener("offline", notify);
+  };
+};
 export function Feed({
   feed = "campus",
   userId,
@@ -18,9 +27,22 @@ export function Feed({
   communityId?: number;
 }) {
   const sentinel = useRef<HTMLDivElement>(null);
+  const isHomeFeed =
+    !userId &&
+    !parentId &&
+    !communityId &&
+    ["for-you", "following", "campus"].includes(feed);
+  const online = useSyncExternalStore(
+    subscribeConnection,
+    () => navigator.onLine,
+    () => true,
+  );
   const query = useInfiniteQuery({
     queryKey: ["feed", feed, userId, parentId, communityId],
     initialPageParam: null as string | null,
+    refetchOnWindowFocus: !isHomeFeed,
+    refetchOnMount: !isHomeFeed,
+    refetchOnReconnect: !isHomeFeed,
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams({ feed });
       if (userId) params.set("user_id", String(userId));
@@ -31,6 +53,14 @@ export function Feed({
     },
     getNextPageParam: (last) => last.meta.next_cursor ?? undefined,
   });
+  const latest = useQuery({
+    queryKey: ["feed-latest", feed],
+    enabled: online && !!query.data && isHomeFeed,
+    queryFn: async () =>
+      feedSchema.parse(await api(`feed?${new URLSearchParams({ feed })}`)),
+    staleTime: 60000,
+    refetchInterval: 60000,
+  });
   const {
     fetchNextPage,
     hasNextPage,
@@ -39,7 +69,7 @@ export function Feed({
   } = query;
   useEffect(() => {
     const target = sentinel.current;
-    if (!target || !hasNextPage || isFetchNextPageError) return;
+    if (!target || !online || !hasNextPage || isFetchNextPageError) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting) && !isFetchingNextPage)
@@ -49,7 +79,13 @@ export function Feed({
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError]);
+  }, [
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    online,
+  ]);
   if (query.isPending)
     return (
       <div
@@ -88,8 +124,33 @@ export function Feed({
       ]),
     ).values(),
   );
+  const newestLoaded = Math.max(0, ...posts.map((post) => post.id));
+  const hasNew =
+    isHomeFeed && latest.data?.data.some((post) => post.id > newestLoaded);
   return (
     <div>
+      {!online && (
+        <p
+          role="status"
+          className="border-b border-[var(--border)] bg-[var(--soft)] px-4 py-3 text-center text-xs text-[var(--muted)]"
+        >
+          Koneksi terputus. Cerita yang sudah dimuat tetap bisa dibaca.
+        </p>
+      )}
+      {hasNew && online && (
+        <div className="sticky top-2 z-20 flex justify-center py-2">
+          <Button
+            disabled={query.isFetching}
+            onClick={async () => {
+              const result = await query.refetch();
+              if (result.isSuccess)
+                window.scrollTo({ top: 0, behavior: "instant" });
+            }}
+          >
+            Lihat cerita baru
+          </Button>
+        </div>
+      )}
       {posts.length === 0 ? (
         <div className="px-8 py-14 text-center">
           <MessageCircle

@@ -12,14 +12,20 @@ import { Avatar } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Composer } from "./composer";
+import { clearDraft, draftKey } from "@/lib/drafts";
 
 const ComposerContext = createContext<() => void>(() => {});
 export const useThreadComposer = () => useContext(ComposerContext);
 
 export function ThreadComposerProvider({ children }: { children: ReactNode }) {
+  const { data: user } = useMe();
   const [open, setOpen] = useState(false);
   const [discard, setDiscard] = useState(false);
-  const [state, setState] = useState({ dirty: false, busy: false });
+  const [state, setState] = useState({
+    dirty: false,
+    busy: false,
+    saved: true,
+  });
   const openComposer = useCallback(() => setOpen(true), []);
   function close(value: boolean) {
     if (!value && state.busy) return;
@@ -45,7 +51,7 @@ export function ThreadComposerProvider({ children }: { children: ReactNode }) {
           onStateChange={setState}
           onDone={() => {
             setOpen(false);
-            setState({ dirty: false, busy: false });
+            setState({ dirty: false, busy: false, saved: true });
           }}
         />
       </ConfirmDialog>
@@ -53,17 +59,29 @@ export function ThreadComposerProvider({ children }: { children: ReactNode }) {
         open={discard}
         onOpenChange={setDiscard}
         title="Buang draf?"
-        description="Tulisan dan lampiran ini belum dibagikan."
+        description="Tulisan dan lampiran ini belum dibagikan. Simpan teks untuk dilanjutkan nanti; gambar perlu dipilih ulang setelah ditutup."
       >
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-wrap justify-end gap-3">
           <Button variant="outline" onClick={() => setDiscard(false)}>
             Lanjut menulis
           </Button>
           <Button
+            variant="outline"
+            disabled={!state.saved}
             onClick={() => {
               setDiscard(false);
               setOpen(false);
-              setState({ dirty: false, busy: false });
+              setState({ dirty: false, busy: false, saved: true });
+            }}
+          >
+            Simpan teks dan tutup
+          </Button>
+          <Button
+            onClick={() => {
+              if (user) clearDraft(draftKey(user.id));
+              setDiscard(false);
+              setOpen(false);
+              setState({ dirty: false, busy: false, saved: true });
             }}
           >
             Buang draf

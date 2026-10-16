@@ -1,4 +1,5 @@
 "use client";
+import { clearDraft } from "@/lib/drafts";
 import Link from "next/link";
 import Image from "next/image";
 import { AccountMenu } from "./ui/account-menu";
@@ -149,6 +150,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
     setLoggingOut(true);
     try {
       await api("auth/logout", { method: "POST" });
+      clearDraft();
       client.clear();
       router.replace("/login");
     } catch {

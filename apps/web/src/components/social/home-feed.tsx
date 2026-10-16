@@ -8,7 +8,16 @@ import { ThreadComposerTrigger } from "./thread-composer";
 import { Feed } from "./feed";
 export function HomeFeed() {
   const { data: u } = useMe();
-  const [tab, setTab] = useState("for-you");
+  const [tab, setTab] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("simeyo-feed-tab");
+      if (saved && ["for-you", "following", "campus"].includes(saved))
+        return saved;
+    } catch {
+      /* Feed navigation works when storage is disabled. */
+    }
+    return "for-you";
+  });
   const client = useQueryClient();
   const refreshing = useIsFetching({ queryKey: ["feed", tab] }) > 0;
   return (
@@ -64,7 +73,14 @@ export function HomeFeed() {
                   aria-selected={tab === t.id}
                   aria-controls={`panel-${t.id}`}
                   className={`min-h-12 border-b-2 text-sm transition-colors hover:text-[var(--foreground)] ${tab === t.id ? "border-[var(--foreground)] font-semibold" : "border-transparent text-[var(--muted)]"}`}
-                  onClick={() => setTab(t.id)}
+                  onClick={() => {
+                    setTab(t.id);
+                    try {
+                      sessionStorage.setItem("simeyo-feed-tab", t.id);
+                    } catch {
+                      /* Optional session preference. */
+                    }
+                  }}
                   onKeyDown={(event) => {
                     const tabs = Array.from(
                       event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>(

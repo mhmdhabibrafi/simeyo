@@ -2,6 +2,8 @@
 
 **Satu kampus. Banyak cerita.**
 
+Feed/draft update: local text/audience recovery, account/context separation and logout cleanup; stable home reading with a user-controlled new-story notice and connection feedback. Photos must be selected again after reopening. See [implementation and actual checks](docs/testing/feed-drafts-2026-10-16.md).
+
 Photo viewer update: previous/next attachment controls, position counts, keyboard navigation and restored dialog focus. See [verification and deployment](docs/testing/gallery-2026-10-16.md).
 
 Experience update: sent/read chat checks, automatic Activity read, an install offer when the browser supports it, flexible image counts, swipe galleries and reduced-motion-aware loading/transitions. Transport uploads support 64 MB per file; image format/dimension and rate protections remain. Exact implementation and test scope: [experience evidence](docs/testing/experience-2026-10-16.md).

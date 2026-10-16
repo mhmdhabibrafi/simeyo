@@ -149,6 +149,158 @@ async function fixtures(page: Page) {
   });
 }
 
+test("text drafts survive reload, retain audience and are removed on discard or successful submission", async ({ page }) => {
+  await fixtures(page);
+  let unloadPrompts = 0;
+  page.on("dialog", (dialog) => { if (dialog.type() === "beforeunload") unloadPrompts++; return dialog.accept(); });
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  let composer = page.getByRole("dialog", { name: "Cerita baru", exact: true });
+  await composer.getByLabel("Tulis cerita", { exact: true }).fill("Tulisan yang akan saya lanjutkan nanti.");
+  await composer.getByRole("button", { name: "Visibilitas cerita" }).click();
+  await page.getByRole("menuitemradio", { name: "Hanya pengikut", exact: true }).click();
+  await expect(composer.getByRole("status")).toContainText("Draf teks tersimpan");
+  await page.reload();
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  composer = page.getByRole("dialog", { name: "Cerita baru", exact: true });
+  await expect(composer.getByLabel("Tulis cerita", { exact: true })).toHaveValue("Tulisan yang akan saya lanjutkan nanti.");
+  await expect(composer.getByRole("button", { name: "Visibilitas cerita" })).toContainText("Pengikut");
+  await expect(composer.getByRole("status")).toContainText("dipulihkan");
+  expect(unloadPrompts).toBe(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/draft-recovery-mobile.png"), animations: "disabled" });
+  await waitForAnimations(page);
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await composer.getByRole("button", { name: "Batal", exact: true }).click();
+  await page.getByRole("button", { name: "Simpan teks dan tutup", exact: true }).click();
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  await expect(composer.getByLabel("Tulis cerita", { exact: true })).toHaveValue("Tulisan yang akan saya lanjutkan nanti.");
+  await composer.getByRole("button", { name: "Batal", exact: true }).click();
+  await page.getByRole("button", { name: "Buang draf", exact: true }).click();
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  await expect(composer.getByLabel("Tulis cerita", { exact: true })).toHaveValue("");
+  await composer.getByLabel("Tulis cerita", { exact: true }).fill("Sekarang siap dikirim.");
+  await page.route("**/api/v1/posts", (route) => route.fulfill({ status: 201, json: { data: post } }));
+  await composer.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect(composer).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("simeyo:draft:901:new"))).toBeNull();
+});
+
+test("drafts isolate accounts and reply contexts, ignore expired data and tolerate blocked storage", async ({ page }) => {
+  await fixtures(page);
+  await page.addInitScript(() => {
+    localStorage.setItem("simeyo:draft:902:new", JSON.stringify({ body: "Draf akun lain", visibility: "campus", savedAt: Date.now() }));
+    localStorage.setItem("simeyo:draft:901:reply:901", JSON.stringify({ body: "Draf balasan", visibility: "followers", savedAt: Date.now() }));
+    localStorage.setItem("simeyo:draft:901:new", JSON.stringify({ body: "Draf kedaluwarsa", visibility: "campus", savedAt: Date.now() - 8 * 86400000 }));
+  });
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const composer = page.getByRole("dialog", { name: "Cerita baru", exact: true });
+  await expect(composer.getByLabel("Tulis cerita", { exact: true })).toHaveValue("");
+  await composer.getByRole("button", { name: "Batal", exact: true }).click();
+  await page.route("**/api/v1/posts/901", (route) => route.fulfill({ json: { data: post } }));
+  await page.goto("/thread/901");
+  await expect(page.getByLabel("Tulis balasan", { exact: true })).toHaveValue("Draf balasan");
+  await page.getByRole("link", { name: "Kembali ke beranda", exact: true }).click();
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  await expect(composer.getByLabel("Tulis cerita", { exact: true })).toHaveValue("");
+  await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException("Blocked", "SecurityError"); }; });
+  await composer.getByLabel("Tulis cerita", { exact: true }).fill("Tetap bisa menulis.");
+  await expect(composer.getByRole("status")).toContainText("belum tersimpan");
+  await expect(composer.getByRole("button", { name: "Bagikan", exact: true })).toBeEnabled();
+  await composer.getByRole("button", { name: "Batal", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Simpan teks dan tutup", exact: true })).toBeDisabled();
+});
+
+test("feed announces new stories without replacing reading content until requested", async ({ page }) => {
+  await fixtures(page);
+  await page.clock.install();
+  let newer = false;
+  await page.route("**/api/v1/feed?**", (route) => route.fulfill({ json: { data: newer ? [{ ...post, id: 999, body: "Cerita baru dari kampus" }, ...posts] : posts, meta: { next_cursor: null, has_more: false, feed: "for-you" } } }));
+  await page.goto("/home");
+  await expect(page.locator("article[data-post-id]")).toHaveCount(3);
+  await page.clock.runFor(1000);
+  newer = true;
+  await page.clock.fastForward(61000);
+  const refresh = page.getByRole("button", { name: "Lihat cerita baru", exact: true });
+  await expect(refresh).toBeVisible();
+  await expect(page.locator('article[data-post-id="999"]')).toHaveCount(0);
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/feed-new-stories.png"), animations: "disabled" });
+  await refresh.click();
+  await expect(page.locator('article[data-post-id="999"]')).toBeVisible();
+  await page.evaluate(() => { Object.defineProperty(navigator, "onLine", { configurable: true, value: false }); window.dispatchEvent(new Event("offline")); });
+  await expect(page.getByText("Koneksi terputus.", { exact: false })).toBeVisible();
+  await expect(page.locator("article[data-post-id]")).toHaveCount(4);
+});
+
+test("restored text-only sends retain retry identity and logout clears local drafts", async ({ page }) => {
+  await fixtures(page);
+  page.on("dialog", (dialog) => dialog.accept());
+  const identities: string[] = [];
+  await page.route("**/api/v1/posts", (route) => {
+    identities.push(route.request().postDataJSON().client_id);
+    return route.fulfill({ status: identities.length === 1 ? 503 : 201, json: identities.length === 1 ? { message: "Response unavailable" } : { data: post } });
+  });
+  await page.goto("/compose");
+  await page.getByLabel("Tulis cerita", { exact: true }).fill("Jangan kirim dua kali.");
+  await page.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Response unavailable" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Tulis cerita", { exact: true })).toHaveValue("Jangan kirim dua kali.");
+  await page.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect(page.getByLabel("Tulis cerita", { exact: true })).toHaveValue("");
+  expect(identities).toHaveLength(2);
+  expect(identities[0]).toBe(identities[1]);
+  await page.getByLabel("Tulis cerita", { exact: true }).fill("Draf sebelum logout.");
+  await page.route("**/api/v1/auth/logout", (route) => route.fulfill({ status: 204 }));
+  await page.getByRole("button", { name: "Menu akun", exact: true }).filter({ visible: true }).first().click();
+  await page.getByRole("menuitem", { name: "Keluar", exact: true }).click();
+  await page.getByRole("dialog", { name: "Keluar dari Simeyo?", exact: true }).getByRole("button", { name: "Keluar", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("simeyo:draft:")))).toEqual([]);
+});
+
+test("returning from a thread keeps the selected feed, cached stories and reading position", async ({ page }) => {
+  await fixtures(page);
+  await page.clock.install();
+  const many = Array.from({ length: 20 }, (_, index) => ({ ...post, id: 1000 + index }));
+  let requests = 0;
+  await page.route("**/api/v1/feed?**", (route) => { requests++; return route.fulfill({ json: { data: many, meta: { next_cursor: null, has_more: false, feed: "following" } } }); });
+  await page.route("**/api/v1/posts/1010", (route) => route.fulfill({ json: { data: many[10] } }));
+  await page.goto("/home");
+  await page.getByRole("tab", { name: "Mengikuti", exact: true }).click();
+  const reply = page.locator('article[data-post-id="1010"]').getByRole("link", { name: "Balas cerita", exact: true });
+  await reply.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => scrollY);
+  await reply.click();
+  await expect(page).toHaveURL(/\/thread\/1010$/);
+  await expect(page.getByLabel("Tulis balasan", { exact: true })).toBeVisible();
+  await page.clock.fastForward(16000);
+  const requestsBeforeBack = requests;
+  await page.goBack();
+  await expect(page.getByRole("tab", { name: "Mengikuti", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(before - 100);
+  await expect(page.locator("article[data-post-id]")).toHaveCount(20);
+  await page.clock.runFor(250);
+  expect(requests).toBe(requestsBeforeBack);
+});
+
+test("cached campus update checks never become a new-story notice inside replies", async ({ page }) => {
+  await fixtures(page);
+  let campusRequests = 0;
+  await page.route("**/api/v1/feed?**", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    if (params.get("feed") === "campus" && !params.has("parent_id")) campusRequests++;
+    return route.fulfill({ json: { data: params.has("parent_id") ? [] : posts, meta: { next_cursor: null, has_more: false, feed: params.get("feed") } } });
+  });
+  await page.route("**/api/v1/posts/901", (route) => route.fulfill({ json: { data: post } }));
+  await page.goto("/home");
+  await page.getByRole("tab", { name: "Kampus", exact: true }).click();
+  await expect.poll(() => campusRequests).toBeGreaterThanOrEqual(2);
+  await page.locator('article[data-post-id="901"]').getByRole("link", { name: "Balas cerita", exact: true }).click();
+  await expect(page.getByText("Percakapan masih terbuka.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Lihat cerita baru", exact: true })).toHaveCount(0);
+});
+
 test("install offer appears only when available, supports postponing and invokes the native prompt", async ({ page }) => {
   await fixtures(page);
   await page.goto("/home");

@@ -14,6 +14,7 @@ import * as Menu from "@radix-ui/react-dropdown-menu";
 import Image from "next/image";
 import { api, ApiError } from "@/lib/api";
 import { useMe } from "@/lib/auth";
+import { clearDraft, draftKey, readDraft, saveDraft } from "@/lib/drafts";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/app-shell";
 import { useToast } from "@/components/providers";
@@ -21,7 +22,48 @@ import {
   mediaSchema,
   type Media,
 } from "../../../../../packages/api-contracts/src/social";
-export function Composer({
+type ComposerProps = {
+  parentId?: number;
+  communityId?: number;
+  quoteId?: number;
+  initialBody?: string;
+  initialVisibility?: "campus" | "followers";
+  editId?: number;
+  onDone?: () => void;
+  compact?: boolean;
+  existingImageCount?: number;
+  autoFocus?: boolean;
+  onStateChange?: (state: {
+    dirty: boolean;
+    busy: boolean;
+    saved: boolean;
+  }) => void;
+};
+
+export function Composer(props: ComposerProps) {
+  const { data: user } = useMe();
+  if (!user?.verified || !user.email_verified) return null;
+  const context = props.editId
+    ? `edit:${props.editId}`
+    : props.parentId
+      ? `reply:${props.parentId}`
+      : props.quoteId
+        ? `quote:${props.quoteId}`
+        : props.communityId
+          ? `community:${props.communityId}`
+          : "new";
+  const storageKey = draftKey(user.id, context);
+  return (
+    <ComposerEditor
+      key={storageKey}
+      {...props}
+      user={user}
+      storageKey={storageKey}
+    />
+  );
+}
+
+function ComposerEditor({
   parentId,
   communityId,
   quoteId,
@@ -33,46 +75,54 @@ export function Composer({
   existingImageCount = 0,
   autoFocus = false,
   onStateChange,
-}: {
-  parentId?: number;
-  communityId?: number;
-  quoteId?: number;
-  initialBody?: string;
-  initialVisibility?: "campus" | "followers";
-  editId?: number;
-  onDone?: () => void;
-  compact?: boolean;
-  existingImageCount?: number;
-  autoFocus?: boolean;
-  onStateChange?: (state: { dirty: boolean; busy: boolean }) => void;
+  user,
+  storageKey,
+}: ComposerProps & {
+  user: NonNullable<ReturnType<typeof useMe>["data"]>;
+  storageKey: string;
 }) {
-  const { data: user } = useMe();
   const inputId = useId();
   const client = useQueryClient();
   const toast = useToast();
-  const [body, setBody] = useState(initialBody);
-  const [visibility, setVisibility] = useState(initialVisibility);
+  const [restored] = useState(() => readDraft(storageKey));
+  const [body, setBody] = useState(restored?.body ?? initialBody);
+  const [visibility, setVisibility] = useState(
+    restored?.visibility ?? initialVisibility,
+  );
+  const [saved, setSaved] = useState<boolean | null>(null);
+  function persist(text: string, audience: "campus" | "followers") {
+    setSaved(saveDraft(storageKey, text, audience));
+  }
   const [images, setImages] = useState<Media[]>([]);
   const [busy, setBusy] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
-  const [expanded, setExpanded] = useState(!compact);
+  const [expanded, setExpanded] = useState(!compact || !!restored);
   const file = useRef<HTMLInputElement>(null);
-  const request = useRef<{ payload: string; id: string } | null>(null);
+  const request = useRef<{ payload: string; id: string } | null>(
+    restored?.request ?? null,
+  );
   const dirty = !!body.trim() || images.length > 0 || pendingFiles.length > 0;
   useEffect(() => {
-    onStateChange?.({ dirty, busy });
-  }, [dirty, busy, onStateChange]);
+    onStateChange?.({ dirty, busy, saved: saved !== false });
+  }, [dirty, busy, saved, onStateChange]);
   useEffect(() => {
     if (!dirty && !busy) return;
+    if (
+      !busy &&
+      !images.length &&
+      !pendingFiles.length &&
+      (saved === true || (saved === null && restored))
+    )
+      return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, busy]);
+  }, [dirty, busy, images.length, pendingFiles.length, saved, restored]);
   async function upload(files: FileList | File[] | null) {
     if (!files || busy) return;
     const selected = Array.from(files);
@@ -140,6 +190,7 @@ export function Composer({
       if (!request.current || request.current.payload !== payload) {
         request.current = { payload, id: crypto.randomUUID() };
       }
+      setSaved(saveDraft(storageKey, body, visibility, request.current));
       await api(editId ? `posts/${editId}` : "posts", {
         method: editId ? "PATCH" : "POST",
         body: editId
@@ -150,6 +201,8 @@ export function Composer({
             }),
       });
       request.current = null;
+      clearDraft(storageKey);
+      setSaved(null);
       setBody("");
       setImages([]);
       if (compact) setExpanded(false);
@@ -169,7 +222,6 @@ export function Composer({
       setBusy(false);
     }
   }
-  if (!user?.verified || !user.email_verified) return null;
   return (
     <form
       onSubmit={submit}
@@ -193,7 +245,10 @@ export function Composer({
             id={`composer-${inputId}`}
             value={body}
             autoFocus={autoFocus}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => {
+              setBody(e.target.value);
+              persist(e.target.value, visibility);
+            }}
             onFocus={() => setExpanded(true)}
             disabled={busy}
             maxLength={1000}
@@ -302,9 +357,11 @@ export function Composer({
                       </Menu.Label>
                       <Menu.RadioGroup
                         value={visibility}
-                        onValueChange={(value) =>
-                          setVisibility(value as "campus" | "followers")
-                        }
+                        onValueChange={(value) => {
+                          const audience = value as "campus" | "followers";
+                          setVisibility(audience);
+                          persist(body, audience);
+                        }}
                       >
                         {[
                           {
@@ -409,6 +466,19 @@ export function Composer({
           {error && (
             <p role="alert" className="col-span-2 mt-3 text-sm text-red-600">
               {error}
+            </p>
+          )}
+          {!busy && (restored || saved !== null) && body.trim() && (
+            <p
+              role="status"
+              className="col-span-2 mt-3 text-xs leading-5 text-[var(--muted)]"
+            >
+              {saved === false
+                ? "Draf belum tersimpan di perangkat. Jangan tutup halaman ini."
+                : restored && saved === null
+                  ? "Draf teks dipulihkan."
+                  : "Draf teks tersimpan di perangkat ini."}{" "}
+              Gambar perlu dipilih ulang setelah memuat ulang halaman.
             </p>
           )}
           {expanded && (
