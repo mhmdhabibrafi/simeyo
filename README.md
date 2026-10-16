@@ -1,5 +1,8 @@
 # Simeyo
 
+Latest activity/search/DM acceptance: [2026-10-16 report](docs/testing/activity-search-messaging-2026-10-16.md). Physical-device keyboard and OS installation remain untested; browser acceptance is recorded separately.
+
+
 **Satu kampus. Banyak cerita.**
 
 Profile update: compact identity metadata, accessible profile tabs and a redesigned editor with dedicated photo controls, sticky saving, field feedback and unsaved-change confirmation. Photos save independently of text. See [profile verification](docs/testing/profile-2026-10-16.md).

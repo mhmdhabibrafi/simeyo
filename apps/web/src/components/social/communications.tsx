@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -18,6 +18,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type InfiniteData,
 } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useMe } from "@/lib/auth";
@@ -28,6 +29,7 @@ import { useToast } from "@/components/providers";
 import {
   conversationsSchema,
   messagesSchema,
+  messageSchema,
   notificationsSchema,
   communicationPreferencesSchema,
 } from "../../../../../packages/api-contracts/src/communications";
@@ -339,7 +341,6 @@ export function MessageThread({ id }: { id: number }) {
   const client = useQueryClient();
   const [body, setBody] = useState("");
   const [draftId, setDraftId] = useState<string | null>(null);
-  const toast = useToast();
   const q = useInfiniteQuery({
     queryKey: ["messages", id],
     initialPageParam: null as string | null,
@@ -353,20 +354,58 @@ export function MessageThread({ id }: { id: number }) {
     refetchInterval: 15000,
   });
   const m = useMutation({
-    mutationFn: ({ body, client_id }: { body: string; client_id: string }) =>
-      api(`conversations/${id}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ body, client_id }),
-      }),
-    onSuccess: () => {
+    mutationFn: async ({
+      body,
+      client_id,
+    }: {
+      body: string;
+      client_id: string;
+    }) => {
+      const response = await api<{ data: unknown }>(
+        `conversations/${id}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({ body, client_id }),
+        },
+      );
+      return messageSchema.parse(response.data);
+    },
+    onSuccess: (saved, variables) => {
       atBottom.current = true;
-      setBody("");
+      setBody((current) => (current === variables.body ? "" : current));
       setDraftId(null);
+      client.setQueryData<
+        InfiniteData<ReturnType<typeof messagesSchema.parse>>
+      >(["messages", id], (old) =>
+        old
+          ? {
+              ...old,
+              pages: old.pages.map((page, index) =>
+                index === 0
+                  ? {
+                      ...page,
+                      data: [
+                        ...page.data.filter(
+                          (message) =>
+                            message.id !== saved.id &&
+                            message.client_id !== saved.client_id,
+                        ),
+                        saved,
+                      ],
+                    }
+                  : page,
+              ),
+            }
+          : old,
+      );
       client.invalidateQueries({ queryKey: ["messages", id] });
       client.invalidateQueries({ queryKey: ["conversations"] });
     },
-    onError: (e) => toast(e.message),
   });
+  useEffect(() => {
+    if (m.isPending && atBottom.current && log.current)
+      log.current.scrollTop = log.current.scrollHeight;
+  }, [m.isPending]);
   const read = useMutation({
     mutationFn: (messageId: number) =>
       api(`conversations/${id}/read`, {
@@ -377,8 +416,14 @@ export function MessageThread({ id }: { id: number }) {
       client.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
-  const messages =
-    q.data?.pages.flatMap((p) => p.data).sort((a, b) => a.id - b.id) ?? [];
+  const messages = Array.from(
+    new Map(
+      (q.data?.pages.flatMap((p) => p.data) ?? []).map((message) => [
+        message.id,
+        message,
+      ]),
+    ).values(),
+  ).sort((a, b) => a.id - b.id);
   const lastId = messages.at(-1)?.id ?? null;
   useEffect(() => {
     if (lastId === null || lastId === previousLastId.current) return;
@@ -468,7 +513,7 @@ export function MessageThread({ id }: { id: number }) {
         aria-relevant="additions"
       >
         {q.isPending && <LoadingState label="Memuat pesan…" />}
-        {q.data && messages.length === 0 && (
+        {q.data && messages.length === 0 && !m.isPending && !m.isError && (
           <p className="py-10 text-center text-sm leading-6 text-[var(--muted)]">
             Belum ada pesan. Mulai percakapan dengan sapaan pertama.
           </p>
@@ -492,46 +537,92 @@ export function MessageThread({ id }: { id: number }) {
             Pesan sebelumnya
           </Button>
         )}
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            data-message-id={m.id}
-            className={`flex ${m.sender_id === me?.id ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 ${m.sender_id === me?.id ? "bg-[var(--accent)] text-[var(--accent-foreground)]" : "bg-[var(--soft)]"}`}
-            >
-              <p className="whitespace-pre-wrap break-words text-sm">
-                {m.body}
-              </p>
-              <div className="mt-2 flex items-center justify-end gap-1 text-[10px] opacity-70">
-                <time>
-                  {new Date(m.created_at).toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
+        {messages.map((m, index) => (
+          <Fragment key={m.id}>
+            {(!index ||
+              new Date(messages[index - 1].created_at).toDateString() !==
+                new Date(m.created_at).toDateString()) && (
+              <p className="py-2 text-center text-xs text-[var(--muted)]">
+                <time dateTime={m.created_at}>
+                  {new Date(m.created_at).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
                   })}
                 </time>
-                {m.sender_id === me?.id && (
-                  <span
-                    role="img"
-                    aria-label={
-                      m.id <= (q.data?.pages[0].recipient_read_message_id ?? 0)
-                        ? "Dibaca"
-                        : "Terkirim"
-                    }
+              </p>
+            )}
+            <div
+              key={m.id}
+              data-message-id={m.id}
+              className={`flex ${m.sender_id === me?.id ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 ${m.sender_id === me?.id ? "bg-[var(--accent)] text-[var(--accent-foreground)]" : "bg-[var(--soft)]"}`}
+              >
+                <p className="whitespace-pre-wrap break-words text-sm">
+                  {m.body}
+                </p>
+                <div className="mt-2 flex items-center justify-end gap-1 text-[10px] opacity-70">
+                  <time dateTime={m.created_at}>
+                    {new Date(m.created_at).toLocaleTimeString("id-ID", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </time>
+                  {m.sender_id === me?.id && (
+                    <span
+                      role="img"
+                      aria-label={
+                        m.id <=
+                        (q.data?.pages[0].recipient_read_message_id ?? 0)
+                          ? "Dibaca"
+                          : "Terkirim"
+                      }
+                    >
+                      {m.id <=
+                      (q.data?.pages[0].recipient_read_message_id ?? 0) ? (
+                        <CheckCheck size={14} />
+                      ) : (
+                        <Check size={14} />
+                      )}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Fragment>
+        ))}
+        {(m.isPending || m.isError) &&
+          m.variables &&
+          !messages.some(
+            (message) => message.client_id === m.variables.client_id,
+          ) && (
+            <div
+              className="flex justify-end"
+              data-pending-message={m.variables.client_id}
+            >
+              <div className="max-w-[85%] rounded-2xl border border-[var(--border)] bg-[var(--soft)] px-4 py-3">
+                <p className="whitespace-pre-wrap break-words text-sm">
+                  {m.variables.body}
+                </p>
+                <p role="status" className="mt-2 text-xs text-[var(--muted)]">
+                  {m.isPending ? "Mengirim…" : "Belum terkirim"}
+                </p>
+                {m.isError && <p role="alert" className="mt-2 break-words text-xs text-[var(--muted)]">{m.error.message}</p>}
+                {m.isError && (
+                  <button
+                    type="button"
+                    disabled={m.isPending || !q.data?.pages[0].can_send}
+                    className="mt-2 min-h-9 text-xs font-semibold underline"
+                    onClick={() => m.mutate(m.variables!)}
                   >
-                    {m.id <=
-                    (q.data?.pages[0].recipient_read_message_id ?? 0) ? (
-                      <CheckCheck size={14} />
-                    ) : (
-                      <Check size={14} />
-                    )}
-                  </span>
+                    Coba kirim lagi
+                  </button>
                 )}
               </div>
             </div>
-          </div>
-        ))}
+          )}
         {read.isError && lastIncomingId > 0 && (
           <button
             className="text-sm text-[var(--muted)]"
@@ -559,6 +650,7 @@ export function MessageThread({ id }: { id: number }) {
           className="shrink-0 space-y-3 border-t border-[var(--border)] p-4"
           onSubmit={(e) => {
             e.preventDefault();
+            if (m.isPending || !body.trim()) return;
             const client_id = draftId ?? crypto.randomUUID();
             setDraftId(client_id);
             m.mutate({ body, client_id });
@@ -604,6 +696,46 @@ const labels: Record<string, string> = {
   verification: "memperbarui status afiliasimu",
   moderation: "menyampaikan keputusan moderasi",
 };
+type Notice = ReturnType<typeof notificationsSchema.parse>["data"][number];
+function noticeTarget(n: Notice) {
+  if (n.kind === "moderation") return `/notifications#activity-${n.id}`;
+  if (n.kind === "follows" && n.follow_state === "pending") return "/requests";
+  if (n.conversation_id) return `/messages/${n.conversation_id}`;
+  if (n.post_id) return `/thread/${n.post_id}`;
+  if (n.kind === "verification") return "/settings#account-campus";
+  if (n.kind === "messages") return "/messages";
+  return n.actor.username
+    ? `/u/${encodeURIComponent(n.actor.username)}`
+    : "/notifications";
+}
+function groupNotices(notices: Notice[]) {
+  const groups = new Map<
+    string,
+    { notice: Notice; actors: Set<number>; count: number; unread: boolean }
+  >();
+  const unique = Array.from(
+    new Map(notices.map((n) => [n.id, n])).values(),
+  ).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  for (const n of unique) {
+    const key =
+      !n.message && !["verification", "moderation"].includes(n.kind)
+        ? `${n.kind}:${noticeTarget(n)}:${new Date(n.created_at).toDateString()}`
+        : n.id;
+    const group = groups.get(key);
+    if (group) {
+      group.count++;
+      group.actors.add(n.actor.id);
+      group.unread ||= !n.read_at;
+    } else
+      groups.set(key, {
+        notice: n,
+        actors: new Set([n.actor.id]),
+        count: 1,
+        unread: !n.read_at,
+      });
+  }
+  return Array.from(groups.values());
+}
 export function Notifications() {
   const client = useQueryClient();
   const toast = useToast();
@@ -619,12 +751,14 @@ export function Notifications() {
     getNextPageParam: (p) => p.next_cursor,
     refetchInterval: 20000,
   });
-  const unreadIds =
-    q.data?.pages
-      .flatMap((page) => page.data)
-      .filter((item) => !item.read_at)
-      .map((item) => item.id)
-      .slice(0, 100) ?? [];
+  const unreadIds = Array.from(
+    new Set(
+      q.data?.pages
+        .flatMap((page) => page.data)
+        .filter((item) => !item.read_at)
+        .map((item) => item.id) ?? [],
+    ),
+  ).slice(0, 100);
   const unreadKey = unreadIds.join(",");
   const attempted = useRef("");
   const read = useMutation({
@@ -665,33 +799,37 @@ export function Notifications() {
           <SlidersHorizontal size={19} />
         </Link>
       </header>
-      {q.data?.pages
-        .flatMap((p) => p.data)
-        .map((n) => (
+      {groupNotices(q.data?.pages.flatMap((p) => p.data) ?? []).map(
+        ({ notice: n, actors, count, unread }) => (
           <div
             key={n.id}
-            className={`flex gap-3 border-b border-[var(--border)] px-5 py-5 sm:px-6 ${!n.read_at ? "bg-[var(--soft)]/50" : ""}`}
+            id={`activity-${n.id}`}
+            data-activity-count={count}
+            className={`flex gap-3 border-b border-[var(--border)] px-5 py-5 sm:px-6 ${unread ? "bg-[var(--soft)]/50" : ""}`}
           >
             <Avatar name={n.actor.name} />
             <div className="min-w-0 flex-1">
               <Link
-                href={
-                  n.conversation_id
-                    ? `/messages/${n.conversation_id}`
-                    : n.post_id
-                      ? `/thread/${n.post_id}`
-                      : n.kind === "verification"
-                        ? "/settings#account-campus"
-                        : `/u/${n.actor.username}`
-                }
+                href={noticeTarget(n)}
 
-                className="text-sm"
+                className="break-words text-sm leading-6"
               >
                 <strong>{n.actor.name}</strong>{" "}
-                {labels[n.kind] ?? "memperbarui aktivitas kampus"}.
+                {actors.size > 1 && `dan ${actors.size - 1} lainnya `}
+                {n.kind === "follows"
+                  ? n.follow_state === "pending"
+                    ? "meminta mengikutimu"
+                    : "mulai mengikutimu"
+                  : (labels[n.kind] ?? "memperbarui aktivitas kampus")}
+                .
+                {count > 1 && (
+                  <span className="ml-1 text-xs text-[var(--muted)]">
+                    {count} aktivitas
+                  </span>
+                )}
               </Link>
               {n.message && (
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
+                <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
                   {n.message}
                 </p>
               )}
@@ -707,13 +845,14 @@ export function Notifications() {
                 })}
               </time>
             </div>
-            {!n.read_at && (
+            {unread && (
               <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--foreground)]">
                 <span className="sr-only">Belum dibaca</span>
               </span>
             )}
           </div>
-        ))}
+        ),
+      )}
       <div className="p-6">
         {read.isError && unreadIds.length > 0 && (
           <button

@@ -111,12 +111,32 @@ class CampusExperienceTest extends TestCase
         $this->getJson('/api/v1/pulse')->assertJsonPath('data.topics.0.name', 'riset')->assertJsonPath('data.topics.0.posts_count', 1);
         $this->getJson('/api/v1/search/posts?q=100%25')->assertJsonCount(1, 'data');
         $this->getJson('/api/v1/search/posts?q=%25%25')->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/search/topics?q=RIS')->assertJsonPath('data.0.name', 'riset')->assertJsonPath('data.0.posts_count', 1);
+        $this->getJson('/api/v1/search/topics?q=%25')->assertJsonCount(0, 'data');
         $a->profile->update(['private_account' => true]);
         $this->getJson('/api/v1/pulse')->assertJsonCount(0, 'data.topics');
         $this->getJson('/api/v1/search/posts?q=Riset')->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/search/topics?q=riset')->assertJsonCount(0, 'data');
         $this->getJson('/api/v1/notifications')->assertJsonCount(0, 'data');
         $this->actingAs($a)->patchJson('/api/v1/posts/'.$p, ['body' => 'Tanpa hashtag', 'visibility' => 'campus'])->assertOk();
         $this->assertSame(0, DB::table('post_hashtags')->count());
+    }
+
+    public function test_topic_search_pages_historical_visible_topics_and_excludes_muted_authors(): void
+    {
+        $a = $this->member();
+        $b = $this->member();
+        $tags = array_map(fn ($i) => '#topic_'.str_pad((string) $i, 2, '0', STR_PAD_LEFT), range(0, 24));
+        foreach (array_chunk($tags, 20) as $chunk) {
+            $id = $this->actingAs($a)->postJson('/api/v1/posts', ['body' => implode(' ', $chunk), 'visibility' => 'campus'])->assertCreated()->json('data.id');
+            DB::table('posts')->where('id', $id)->update(['created_at' => now()->subDays(3)]);
+        }
+        $first = $this->actingAs($b)->getJson('/api/v1/search/topics?q=topic')->assertOk()->assertJsonCount(20, 'data');
+        $this->assertNotNull($first->json('next_cursor'));
+        $second = $this->getJson('/api/v1/search/topics?q=topic&cursor='.urlencode($first->json('next_cursor')))->assertOk()->assertJsonCount(5, 'data')->assertJsonPath('next_cursor', null);
+        $this->assertEmpty(array_intersect(array_column($first->json('data'), 'name'), array_column($second->json('data'), 'name')));
+        $this->putJson('/api/v1/relationships/'.$a->id.'/mute')->assertNoContent();
+        $this->getJson('/api/v1/search/topics?q=topic')->assertJsonCount(0, 'data');
     }
 
     public function test_moderation_scopes_roles_self_review_and_audit(): void

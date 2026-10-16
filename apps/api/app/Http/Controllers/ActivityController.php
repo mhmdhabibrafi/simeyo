@@ -27,11 +27,12 @@ class ActivityController extends Controller
         $unread = (clone $q)->whereNull('read_at')->count();
         $page = $q->orderByDesc('created_at')->orderByDesc('id')->cursorPaginate(30);
         $actors = User::whereIn('id', $page->pluck('actor_id'))->get(['id', 'name', 'username'])->keyBy('id');
+        $follows = DB::table('follows')->where('followed_id', $u->id)->whereIn('follower_id', $page->pluck('actor_id'))->pluck('state', 'follower_id');
 
-        return ['data' => $page->map(function ($n) use ($actors) {
+        return ['data' => $page->map(function ($n) use ($actors, $follows) {
             $d = $n->data;
 
-            return ['id' => $n->id, 'kind' => $n->kind, 'actor' => $actors[$n->actor_id]?->only('id', 'name', 'username'), 'post_id' => $n->post_id, 'conversation_id' => $n->conversation_id, 'message' => $d['message'] ?? null, 'read_at' => $n->read_at, 'created_at' => $n->created_at];
+            return ['id' => $n->id, 'kind' => $n->kind, 'actor' => $actors[$n->actor_id]?->only('id', 'name', 'username'), 'post_id' => $n->post_id, 'conversation_id' => $n->conversation_id, 'follow_state' => $n->kind === 'follows' ? ($follows[$n->actor_id] ?? null) : null, 'message' => $d['message'] ?? null, 'read_at' => $n->read_at, 'created_at' => $n->created_at];
         })->values(), 'next_cursor' => $page->nextCursor()?->encode(), 'unread_count' => $unread];
     }
 

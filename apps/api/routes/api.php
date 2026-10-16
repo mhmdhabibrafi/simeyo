@@ -57,6 +57,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('admin/organizations/{community}', [ModerationController::class, 'verify'])->whereNumber('community');
             Route::get('pulse', [ExploreController::class, 'pulse']);
             Route::get('search/posts', [ExploreController::class, 'search']);
+            Route::get('search/topics', [ExploreController::class, 'topics']);
             Route::get('communities', [CommunityController::class, 'index']);
             Route::post('communities', [CommunityController::class, 'store'])->middleware('throttle:posts');
             Route::get('communities/{community}', [CommunityController::class, 'show'])->whereNumber('community');

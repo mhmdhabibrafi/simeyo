@@ -1,5 +1,7 @@
 # Changelog
 
+Activity/search/messaging follow-up (2026-10-16): grouped loaded activity by kind, destination and day; current follow state selects Requests versus profile. Search separates people/stories/topics, restores account-scoped session queries and adds a visibility-filtered cursor topic API. DM shows pending/failure/retry with the same request identity, preserves a newer draft and separates dates. Browser viewport handling and real service-worker offline checks added. API: 84 tests / 570 assertions; contracts: 5 passed. Final web/deployment checks are being completed; physical-device keyboard/install acceptance is explicitly deferred because no device is available. See docs/testing/activity-search-messaging-2026-10-16.md.
+
 - Refine profile hierarchy, metadata, sharing, tabs and empty states. Redesign profile editing with compact photo controls, sticky save, field errors/bio count, preserved failed edits, same-file upload retry and unsaved-change confirmation. Keep existing profile/privacy/media API behavior. Evidence: docs/testing/profile-2026-10-16.md.
 
 - Recover browser-local text/audience drafts across reloads, preserve unchanged text-only retry identities, separate account/context keys and clear drafts on logout/success/discard. Keep cached home stories stable with a new-story refresh notice, session tab preference and offline feedback. Photos are not persisted. Verification: docs/testing/feed-drafts-2026-10-16.md.

@@ -106,6 +106,8 @@ async function fixtures(page: Page) {
       } } });
     if (url.pathname.endsWith("/search/posts"))
       return route.fulfill({ json: { data: [post], meta: { next_cursor: null, has_more: false, feed: "search" } } });
+    if (url.pathname.endsWith("/search/topics"))
+      return route.fulfill({ json: { data: [{ name: "proyekakhir", posts_count: 12 }], next_cursor: null } });
     if (url.pathname.endsWith("/people"))
       return route.fulfill({ json: { data: [], meta: { next_cursor: null, has_more: false } } });
     if (url.pathname.endsWith("/communities") || url.pathname.endsWith("/events"))
@@ -148,6 +150,113 @@ async function fixtures(page: Page) {
     });
   });
 }
+
+test("activity groups loaded duplicates without mixing destinations and reads every underlying ID", async ({ page }) => {
+  await fixtures(page);
+  const actor = { id: 902, name: "Raka", username: "raka_pengujian" };
+  const notice = (n: number, kind = "likes", postId: number | null = 901) => ({ id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`, kind, actor, post_id: postId, conversation_id: null as number | null, read_at: null as string | null, created_at: "2026-10-16T00:00:00Z" });
+  const initial = [notice(1), { ...notice(2), actor: { id: 903, name: "Nadia", username: "nadia_pengujian" } }, { ...notice(4, "follows", null), follow_state: "pending" }, notice(5, "verification", null), { ...notice(6, "messages", null), conversation_id: 42 }, { ...notice(7, "moderation", 999), message: "Konten ditinjau." }];
+  const extra = [initial[0], notice(3), notice(8, "likes", 902), { ...notice(9), created_at: "2026-10-15T00:00:00Z" }];
+  const read = new Set<string>();
+  await page.route("**/api/v1/notifications/read", (route) => { for (const id of route.request().postDataJSON().ids) read.add(id); return route.fulfill({ status: 204 }); });
+  await page.route("**/api/v1/notifications*", (route) => {
+    if (route.request().method() === "PUT") { for (const id of route.request().postDataJSON().ids) read.add(id); return route.fulfill({ status: 204 }); }
+    const older = new URL(route.request().url()).searchParams.has("cursor");
+    return route.fulfill({ json: { data: (older ? extra : initial).map((n) => ({ ...n, read_at: read.has(n.id) ? "2026-10-16T01:00:00Z" : null })), next_cursor: older ? null : "older", unread_count: 9 - read.size } });
+  });
+  await page.goto("/notifications");
+  await expect(page.getByRole("link", { name: /meminta mengikutimu/ })).toHaveAttribute("href", "/requests");
+  await expect(page.getByRole("link", { name: /status afiliasimu/ })).toHaveAttribute("href", "/settings#account-campus");
+  await expect(page.getByRole("link", { name: /mengirim pesan/ })).toHaveAttribute("href", "/messages/42");
+  await expect(page.getByRole("link", { name: /keputusan moderasi/ })).toHaveAttribute("href", /\/notifications#activity-/);
+  await page.getByRole("button", { name: "Aktivitas lainnya", exact: true }).click();
+  await expect(page.locator('[data-activity-count="3"]')).toHaveCount(1);
+  await expect(page.locator('[data-activity-count="3"]')).toContainText("1 lainnya");
+  await expect(page.locator('[data-activity-count="3"]').getByRole("link")).toHaveAttribute("href", "/thread/901");
+  await expect.poll(() => read.size).toBe(9);
+  await expect(page.getByText("Belum dibaca", { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/activity-grouped.png"), animations: "disabled" });
+});
+
+test("explore distinguishes people, topics and stories and restores a submitted search after profile Back", async ({ page }) => {
+  await fixtures(page);
+  const friend = { ...user, id: 902, name: "Raka Pratama", username: "raka_pengujian" };
+  await page.route("**/api/v1/people?*", (route) => route.fulfill({ json: { data: [friend], meta: { next_cursor: null, has_more: false } } }));
+  await page.route("**/api/v1/profiles/raka_pengujian", (route) => route.fulfill({ json: { data: friend } }));
+  await page.route("**/api/v1/search/topics?*", (route) => route.fulfill({ json: { data: [{ name: "riset", posts_count: 3 }], next_cursor: null } }));
+  await page.goto("/explore");
+  await page.getByRole("button", { name: "Temukan teman", exact: true }).click();
+  await page.getByLabel("Cari teman kampus", { exact: true }).fill("Raka");
+  await page.getByRole("button", { name: "Cari", exact: true }).click();
+  await page.getByRole("link", { name: "Raka Pratama", exact: true }).click();
+  await expect(page).toHaveURL(/\/u\/raka_pengujian$/);
+  await page.goBack();
+  await expect(page.getByRole("button", { name: "Temukan teman", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Cari teman kampus", { exact: true })).toHaveValue("Raka");
+  await page.reload();
+  await expect(page.getByLabel("Cari teman kampus", { exact: true })).toHaveValue("Raka");
+  await page.getByRole("button", { name: "Topik", exact: true }).click();
+  await page.getByLabel("Cari topik kampus", { exact: true }).fill("riset");
+  await page.getByRole("button", { name: "Cari", exact: true }).click();
+  await page.getByRole("button", { name: "#riset 3 cerita", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Cerita kampus", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Cari cerita atau hashtag", { exact: true })).toHaveValue("#riset");
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/explore-restored.png"), animations: "disabled" });
+});
+
+test("DM shows sending and retry states, keeps new text and fits a reduced mobile viewport", async ({ page }) => {
+  await fixtures(page);
+  let saved: Record<string, unknown> | null = null;
+  let release: (() => void) | undefined;
+  const ids: string[] = [];
+  const friend = { id: 902, name: "Raka", username: "raka_pengujian" };
+  await page.route("**/api/v1/conversations/42/read", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/api/v1/conversations/42/messages", async (route) => {
+    if (route.request().method() === "POST") {
+      const data = route.request().postDataJSON(); ids.push(data.client_id);
+      if (ids.length === 1) { await new Promise<void>((resolve) => { release = resolve; }); return route.fulfill({ status: 503, json: { message: "Coba lagi nanti." } }); }
+      saved = { ...data, id: 3, conversation_id: 42, sender_id: user.id, created_at: "2026-10-16T10:00:00Z" };
+      return route.fulfill({ status: 201, json: { data: saved } });
+    }
+    return route.fulfill({ json: { data: [{ id: 1, conversation_id: 42, sender_id: 902, client_id: "11111111-1111-4111-8111-111111111111", body: "Pesan kemarin", created_at: "2026-10-15T10:00:00Z" }, { id: 2, conversation_id: 42, sender_id: 902, client_id: "22222222-2222-4222-8222-222222222222", body: "Pesan hari ini", created_at: "2026-10-16T09:00:00Z" }, ...(saved ? [saved] : [])], user: friend, can_send: true, recipient_read_message_id: 0, next_cursor: null } });
+  });
+  await page.setViewportSize({ width: 390, height: 850 });
+  await page.goto("/messages/42");
+  await page.getByLabel("Tulis pesan", { exact: true }).fill("Pesan yang dicoba ulang");
+  await page.getByRole("button", { name: "Kirim pesan", exact: true }).click();
+  await expect(page.locator("[data-pending-message]").getByRole("status")).toHaveText("Mengirim…");
+  release!();
+  await expect(page.getByRole("button", { name: "Coba kirim lagi", exact: true })).toBeVisible();
+  await page.getByLabel("Tulis pesan", { exact: true }).fill("Draf pesan berikutnya");
+  await page.getByRole("button", { name: "Coba kirim lagi", exact: true }).click();
+  await expect(page.locator('[data-message-id="3"]')).toHaveCount(1);
+  expect(ids[0]).toBe(ids[1]);
+  await expect(page.getByText("Coba lagi nanti.", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Tulis pesan", { exact: true })).toHaveValue("Draf pesan berikutnya");
+  await expect(page.getByText("15 Oktober 2026", { exact: true })).toHaveCount(1);
+  await expect(page.getByText("16 Oktober 2026", { exact: true })).toHaveCount(1);
+  await page.setViewportSize({ width: 390, height: 500 });
+  await page.getByLabel("Tulis pesan", { exact: true }).focus();
+  await expect(page.getByRole("button", { name: "Kirim pesan", exact: true })).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/messages-small-viewport.png"), animations: "disabled" });
+  await page.getByRole("link", { name: "Semua pesan", exact: true }).click();
+  await expect(page).toHaveURL(/\/messages$/);
+});
+
+test("real PWA worker caches only public assets and serves a private-free offline fallback", async ({ page, context }) => {
+  await page.goto("/login");
+  await page.evaluate(async () => { await navigator.serviceWorker.register("/sw.js"); await navigator.serviceWorker.ready; if (!navigator.serviceWorker.controller) await new Promise<void>((resolve) => navigator.serviceWorker.addEventListener("controllerchange", () => resolve(), { once: true })); });
+  const manifest = await (await context.request.get("/manifest.webmanifest")).json();
+  expect(manifest.name).toBe("Simeyo"); expect(manifest.display).toBe("standalone");
+  const paths = await page.evaluate(async () => { const paths: string[] = []; for (const key of await caches.keys()) for (const request of await (await caches.open(key)).keys()) paths.push(new URL(request.url).pathname); return paths; });
+  expect(paths).toContain("/offline.html");
+  expect(paths.filter((url) => !url.startsWith("/_next/static/") && !url.startsWith("/icons/") && url !== "/offline.html")).toEqual([]);
+  await context.setOffline(true);
+  await page.goto("/messages");
+  await expect(page.getByRole("heading", { name: "Kita tersambung lagi nanti.", exact: true })).toBeVisible();
+  await context.setOffline(false);
+});
 
 test("profile and editor fit narrow screens in both themes with accessible tabs and photo controls", async ({ page }) => {
   test.setTimeout(180000);
@@ -587,7 +696,7 @@ test("messaging supports a split inbox, recipient selection and safe send retry 
     if (route.request().method() === "POST") {
       if (failSend) { failSend = false; return route.fulfill({ status: 503, json: { message: "Pengiriman gagal." } }); }
       sent = true;
-      return route.fulfill({ status: 201, json: { data: {} } });
+      return route.fulfill({ status: 201, json: { data: { id: 1, conversation_id: 42, sender_id: user.id, client_id: route.request().postDataJSON().client_id, body: "Halo Raka!", created_at: "2026-10-15T10:00:00Z" } } });
     }
     return route.fulfill({ json: { data: sent ? [{ id: 1, conversation_id: 42, sender_id: user.id, client_id: "11111111-1111-4111-8111-111111111111", body: "Halo Raka!", created_at: "2026-10-15T10:00:00Z" }] : [], user: recipient, can_send: true, next_cursor: null } });
   });

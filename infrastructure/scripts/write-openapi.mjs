@@ -92,6 +92,7 @@ operation('/communication-preferences','patch','Whitelisted notification categor
 operation('/realtime','get','Public client key and endpoint; never returns signing secret');
 operation('/broadcasting/auth','post','Sanctum and approved campus authorization; only own private channel',{schema:object({channel_name:string,socket_id:string},['channel_name','socket_id'])});
 operation('/pulse','get','Visibility-filtered 24h topics and popular stories; transparent ranking explanation');
+operation('/search/topics','get','Literal topic search over visible unmuted posts, alphabetical cursor pagination',{result:object({data:{type:'array',items:object({name:string,posts_count:{type:'integer',minimum:0}})},next_cursor:{type:['string','null']}}),parameters:[{name:'q',in:'query',schema:{type:'string',maxLength:80}},{name:'cursor',in:'query',schema:string}]});
 operation('/search/posts','get','Literal database search with permission filtering and cursor pagination',{result:ref('Feed'),parameters:[{name:'q',in:'query',required:true,schema:{type:'string',maxLength:80}},{name:'cursor',in:'query',schema:string}]});
 operation('/communities','get','Discover same-campus spaces with membership and private status metadata');
 operation('/communities','post','Create student/faculty/department space; official organization requires admin verification',{status:'201'});

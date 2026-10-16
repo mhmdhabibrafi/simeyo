@@ -99,12 +99,16 @@ export function FollowButton({ user }: { user: User }) {
 export function People({
   relation,
   userId,
+  initialSearch = "",
+  onSearch,
 }: {
   relation?: "following" | "followers";
   userId?: number;
+  initialSearch?: string;
+  onSearch?: (value: string) => void;
 }) {
   const client = useQueryClient();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const query = useInfiniteQuery({
     queryKey: ["people", search, relation, userId],
     initialPageParam: null as string | null,
@@ -141,9 +145,11 @@ export function People({
           className="mx-6 my-6 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-2"
           onSubmit={(e) => {
             e.preventDefault();
-            setSearch(
-              String(new FormData(e.currentTarget).get("search") ?? ""),
-            );
+            const value = String(
+              new FormData(e.currentTarget).get("search") ?? "",
+            ).trim();
+            setSearch(value);
+            onSearch?.(value);
           }}
         >
           <Search size={19} className="ml-2 shrink-0 text-[var(--muted)]" />
@@ -153,6 +159,7 @@ export function People({
           <input
             id="people-search"
             name="search"
+            defaultValue={initialSearch}
             type="search"
             maxLength={80}
             placeholder="Nama atau username"

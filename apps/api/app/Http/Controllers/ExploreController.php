@@ -21,6 +21,16 @@ class ExploreController extends Controller
         return ['data' => PostResource::collection($p->items()), 'meta' => ['next_cursor' => $p->nextCursor()?->encode(), 'has_more' => $p->hasMorePages(), 'feed' => 'search']];
     }
 
+    public function topics(Request $r)
+    {
+        $d = $r->validate(['q' => 'nullable|string|max:80', 'cursor' => 'nullable|string|max:4096']);
+        $term = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower(ltrim($d['q'] ?? '', '#')));
+        $visible = $this->visibility->query($r->user())->whereNotIn('user_id', DB::table('mutes')->select('target_id')->where('user_id', $r->user()->id));
+        $page = DB::table('hashtags')->join('post_hashtags', 'hashtag_id', '=', 'hashtags.id')->whereIn('post_id', $visible->select('posts.id'))->whereRaw("LOWER(hashtags.name) LIKE ? ESCAPE '!'", ['%'.$term.'%'])->select('hashtags.name')->selectRaw('count(*) as posts_count')->groupBy('hashtags.name')->orderBy('hashtags.name')->cursorPaginate(20, ['*'], 'cursor', $d['cursor'] ?? null);
+
+        return ['data' => $page->map(fn ($topic) => ['name' => $topic->name, 'posts_count' => (int) $topic->posts_count])->values(), 'next_cursor' => $page->nextCursor()?->encode()];
+    }
+
     public function pulse(Request $r)
     {
         $visible = $this->visibility->query($r->user())->where('created_at', '>=', now()->subDay())->whereNotIn('user_id', DB::table('mutes')->select('target_id')->where('user_id', $r->user()->id));

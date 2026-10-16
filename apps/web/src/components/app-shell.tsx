@@ -84,6 +84,20 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
     if (error instanceof ApiError && error.status === 401)
       router.replace("/login");
   }, [error, router]);
+  useEffect(() => {
+    if (!pathname.startsWith("/messages")) return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      if (viewport.scale === 1) document.documentElement.style.setProperty("--message-viewport-height", `${Math.round(viewport.height)}px`);
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      document.documentElement.style.removeProperty("--message-viewport-height");
+    };
+  }, [pathname]);
   if (isPending)
     return (
       <main
@@ -151,6 +165,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
     try {
       await api("auth/logout", { method: "POST" });
       clearDraft();
+      try { Object.keys(sessionStorage).filter((key) => key.startsWith("simeyo:explore:")).forEach((key) => sessionStorage.removeItem(key)); } catch { /* Logout works without storage. */ }
       client.clear();
       router.replace("/login");
     } catch {

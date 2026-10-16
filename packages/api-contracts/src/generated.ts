@@ -4990,6 +4990,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Literal topic search over visible unmuted posts, alphabetical cursor pagination */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    cursor?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Literal topic search over visible unmuted posts, alphabetical cursor pagination */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: {
+                                name?: string;
+                                posts_count?: number;
+                            }[];
+                            next_cursor?: string | null;
+                        };
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search/posts": {
         parameters: {
             query?: never;
@@ -6602,6 +6682,8 @@ export interface components {
                 };
                 post_id: number | null;
                 conversation_id: number | null;
+                /** @default null */
+                follow_state: ("pending" | "accepted") | null;
                 message?: string | null;
                 read_at: string | null;
                 created_at: string;

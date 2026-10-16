@@ -15,6 +15,17 @@ use Tests\TestCase;
 
 class CommunicationsTest extends TestCase
 {
+    public function test_activity_reports_current_incoming_follow_state(): void
+    {
+        $a = $this->member();
+        $b = $this->member();
+        $a->profile->update(['private_account' => true]);
+        $this->actingAs($b)->putJson('/api/v1/relationships/'.$a->id.'/follow')->assertOk();
+        $this->actingAs($a)->getJson('/api/v1/notifications')->assertJsonPath('data.0.follow_state', 'pending');
+        DB::table('follows')->where('follower_id', $b->id)->where('followed_id', $a->id)->update(['state' => 'accepted']);
+        $this->getJson('/api/v1/notifications')->assertJsonPath('data.0.follow_state', 'accepted');
+    }
+
     public function test_read_receipts_are_scoped_monotonic_and_leave_unseen_messages_unread(): void
     {
         $a = $this->member();

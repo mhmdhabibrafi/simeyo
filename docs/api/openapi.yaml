@@ -3095,6 +3095,67 @@ paths:
                   - errors
         "429":
           description: Rate limited
+  /search/topics:
+    get:
+      description: Literal topic search over visible unmuted posts, alphabetical
+        cursor pagination
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 80
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Literal topic search over visible unmuted posts, alphabetical
+            cursor pagination
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        posts_count:
+                          type: integer
+                          minimum: 0
+                  next_cursor:
+                    type:
+                      - string
+                      - "null"
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission or verification requirement not met
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - message
+                  - errors
+        "429":
+          description: Rate limited
   /search/posts:
     get:
       description: Literal database search with permission filtering and cursor pagination
@@ -4682,6 +4743,14 @@ components:
                     minimum: -9007199254740991
                     maximum: 9007199254740991
                   - type: "null"
+              follow_state:
+                default: null
+                anyOf:
+                  - type: string
+                    enum:
+                      - pending
+                      - accepted
+                  - type: "null"
               message:
                 type:
                   - string
@@ -4698,6 +4767,7 @@ components:
               - actor
               - post_id
               - conversation_id
+              - follow_state
               - read_at
               - created_at
             additionalProperties: false

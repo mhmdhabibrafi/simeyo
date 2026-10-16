@@ -1,7 +1,13 @@
 "use client";
 import Link from "next/link";
-import { Search, UsersRound, CalendarDays, UserRoundPlus, ArrowUpRight } from "lucide-react";
-import { useState } from "react";
+import {
+  Search,
+  UsersRound,
+  CalendarDays,
+  UserRoundPlus,
+  ArrowUpRight,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -20,6 +26,7 @@ import {
 import {
   communitySchema,
   eventSchema,
+  topicSearchSchema,
   type Community,
   type CampusEvent,
 } from "../../../../../packages/api-contracts/src/campus";
@@ -32,9 +39,53 @@ export function CampusExplore({
 }: {
   initialSearch?: string;
 }) {
-  const [tab, setTab] = useState("pulse");
-  const [term, setTerm] = useState(initialSearch);
-  const [search, setSearch] = useState(initialSearch);
+  const { data: user } = useMe();
+  if (!user) return <div className="skeleton m-6 h-40" />;
+  return (
+    <ExploreContent
+      key={`${user.id}:${initialSearch}`}
+      initialSearch={initialSearch}
+      userId={user.id}
+    />
+  );
+}
+function ExploreContent({
+  initialSearch,
+  userId,
+}: {
+  initialSearch: string;
+  userId: number;
+}) {
+  const storageKey = `simeyo:explore:${userId}:${encodeURIComponent(initialSearch)}`;
+  const [saved] = useState(() => {
+    try {
+      const value = JSON.parse(sessionStorage.getItem(storageKey) ?? "null");
+      if (
+        value &&
+        ["pulse", "people", "topics"].includes(value.tab) &&
+        typeof value.term === "string" &&
+        value.term.length <= 80 &&
+        typeof value.search === "string" &&
+        value.search.length <= 80
+      )
+        return value as { tab: string; term: string; search: string };
+    } catch {
+      /* Search works without browser storage. */
+    }
+    return null;
+  });
+  const [tab, setTab] = useState(
+    initialSearch ? "pulse" : (saved?.tab ?? "pulse"),
+  );
+  const [term, setTerm] = useState(initialSearch || saved?.term || "");
+  const [search, setSearch] = useState(initialSearch || saved?.search || "");
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({ tab, term, search }));
+    } catch {
+      /* Optional session recovery. */
+    }
+  }, [storageKey, tab, term, search]);
   const pulse = useQuery({
     queryKey: ["pulse"],
     queryFn: () =>
@@ -48,7 +99,7 @@ export function CampusExplore({
   });
   const posts = useInfiniteQuery({
     queryKey: ["post-search", search],
-    enabled: !!search,
+    enabled: !!search && tab === "pulse",
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) =>
       feedSchema.parse(
@@ -58,34 +109,73 @@ export function CampusExplore({
       ),
     getNextPageParam: (p) => p.meta.next_cursor,
   });
+  const topics = useInfiniteQuery({
+    queryKey: ["topic-search", search],
+    enabled: tab === "topics",
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) =>
+      topicSearchSchema.parse(
+        await api(
+          `search/topics?${new URLSearchParams({ q: search, ...(pageParam ? { cursor: pageParam } : {}) })}`,
+        ),
+      ),
+    getNextPageParam: (page) => page.next_cursor ?? undefined,
+  });
   return (
     <>
       <header className="px-5 pb-5 pt-6 sm:px-6">
         <h1 className="text-xl font-semibold tracking-tight">Jelajahi</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">Temukan cerita dan teman di kampusmu.</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Temukan cerita dan teman di kampusmu.
+        </p>
         <div className="mt-5 grid grid-cols-3 gap-2">
           {[
             { href: "/communities", label: "Komunitas", icon: UsersRound },
             { href: "/events", label: "Acara", icon: CalendarDays },
             { href: "/requests", label: "Permintaan", icon: UserRoundPlus },
-          ].map(({ href, label, icon: Icon }) => (
+          ].map(({ href, label, icon: Icon }) =>
             href !== "/requests" ? (
-              <button key={href} type="button" disabled className="flex min-h-16 flex-col items-start justify-center gap-2 rounded-2xl border border-[var(--border)] px-3 py-3 text-left text-xs sm:flex-row sm:items-center sm:text-sm">
-                <Icon size={18} strokeWidth={1.6} className="shrink-0 text-[var(--muted)]" />
-                <span><span className="block font-medium">{label}</span><span className="mt-1 block text-[11px] font-normal text-[var(--muted)]">Segera hadir</span></span>
+              <button
+                key={href}
+                type="button"
+                disabled
+                className="flex min-h-16 flex-col items-start justify-center gap-2 rounded-2xl border border-[var(--border)] px-3 py-3 text-left text-xs sm:flex-row sm:items-center sm:text-sm"
+              >
+                <Icon
+                  size={18}
+                  strokeWidth={1.6}
+                  className="shrink-0 text-[var(--muted)]"
+                />
+                <span>
+                  <span className="block font-medium">{label}</span>
+                  <span className="mt-1 block text-[11px] font-normal text-[var(--muted)]">
+                    Segera hadir
+                  </span>
+                </span>
               </button>
             ) : (
-            <Link key={href} href={href} className="group flex min-h-16 flex-col items-start justify-center gap-2 rounded-2xl border border-[var(--border)] px-3 py-3 text-xs font-medium transition-colors hover:bg-[var(--soft)] sm:flex-row sm:items-center sm:justify-start sm:text-sm">
-              <Icon size={18} strokeWidth={1.6} className="shrink-0 text-[var(--muted)]" />
-              {label}
-              <ArrowUpRight size={13} className="ml-auto hidden text-[var(--muted)] sm:block" />
-            </Link>
-            )
-          ))}
+              <Link
+                key={href}
+                href={href}
+                className="group flex min-h-16 flex-col items-start justify-center gap-2 rounded-2xl border border-[var(--border)] px-3 py-3 text-xs font-medium transition-colors hover:bg-[var(--soft)] sm:flex-row sm:items-center sm:justify-start sm:text-sm"
+              >
+                <Icon
+                  size={18}
+                  strokeWidth={1.6}
+                  className="shrink-0 text-[var(--muted)]"
+                />
+                {label}
+                <ArrowUpRight
+                  size={13}
+                  className="ml-auto hidden text-[var(--muted)] sm:block"
+                />
+              </Link>
+            ),
+          )}
         </div>
       </header>
       <div
-        className="grid grid-cols-2 border-b border-[var(--border)]"
+        className="grid grid-cols-3 border-b border-[var(--border)]"
         aria-label="Jelajahi"
       >
         <button
@@ -102,9 +192,22 @@ export function CampusExplore({
         >
           Temukan teman
         </button>
+        <button
+          className={`min-h-12 border-b-2 text-sm font-medium ${tab === "topics" ? "border-[var(--foreground)]" : "border-transparent text-[var(--muted)]"}`}
+          aria-pressed={tab === "topics"}
+          onClick={() => setTab("topics")}
+        >
+          Topik
+        </button>
       </div>
       {tab === "people" ? (
-        <People />
+        <People
+          initialSearch={search}
+          onSearch={(value) => {
+            setSearch(value);
+            setTerm(value);
+          }}
+        />
       ) : (
         <>
           <form
@@ -116,21 +219,80 @@ export function CampusExplore({
             }}
           >
             <label className="sr-only" htmlFor="campus-search">
-              Cari cerita atau hashtag
+              {tab === "topics"
+                ? "Cari topik kampus"
+                : "Cari cerita atau hashtag"}
             </label>
-            <Search size={19} className="ml-2 shrink-0 text-[var(--muted)]" aria-hidden="true" />
+            <Search
+              size={19}
+              className="ml-2 shrink-0 text-[var(--muted)]"
+              aria-hidden="true"
+            />
             <input
               id="campus-search"
               type="search"
               className="min-h-10 w-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted)]"
               value={term}
               onChange={(e) => setTerm(e.target.value)}
-              placeholder="Cari cerita, #topik…"
+              placeholder={
+                tab === "topics" ? "Cari #topik…" : "Cari cerita, #topik…"
+              }
               maxLength={80}
             />
-            <Button type="submit" variant="outline" className="min-h-10 px-4 text-xs">Cari</Button>
+            <Button
+              type="submit"
+              variant="outline"
+              className="min-h-10 px-4 text-xs"
+            >
+              Cari
+            </Button>
           </form>
-          {search ? (
+          {tab === "topics" ? (
+            <section className="px-5 pb-6 sm:px-6" aria-label="Hasil topik">
+              <h2 className="mb-3 text-sm font-semibold">Topik kampus</h2>
+              <p className="mb-4 text-xs leading-5 text-[var(--muted)]">
+                Dari cerita yang bisa kamu akses, diurutkan menurut nama.
+              </p>
+              {topics.isPending && <p role="status">Memuat topik…</p>}
+              {topics.isError && (
+                <Button variant="outline" onClick={() => topics.refetch()}>
+                  Coba muat topik lagi
+                </Button>
+              )}
+              {topics.data?.pages
+                .flatMap((page) => page.data)
+                .map((topic) => (
+                  <button
+                    key={topic.name}
+                    className="mb-2 flex min-h-14 w-full items-center justify-between rounded-xl border border-[var(--border)] px-4 text-left text-sm"
+                    onClick={() => {
+                      setTab("pulse");
+                      setTerm("#" + topic.name);
+                      setSearch("#" + topic.name);
+                    }}
+                  >
+                    <strong>#{topic.name}</strong>
+                    <span className="text-xs text-[var(--muted)]">
+                      {topic.posts_count} cerita
+                    </span>
+                  </button>
+                ))}
+              {topics.data && !topics.data.pages[0].data.length && (
+                <p className="text-sm text-[var(--muted)]">
+                  Belum ada topik yang cocok.
+                </p>
+              )}
+              {topics.hasNextPage && (
+                <Button
+                  variant="outline"
+                  disabled={topics.isFetchingNextPage}
+                  onClick={() => topics.fetchNextPage()}
+                >
+                  Topik lainnya
+                </Button>
+              )}
+            </section>
+          ) : search ? (
             <>
               <p className="px-6 pb-4 text-sm text-[var(--muted)]">
                 Hasil untuk “{search}”{" "}
@@ -143,7 +305,14 @@ export function CampusExplore({
                   · Hapus pencarian
                 </button>
               </p>
-              {posts.isPending && <p role="status" className="px-6 py-8 text-center text-sm text-[var(--muted)]">Mencari cerita…</p>}
+              {posts.isPending && (
+                <p
+                  role="status"
+                  className="px-6 py-8 text-center text-sm text-[var(--muted)]"
+                >
+                  Mencari cerita…
+                </p>
+              )}
               {posts.data?.pages
                 .flatMap((p) => p.data)
                 .map((p) => (
@@ -152,6 +321,12 @@ export function CampusExplore({
               {posts.isError && (
                 <p role="alert" className="p-6">
                   Pencarian belum tersedia.
+                  <button
+                    className="ml-2 min-h-10 underline"
+                    onClick={() => posts.refetch()}
+                  >
+                    Coba lagi
+                  </button>
                 </p>
               )}
               {posts.data && !posts.data.pages[0].data.length && (
@@ -168,18 +343,31 @@ export function CampusExplore({
             </>
           ) : (
             <>
-              {pulse.isPending && <p role="status" className="px-6 py-10 text-center text-sm text-[var(--muted)]">Memuat cerita kampus…</p>}
+              {pulse.isPending && (
+                <p
+                  role="status"
+                  className="px-6 py-10 text-center text-sm text-[var(--muted)]"
+                >
+                  Memuat cerita kampus…
+                </p>
+              )}
               {pulse.isError && (
                 <div className="px-6 py-8 text-center">
-                  <p role="alert" className="mb-3 text-sm text-[var(--muted)]">Cerita kampus belum dapat dimuat.</p>
-                  <Button variant="outline" onClick={() => pulse.refetch()}>Coba lagi</Button>
+                  <p role="alert" className="mb-3 text-sm text-[var(--muted)]">
+                    Cerita kampus belum dapat dimuat.
+                  </p>
+                  <Button variant="outline" onClick={() => pulse.refetch()}>
+                    Coba lagi
+                  </Button>
                 </div>
               )}
               {pulse.data && (
                 <>
                   <section className="border-b border-[var(--border)] px-5 pb-5 sm:px-6">
                     <h2 className="text-sm font-semibold">
-                      {pulse.data.data.topics.length ? "Sedang dibicarakan" : "Cerita terbaru"}
+                      {pulse.data.data.topics.length
+                        ? "Sedang dibicarakan"
+                        : "Cerita terbaru"}
                     </h2>
                     <div className="flex flex-wrap gap-2">
                       {pulse.data.data.topics.map((t) => (
@@ -209,7 +397,11 @@ export function CampusExplore({
                     const p = postSchema.parse(raw);
                     return <PostCard key={p.id} post={p} />;
                   })}
-                  {!pulse.data.data.posts.length && <p className="px-6 py-12 text-center text-sm text-[var(--muted)]">Belum ada cerita. Mulai percakapan pertama di kampusmu.</p>}
+                  {!pulse.data.data.posts.length && (
+                    <p className="px-6 py-12 text-center text-sm text-[var(--muted)]">
+                      Belum ada cerita. Mulai percakapan pertama di kampusmu.
+                    </p>
+                  )}
                 </>
               )}
             </>
@@ -384,12 +576,14 @@ export function Communities() {
     <>
       <header className="border-b border-[var(--border)] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight">Komunitas</h1>
-        <Button variant="outline" onClick={() => setCreate(!create)}>
-          {create ? "Tutup formulir" : "Komunitas baru"}
-        </Button>
+          <h1 className="text-xl font-semibold tracking-tight">Komunitas</h1>
+          <Button variant="outline" onClick={() => setCreate(!create)}>
+            {create ? "Tutup formulir" : "Komunitas baru"}
+          </Button>
         </div>
-        <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Temukan teman dengan minat yang sama.</p>
+        <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+          Temukan teman dengan minat yang sama.
+        </p>
       </header>
       {create && (
         <CommunityForm onDone={(id) => router.push(`/communities/${id}`)} />
@@ -415,11 +609,25 @@ export function Communities() {
             </Link>
           ))}
       </div>
-      {q.isPending && <p role="status" className="px-6 py-12 text-center text-sm text-[var(--muted)]">Memuat komunitas…</p>}
-      {q.data && !q.data.pages[0].data.length && <p className="px-6 py-12 text-center text-sm text-[var(--muted)]">Belum ada komunitas. Mulai lingkaran pertamamu.</p>}
+      {q.isPending && (
+        <p
+          role="status"
+          className="px-6 py-12 text-center text-sm text-[var(--muted)]"
+        >
+          Memuat komunitas…
+        </p>
+      )}
+      {q.data && !q.data.pages[0].data.length && (
+        <p className="px-6 py-12 text-center text-sm text-[var(--muted)]">
+          Belum ada komunitas. Mulai lingkaran pertamamu.
+        </p>
+      )}
       {q.isError && (
         <p role="alert" className="p-6">
-          Komunitas belum dapat dimuat.{" "}<button className="underline" onClick={() => q.refetch()}>Coba lagi</button>
+          Komunitas belum dapat dimuat.{" "}
+          <button className="underline" onClick={() => q.refetch()}>
+            Coba lagi
+          </button>
         </p>
       )}
       {q.hasNextPage && (
@@ -935,12 +1143,14 @@ export function Events() {
     <>
       <header className="border-b border-[var(--border)] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight">Acara</h1>
-        <Button variant="outline" onClick={() => setCreate(!create)}>
-          {create ? "Tutup formulir" : "Acara baru"}
-        </Button>
+          <h1 className="text-xl font-semibold tracking-tight">Acara</h1>
+          <Button variant="outline" onClick={() => setCreate(!create)}>
+            {create ? "Tutup formulir" : "Acara baru"}
+          </Button>
         </div>
-        <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Temukan kegiatan dan bertemu teman kampus.</p>
+        <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+          Temukan kegiatan dan bertemu teman kampus.
+        </p>
       </header>
       {create && (
         <EventForm
@@ -957,10 +1167,20 @@ export function Events() {
         ))}
       {q.isError && (
         <p role="alert" className="p-6">
-          Acara belum dapat dimuat.{" "}<button className="underline" onClick={() => q.refetch()}>Coba lagi</button>
+          Acara belum dapat dimuat.{" "}
+          <button className="underline" onClick={() => q.refetch()}>
+            Coba lagi
+          </button>
         </p>
       )}
-      {q.isPending && <p role="status" className="px-6 py-12 text-center text-sm text-[var(--muted)]">Memuat acara…</p>}
+      {q.isPending && (
+        <p
+          role="status"
+          className="px-6 py-12 text-center text-sm text-[var(--muted)]"
+        >
+          Memuat acara…
+        </p>
+      )}
       {q.data && !q.data.pages[0].data.length && (
         <p className="p-6 text-sm text-[var(--muted)]">
           Belum ada acara mendatang.
