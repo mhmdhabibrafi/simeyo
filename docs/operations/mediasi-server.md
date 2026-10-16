@@ -1,5 +1,8 @@
 # Mediasi server installation — 2026-10-15
 
+Authentication/feed consistency (2026-10-16): source d9193e9 deployed on web as auth-layout-d9193e9; gateway recreated, API/worker/Reverb retain activity-b1bce71. Shared auth header/layout/footer now covers login, registration, recovery and reset, including submitted/error states. Permanent home refresh icon removed; new-story refresh and feed error retry retained. Lint/build, four local auth cases (14.1 seconds), three local feed cases (10.5 seconds), five public auth cases (34.1 seconds) and three public feed cases (14.9 seconds) passed. Fresh screenshots inspected. Server TLS/security/health/CSRF and actual WSS passed. Standard CI 38920378428 has completed web/API checks successfully; remaining jobs are pending at this checkpoint. No API/database/auth credential changes or actual recovery email/account reset performed. Evidence: docs/testing/auth-consistency-2026-10-16.md.
+
+
 Authentication footer update (2026-10-16): source 6be858f deployed on web as footer-6be858f; gateway recreated. API/worker/Reverb remain activity-b1bce71. Shared login/registration footer now has a subtle divider, centered copyright with automatic year and compact attribution. Lint/build passed; focused local and public-assets browser cases passed (3.4 and 3.6 seconds), checking 390/1440 light/dark layouts. Fresh footer screenshots inspected. Server TLS/security/health/CSRF and actual WSS passed. No database/API/authentication change; real provider login was not repeated. Exact-source standard CI 38918776679 is in progress, not claimed passed.
 
 
