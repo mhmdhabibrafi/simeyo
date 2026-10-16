@@ -1,5 +1,7 @@
 # Simeyo implementation progress
 
+Registration cleanup (2026-10-16): source 8e27fa8 deployed on web as register-8e27fa8, gateway recreated; API/worker/Reverb retain activity-b1bce71. Removed domain guidance and suppress the empty registration information card when registration and email are available. Actual loading/error/unavailable feedback and server verification rules remain. Lint/build and focused local/public-assets browser cases passed (3.3/5.4 seconds). An additional browser check with registration/email enabled confirmed no domain paragraph or empty card; fresh mobile screenshot inspected. No database/API/authentication changes.
+
 Authentication footer update (2026-10-16): source 6be858f deployed on web as footer-6be858f; gateway recreated. API/worker/Reverb remain activity-b1bce71. Shared login/registration footer now has a subtle divider, centered copyright with automatic year and compact attribution. Lint/build passed; focused local and public-assets browser cases passed (3.4 and 3.6 seconds), checking 390/1440 light/dark layouts. Fresh footer screenshots inspected. Server TLS/security/health/CSRF and actual WSS passed. No database/API/authentication change; real provider login was not repeated. Exact-source standard CI 38918776679 is in progress, not claimed passed.
 
 
