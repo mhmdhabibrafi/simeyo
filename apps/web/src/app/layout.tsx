@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Simeyo" },
   icons: { apple: "/icons/icon-192.png" },
   title: {
-    default: "simeyo. — Satu kampus. Banyak cerita.",
-    template: "%s · simeyo.",
+    default: "Simeyo",
+    template: "%s | Simeyo",
   },
   description:
     "Ruang percakapan untuk komunitas kampus yang terverifikasi. Kenali teman, temukan perspektif, dan bagikan cerita.",

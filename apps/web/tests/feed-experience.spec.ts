@@ -151,6 +151,65 @@ async function fixtures(page: Page) {
   });
 }
 
+test("DM recipient discovery omits empty queries, retries, pages and searches existing connections", async ({ page }) => {
+  await fixtures(page);
+  const raka = { ...user, id: 902, name: "Raka Pratama", username: "raka_kampus" };
+  const nadia = { ...user, id: 903, name: "Nadia Rahma", username: "nadia_kampus" };
+  const requests: URL[] = [];
+  let fail = true;
+  await page.route("**/api/v1/conversations", route => route.fulfill({ json: { data: [], next_cursor: null } }));
+  await page.route("**/api/v1/people?*", route => {
+    const url = new URL(route.request().url()); requests.push(url);
+    if (url.searchParams.get("context") !== "messages" || url.searchParams.get("q") === "") return route.fulfill({ status: 422, json: { message: "Invalid recipient query" } });
+    if (fail) { fail = false; return route.fulfill({ status: 503, json: { message: "Temporary failure" } }); }
+    const searching = url.searchParams.has("q");
+    return route.fulfill({ json: { data: searching ? [raka] : url.searchParams.has("cursor") ? [raka, nadia] : [raka], meta: { next_cursor: searching || url.searchParams.has("cursor") ? null : "page-two", has_more: !searching && !url.searchParams.has("cursor") } } });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/messages");
+  await expect(page).toHaveTitle("Simeyo");
+  await page.getByRole("button", { name: "Buat pesan baru", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("alert")).toContainText("Daftar penerima belum dapat dimuat.");
+  await dialog.getByRole("button", { name: "Coba lagi", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: /Raka Pratama/ })).toBeVisible();
+  await dialog.getByRole("button", { name: "Penerima lainnya", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: /Nadia Rahma/ })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /Raka Pratama/ })).toHaveCount(1);
+  await page.screenshot({ path: path.resolve("../../docs/testing/screenshots/message-recipients-fixed.png"), animations: "disabled" });
+  await dialog.getByLabel("Cari penerima pesan").fill("raka_kampus");
+  await dialog.getByRole("button", { name: "Cari", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: /Nadia Rahma/ })).toHaveCount(0);
+  expect(requests.some(url => url.searchParams.get("q") === "raka_kampus")).toBe(true);
+  expect(requests.every(url => url.searchParams.get("q") !== "")).toBe(true);
+});
+
+test("explore empty stories offer account search and campus settings keep long identity readable", async ({ page }) => {
+  await fixtures(page);
+  const email = "12450310985@students.uin-suska.ac.id";
+  await page.route("**/api/v1/me", route => route.fulfill({ json: { data: { ...user, email } } }));
+  await page.route("**/api/v1/search/posts?*", route => route.fulfill({ json: { data: [], meta: { next_cursor: null, has_more: false, feed: "search" } } }));
+  for (const theme of ["light", "dark"]) {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto("/explore");
+    await page.getByRole("button", { name: "Cerita kampus", exact: true }).click();
+    await page.evaluate(value => { document.documentElement.dataset.theme = value; localStorage.setItem("ruang-theme", value); }, theme);
+    await page.getByLabel("Cari cerita atau hashtag").fill("zaki");
+    await page.getByRole("button", { name: "Cari", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Belum ada cerita yang cocok." })).toBeVisible();
+    await page.screenshot({ path: path.resolve(`../../docs/testing/screenshots/explore-empty-${theme}.png`), animations: "disabled" });
+    await page.getByRole("button", { name: "Cari akun", exact: true }).click();
+    await expect(page.getByLabel("Cari teman kampus")).toHaveValue("zaki");
+    await page.goto("/settings");
+    await expect(page.locator("#account-campus")).toContainText("Email kampus");
+    await expect(page.locator("#account-campus")).toContainText(email);
+    await expect(page.locator("#account-campus")).toContainText("Kampus terverifikasi");
+    await expect(page.locator("#account-campus")).toContainText(user.institution.name);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: path.resolve(`../../docs/testing/screenshots/settings-campus-${theme}.png`), animations: "disabled" });
+  }
+});
+
 test("activity groups loaded duplicates without mixing destinations and reads every underlying ID", async ({ page }) => {
   await fixtures(page);
   const actor = { id: 902, name: "Raka", username: "raka_pengujian" };

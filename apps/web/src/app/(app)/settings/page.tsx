@@ -6,7 +6,6 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { ThemeToggle, useToast } from "@/components/providers";
-import { useMe } from "@/lib/auth";
 import {
   ChevronRight,
   KeyRound,
@@ -28,7 +27,6 @@ type Session = {
   current: boolean;
 };
 export default function Page() {
-  const { data: u } = useMe();
   const toast = useToast();
   const sessions = useQuery({
     queryKey: ["sessions"],
@@ -68,7 +66,6 @@ export default function Page() {
           >
             Akun & kampus
           </h2>
-          <p className="mb-4 mt-3 break-all text-sm">{u?.email}</p>
           <AccountCampus />
           <Link
             href="/settings/password"

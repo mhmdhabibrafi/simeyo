@@ -124,102 +124,20 @@ function ExploreContent({
   return (
     <>
       <header className="px-5 pb-5 pt-6 sm:px-6">
-        <h1 className="text-xl font-semibold tracking-tight">Jelajahi</h1>
+        <div className="flex items-center justify-between gap-3"><h1 className="text-xl font-semibold tracking-tight">Jelajahi</h1><Link href="/requests" className="text-xs inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 font-medium text-[var(--foreground)] hover:bg-[var(--soft)]"><UserRoundPlus size={15} aria-hidden="true" />Permintaan<ArrowUpRight size={13} aria-hidden="true" /></Link></div>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Temukan cerita dan teman di kampusmu.
         </p>
-        <div className="mt-5 grid grid-cols-3 gap-2">
-          {[
-            { href: "/communities", label: "Komunitas", icon: UsersRound },
-            { href: "/events", label: "Acara", icon: CalendarDays },
-            { href: "/requests", label: "Permintaan", icon: UserRoundPlus },
-          ].map(({ href, label, icon: Icon }) =>
-            href !== "/requests" ? (
-              <button
-                key={href}
-                type="button"
-                disabled
-                className="flex min-h-16 flex-col items-start justify-center gap-2 rounded-2xl border border-[var(--border)] px-3 py-3 text-left text-xs sm:flex-row sm:items-center sm:text-sm"
-              >
-                <Icon
-                  size={18}
-                  strokeWidth={1.6}
-                  className="shrink-0 text-[var(--muted)]"
-                />
-                <span>
-                  <span className="block font-medium">{label}</span>
-                  <span className="mt-1 block text-[11px] font-normal text-[var(--muted)]">
-                    Segera hadir
-                  </span>
-                </span>
-              </button>
-            ) : (
-              <Link
-                key={href}
-                href={href}
-                className="group flex min-h-16 flex-col items-start justify-center gap-2 rounded-2xl border border-[var(--border)] px-3 py-3 text-xs font-medium transition-colors hover:bg-[var(--soft)] sm:flex-row sm:items-center sm:justify-start sm:text-sm"
-              >
-                <Icon
-                  size={18}
-                  strokeWidth={1.6}
-                  className="shrink-0 text-[var(--muted)]"
-                />
-                {label}
-                <ArrowUpRight
-                  size={13}
-                  className="ml-auto hidden text-[var(--muted)] sm:block"
-                />
-              </Link>
-            ),
-          )}
-        </div>
-      </header>
-      <div
-        className="grid grid-cols-3 border-b border-[var(--border)]"
-        aria-label="Jelajahi"
-      >
-        <button
-          className={`min-h-12 border-b-2 text-sm font-medium transition-colors ${tab === "pulse" ? "border-[var(--foreground)] text-[var(--foreground)]" : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)]"}`}
-          aria-pressed={tab === "pulse"}
-          onClick={() => setTab("pulse")}
-        >
-          Cerita kampus
-        </button>
-        <button
-          className={`min-h-12 border-b-2 text-sm font-medium transition-colors ${tab === "people" ? "border-[var(--foreground)] text-[var(--foreground)]" : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)]"}`}
-          aria-pressed={tab === "people"}
-          onClick={() => setTab("people")}
-        >
-          Temukan teman
-        </button>
-        <button
-          className={`min-h-12 border-b-2 text-sm font-medium ${tab === "topics" ? "border-[var(--foreground)]" : "border-transparent text-[var(--muted)]"}`}
-          aria-pressed={tab === "topics"}
-          onClick={() => setTab("topics")}
-        >
-          Topik
-        </button>
-      </div>
-      {tab === "people" ? (
-        <People
-          initialSearch={search}
-          onSearch={(value) => {
-            setSearch(value);
-            setTerm(value);
-          }}
-        />
-      ) : (
-        <>
           <form
             role="search"
-            className="mx-5 my-5 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-2 sm:mx-6"
+            className="mt-5 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-2"
             onSubmit={(e) => {
               e.preventDefault();
               setSearch(term.trim());
             }}
           >
             <label className="sr-only" htmlFor="campus-search">
-              {tab === "topics"
+              {tab === "people" ? "Cari teman kampus" : tab === "topics"
                 ? "Cari topik kampus"
                 : "Cari cerita atau hashtag"}
             </label>
@@ -235,7 +153,7 @@ function ExploreContent({
               value={term}
               onChange={(e) => setTerm(e.target.value)}
               placeholder={
-                tab === "topics" ? "Cari #topik…" : "Cari cerita, #topik…"
+                tab === "people" ? "Nama atau username" : tab === "topics" ? "Cari #topik…" : "Cari cerita, #topik…"
               }
               maxLength={80}
             />
@@ -247,6 +165,51 @@ function ExploreContent({
               Cari
             </Button>
           </form>
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+          {[
+            { label: "Komunitas", icon: UsersRound },
+            { label: "Acara", icon: CalendarDays },
+          ].map(({ label, icon: Icon }) => <button key={label} type="button" disabled className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[var(--soft)] px-3"><Icon size={14} aria-hidden="true" /><span>{label}</span><span className="text-[10px]">Segera hadir</span></button>)}
+        </div>
+      </header>
+      <div
+        className="mx-5 mb-6 grid grid-cols-3 gap-1 rounded-xl bg-[var(--soft)] p-1 sm:mx-6"
+        aria-label="Jelajahi"
+      >
+        <button
+          className={`min-h-10 rounded-lg px-1 text-xs font-medium sm:text-sm transition-colors ${tab === "pulse" ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+          aria-pressed={tab === "pulse"}
+          onClick={() => setTab("pulse")}
+        >
+          Cerita kampus
+        </button>
+        <button
+          className={`min-h-10 rounded-lg px-1 text-xs font-medium sm:text-sm transition-colors ${tab === "people" ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+          aria-pressed={tab === "people"}
+          onClick={() => setTab("people")}
+        >
+          Temukan teman
+        </button>
+        <button
+          className={`min-h-10 rounded-lg px-1 text-xs font-medium sm:text-sm ${tab === "topics" ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm" : "text-[var(--muted)]"}`}
+          aria-pressed={tab === "topics"}
+          onClick={() => setTab("topics")}
+        >
+          Topik
+        </button>
+      </div>
+      {tab === "people" ? (
+        <People
+          initialSearch={search}
+          submittedSearch={search}
+          hideSearch
+          onSearch={(value) => {
+            setSearch(value);
+            setTerm(value);
+          }}
+        />
+      ) : (
+        <>
           {tab === "topics" ? (
             <section className="px-5 pb-6 sm:px-6" aria-label="Hasil topik">
               <h2 className="mb-3 text-sm font-semibold">Topik kampus</h2>
@@ -330,7 +293,12 @@ function ExploreContent({
                 </p>
               )}
               {posts.data && !posts.data.pages[0].data.length && (
-                <p className="p-6 text-sm">Belum ada cerita yang cocok.</p>
+                <div className="px-6 py-12 text-center">
+                  <Search size={28} strokeWidth={1.4} className="mx-auto mb-4 text-[var(--muted)]" aria-hidden="true" />
+                  <h2 className="text-base font-semibold">Belum ada cerita yang cocok.</h2>
+                  <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[var(--muted)]">Coba kata kunci lain, atau cari nama dan username di hasil pengguna.</p>
+                  <Button variant="outline" className="mt-5" onClick={() => setTab("people")}>Cari akun</Button>
+                </div>
               )}
               {posts.hasNextPage && (
                 <Button

@@ -101,14 +101,19 @@ export function People({
   userId,
   initialSearch = "",
   onSearch,
+  submittedSearch,
+  hideSearch = false,
 }: {
   relation?: "following" | "followers";
   userId?: number;
   initialSearch?: string;
   onSearch?: (value: string) => void;
+  submittedSearch?: string;
+  hideSearch?: boolean;
 }) {
   const client = useQueryClient();
-  const [search, setSearch] = useState(initialSearch);
+  const [localSearch, setSearch] = useState(initialSearch);
+  const search = submittedSearch ?? localSearch;
   const query = useInfiniteQuery({
     queryKey: ["people", search, relation, userId],
     initialPageParam: null as string | null,
@@ -140,7 +145,7 @@ export function People({
   });
   return (
     <div>
-      {!relation && (
+      {!relation && !hideSearch && (
         <form
           className="mx-6 my-6 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-2"
           onSubmit={(e) => {

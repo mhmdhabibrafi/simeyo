@@ -95,11 +95,14 @@ class SocialGraphController extends Controller
 
     public function people(Request $r)
     {
-        $d = $r->validate(['q' => 'sometimes|string|max:80', 'cursor' => 'nullable|string|max:4096', 'relation' => 'sometimes|in:followers,following', 'user_id' => 'sometimes|integer']);
+        $d = $r->validate(['q' => 'sometimes|string|max:80', 'cursor' => 'nullable|string|max:4096', 'relation' => 'sometimes|in:followers,following', 'user_id' => 'sometimes|integer', 'context' => 'sometimes|in:messages']);
         $q = User::where('verification_state', 'approved')->whereNotNull('email_verified_at')->whereHas('affiliation', fn ($a) => $a->where('institution_id', $r->user()->affiliation->institution_id))->whereNotIn('id', DB::table('blocks')->select('target_id')->where('user_id', $r->user()->id))->whereNotIn('id', DB::table('blocks')->select('user_id')->where('target_id', $r->user()->id));
+        if (($d['context'] ?? null) === 'messages') {
+            $q->where('id', '!=', $r->user()->id);
+        }
         if (isset($d['q'])) {
-            $search = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $d['q']);
-            $q->where(fn ($u) => $u->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($search).'%'])->orWhereRaw('LOWER(username) LIKE ?', ['%'.mb_strtolower($search).'%']));
+            $search = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $d['q']);
+            $q->where(fn ($u) => $u->whereRaw("LOWER(name) LIKE ? ESCAPE '!'", ['%'.mb_strtolower($search).'%'])->orWhereRaw("LOWER(username) LIKE ? ESCAPE '!'", ['%'.mb_strtolower($search).'%']));
         }
         if (isset($d['relation'])) {
             $u = User::findOrFail($d['user_id'] ?? $r->user()->id);
@@ -107,7 +110,7 @@ class SocialGraphController extends Controller
             abort_if($u->profile?->private_account && $u->id !== $r->user()->id && ! $this->visibility->follows($r->user(), $u), 403);
             $following = $d['relation'] === 'following';
             $q->whereIn('id', DB::table('follows')->select($following ? 'followed_id' : 'follower_id')->where($following ? 'follower_id' : 'followed_id', $u->id)->where('state', 'accepted'));
-        } elseif (! isset($d['q'])) {
+        } elseif (! isset($d['q']) && ($d['context'] ?? null) !== 'messages') {
             $q->where('id', '!=', $r->user()->id)->whereNotIn('id', DB::table('follows')->select('followed_id')->where('follower_id', $r->user()->id))->whereNotIn('id', DB::table('mutes')->select('target_id')->where('user_id', $r->user()->id));
         }
         $q->addSelect(['users.*', 'social_followers' => DB::table('follows')->selectRaw('count(*)')->whereColumn('followed_id', 'users.id')->where('state', 'accepted'),

@@ -1929,6 +1929,14 @@ paths:
       description: Same-campus visible users, search, suggestions and follower lists
         with batched relationship metadata
       parameters:
+        - name: context
+          in: query
+          schema:
+            type: string
+            enum:
+              - messages
+          description: Messaging discovery includes existing follows; default suggestions
+            exclude followed accounts.
         - name: q
           in: query
           schema:

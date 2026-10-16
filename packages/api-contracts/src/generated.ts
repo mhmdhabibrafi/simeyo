@@ -3001,6 +3001,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Messaging discovery includes existing follows; default suggestions exclude followed accounts. */
+                    context?: "messages";
                     q?: string;
                     relation?: "followers" | "following";
                     user_id?: number;

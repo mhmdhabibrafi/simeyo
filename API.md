@@ -18,3 +18,8 @@ The OpenAPI describes implemented identity, social and in-progress campus operat
 `GET /api/v1/notifications` remains a flat cursor list with underlying unread counts; optional nullable `follow_state` is the current incoming relationship state. Web groups loaded entries by kind/destination/day, deduplicates page overlaps and marks underlying owned IDs read. Detailed moderation and verification decisions remain individual.
 
 DM retry reuses the original `client_id` and body; changing the draft creates a new request identity. Successful responses update the message cache, while date separators and send failure/retry are presentation only. Existing PostgreSQL uniqueness and permission checks remain authoritative. No migration is required for this update.
+
+
+## DM recipient discovery
+
+`GET /api/v1/people?context=messages` lists visible same-campus verified accounts, including existing followers/following, excluding the caller and both directions of blocking. The default suggestion list is unchanged. Omit `q` when empty; nonempty searches use literal wildcard escaping and cursor pagination (20 users). This discovery context does not grant messaging permission: conversation creation and sending retain recipient DM policy, block and campus checks.

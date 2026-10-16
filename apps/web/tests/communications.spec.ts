@@ -65,7 +65,22 @@ test("real persisted messages, private Reverb delivery, notifications and mobile
     .selectOption("campus");
   await senderPreference;
   await page.goto(`http://localhost:3000/u/${users.b.username}`);
-  await page.getByRole("button", { name: "Pesan", exact: true }).click();
+  await page.getByRole("button", { name: "Ikuti", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Mengikuti", exact: true })).toBeVisible();
+  await page.goto("http://localhost:3000/messages");
+  const discovered = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith("/people") && url.searchParams.get("context") === "messages" && !url.searchParams.has("q");
+  });
+  await page.getByRole("button", { name: "Buat pesan baru", exact: true }).click();
+  expect((await discovered).status()).toBe(200);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: new RegExp(users.b.username) })).toBeVisible();
+  const searched = page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/people") && new URL(response.url()).searchParams.get("q") === users.b.username);
+  await dialog.getByLabel("Cari penerima pesan").fill(users.b.username);
+  await dialog.getByRole("button", { name: "Cari", exact: true }).click();
+  expect((await searched).status()).toBe(200);
+  await dialog.getByRole("button", { name: new RegExp(users.b.username) }).click();
   await expect(page).toHaveURL(/\/messages\/\d+/);
   const url = page.url();
   await recipient.goto(url);

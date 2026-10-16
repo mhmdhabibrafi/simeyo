@@ -15,6 +15,37 @@ use Tests\TestCase;
 
 class CommunicationsTest extends TestCase
 {
+    public function test_message_recipient_discovery_includes_existing_connections_without_changing_suggestions(): void
+    {
+        $a = $this->member();
+        $following = $this->member();
+        $follower = $this->member();
+        $blocked = $this->member();
+        $this->actingAs($a)->putJson('/api/v1/relationships/'.$following->id.'/follow')->assertOk();
+        $this->actingAs($follower)->putJson('/api/v1/relationships/'.$a->id.'/follow')->assertOk();
+        $this->actingAs($blocked)->putJson('/api/v1/relationships/'.$a->id.'/block')->assertNoContent();
+        $result = $this->actingAs($a)->getJson('/api/v1/people?context=messages')->assertOk();
+        $ids = array_column($result->json('data'), 'id');
+        $this->assertContains($following->id, $ids);
+        $this->assertContains($follower->id, $ids);
+        $this->assertNotContains($a->id, $ids);
+        $this->assertNotContains($blocked->id, $ids);
+        $suggestions = $this->getJson('/api/v1/people')->assertOk();
+        $this->assertNotContains($following->id, array_column($suggestions->json('data'), 'id'));
+        $this->getJson('/api/v1/people?context=messages&q='.$following->username)->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $following->id);
+    }
+
+    public function test_message_recipient_discovery_paginates_without_repeating_users(): void
+    {
+        $viewer = $this->member();
+        for ($i = 0; $i < 22; $i++) {
+            $this->member();
+        }
+        $first = $this->actingAs($viewer)->getJson('/api/v1/people?context=messages')->assertOk()->assertJsonCount(20, 'data');
+        $next = $this->getJson('/api/v1/people?context=messages&cursor='.urlencode($first->json('meta.next_cursor')))->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('meta.next_cursor', null);
+        $this->assertEmpty(array_intersect(array_column($first->json('data'), 'id'), array_column($next->json('data'), 'id')));
+    }
+
     public function test_activity_reports_current_incoming_follow_state(): void
     {
         $a = $this->member();

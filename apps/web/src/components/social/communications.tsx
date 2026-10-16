@@ -235,18 +235,23 @@ function NewMessage({
   const router = useRouter();
   const client = useQueryClient();
   const toast = useToast();
-  const q = useQuery({
-    queryKey: ["message-recipients", search],
-    enabled: open,
-    queryFn: async () => {
-      const r = await api<{ data: unknown[] }>(
-        `people?q=${encodeURIComponent(search)}`,
-      );
-      return r.data
-        .map((person) => userSchema.parse(person))
-        .filter((person) => person.id !== me?.id);
+  const q = useInfiniteQuery({
+    queryKey: ["message-recipients", me?.id, search],
+    enabled: open && !!me,
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams({ context: "messages" });
+      if (search) params.set("q", search);
+      if (pageParam) params.set("cursor", pageParam);
+      const r = await api<{ data: unknown[]; meta: { next_cursor: string | null } }>(`people?${params}`);
+      return {
+        data: r.data.map((person) => userSchema.parse(person)).filter((person) => person.id !== me?.id),
+        next_cursor: r.meta.next_cursor,
+      };
     },
+    getNextPageParam: (page) => page.next_cursor,
   });
+  const recipients = Array.from(new Map(q.data?.pages.flatMap((page) => page.data).map((person) => [person.id, person]) ?? []).values());
   const start = useMutation({
     mutationFn: (userId: number) =>
       api<{ data: { id: number } }>("conversations", {
@@ -297,14 +302,14 @@ function NewMessage({
       )}
       {q.isError && (
         <p role="alert" className="py-6 text-sm">
-          Daftar teman belum tersedia.{" "}
+          Daftar penerima belum dapat dimuat.{" "}
           <button className="underline" onClick={() => q.refetch()}>
             Coba lagi
           </button>
         </p>
       )}
       <div className="max-h-80 space-y-1 overflow-y-auto">
-        {q.data?.map((person) => (
+        {recipients.map((person) => (
           <button
             key={person.id}
             disabled={start.isPending}
@@ -324,7 +329,8 @@ function NewMessage({
           </button>
         ))}
       </div>
-      {q.data?.length === 0 && (
+      {q.hasNextPage && <Button variant="ghost" className="mt-2 w-full" disabled={q.isFetchingNextPage} onClick={() => q.fetchNextPage()}>Penerima lainnya</Button>}
+      {q.data && recipients.length === 0 && (
         <p className="py-8 text-center text-sm text-[var(--muted)]">
           Tidak ada teman yang cocok.
         </p>

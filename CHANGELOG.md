@@ -1,5 +1,7 @@
 # Changelog
 
+- Fix empty DM recipient queries being rejected, include existing follows in messaging discovery, add recipient pagination/retry and correct literal username searches. Refresh Explore search/filter hierarchy and empty results; unify the search input across result types. Refine verified account/campus details and simplify the browser title to Simeyo. Verification: docs/testing/discovery-2026-10-16.md.
+
 - Share one auth layout across login, registration, recovery and reset, including header/theme control, centered titles, consistent width and copyright footer. Refine submitted recovery/reset feedback and login return action. Remove the home header refresh icon; retain new-story notices and failure retry. Evidence: docs/testing/auth-consistency-2026-10-16.md.
 
 - Remove redundant domain guidance from registration and avoid an empty information card when registration/email are available. Keep actual availability/error feedback and server-side verification rules.

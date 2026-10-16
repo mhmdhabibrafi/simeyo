@@ -63,14 +63,20 @@ export function AccountCampus() {
   }
   if (state === "approved" && user.email_verified && user.onboarded) {
     return (
-      <section id="account-campus" className="scroll-mt-6">
-        <div className="flex items-center gap-3 rounded-xl bg-[var(--soft)] p-3">
-          <ShieldCheck size={20} className="shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm">Kampus terverifikasi</p>
-            <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
-              {user.institution?.name}
-            </p>
+      <section id="account-campus" className="mt-4 scroll-mt-6 overflow-hidden rounded-2xl border border-[var(--border)] divide-y divide-[var(--border)]">
+        <div className="flex items-start gap-3 p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--soft)]"><Mail size={19} aria-hidden="true" /></span>
+          <div className="min-w-0 py-0.5">
+            <p className="text-xs text-[var(--muted)]">Email kampus</p>
+            <p className="mt-1 break-words text-sm font-medium [overflow-wrap:anywhere]">{user.email}</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3 p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--soft)]"><ShieldCheck size={20} aria-hidden="true" /></span>
+          <div className="min-w-0 py-0.5">
+            <p className="text-xs text-[var(--muted)]">Kampus</p>
+            <p className="mt-1 text-sm font-medium leading-6">{user.institution?.name}</p>
+            <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-[var(--muted)]"><Check size={13} aria-hidden="true" />Kampus terverifikasi</p>
           </div>
         </div>
       </section>
