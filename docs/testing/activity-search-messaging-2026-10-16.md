@@ -20,3 +20,17 @@ Deployment has not yet been performed for this change at this checkpoint. Produc
 Final inline-error source passed web lint, type checking and production build, all 34 local production-build UI cases (1.8 minutes), and all five contract tests. Fresh reduced-viewport screenshot was inspected: the stale error toast is gone and the composer/send action remains reachable.
 
 Fresh private production database backup passed archive inventory validation before deployment: `pre-activity-20261016T132824Z.dump`, SHA-256 `a9736777c8736798376a8f36ff20ad02e8dff04158520b19aa5eef51b3a9a4089`. This is not a restore/off-host recovery drill.
+
+## Release verification
+
+Application source **b1bce71** passed standard CI [38908248030](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38908248030): API, web, mobile and isolated production-stack jobs all succeeded. PostgreSQL API results match SQLite at **84 tests / 570 assertions**. CI also passed isolated database/media/key recovery and TLS/private WSS/queue stack probes.
+
+Real-API browser run [38908267014](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38908267014) passed the targeted communications/social suites: **one case (5.9 seconds)** plus **two cases (13.7 seconds)**, against disposable PostgreSQL, real Laravel sessions and Reverb. These are separate from fixture UI acceptance and do not exercise owner accounts.
+
+Server API/web/worker/Reverb were rebuilt and recreated as **activity-b1bce71**, with the dedicated gateway recreated for upstream DNS. Database/media volumes, application keys and provider settings were preserved. No migration, seed or production user mutation ran. Private environment rollback snapshot and previous images remain available. Trusted internal HTTPS/security/health/CSRF and actual WSS handshake checks passed. Final public-assets UI outcome follows below when completed.
+
+Post-restart operations probe passed with database healthy, worker heartbeat passed and zero ready/failed jobs. The new topic route is registered in the running API container. Fresh public-assets activity/search screenshots were visually inspected; fictional fixture identities are used in those captures.
+
+## Final public acceptance
+
+All **34 public-assets UI cases passed (3.1 minutes)** on activity-b1bce71. Fresh activity/search/reduced-chat screenshots were inspected, including the removed stale failure toast. These presentation cases use fictional intercepted API responses except the actual anonymous PWA worker/offline case; real persisted communications/social acceptance is separately covered by the successful isolated CI run above. No remaining application-source changes followed these checks. Physical-device keyboard/install/camera acceptance remains BELUM DIUJI.

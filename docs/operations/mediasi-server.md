@@ -1,5 +1,8 @@
 # Mediasi server installation — 2026-10-15
 
+Activity/search/DM update (2026-10-16): source b1bce71 deployed as activity-b1bce71 on API/web/worker/Reverb, with gateway recreated. Build succeeded and trusted TLS/security/health/WSS plus queue probe passed (zero ready/failed jobs). Fresh database archive inventory passed; rollback environment/images retained. All 34 public-assets UI cases passed (3.1 minutes), and fresh screenshots were inspected. Database/media volumes, keys and provider settings preserved; no migration or seed. Exact CI and final public-assets evidence: [test report](../testing/activity-search-messaging-2026-10-16.md).
+
+
 The owner authorized setup on the existing Mediasi server and public hostname **https://simeyo.mhmdhabibrafi.me**. This is a release-candidate web installation, not a declaration of completed v1.0.0 acceptance.
 
 Profile update (2026-10-16): web uses `profile-4d5994a`; only web/gateway were recreated, preserving API/worker/Reverb at `experience-e4bbb57`. Both image types built and private environment rollback snapshots were retained for the initial profile build and the follow-up focus correction. No migration, seed or production-account mutation ran. Trusted internal TLS/security/health/WSS and queue probe passed after the final recreation. See [profile verification and actual browser scope](../testing/profile-2026-10-16.md).
