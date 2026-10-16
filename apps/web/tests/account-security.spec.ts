@@ -73,11 +73,21 @@ test("root opens a compact login without a marketing landing page", async ({ pag
   await page.screenshot({ path: path.join(root, "docs/testing/screenshots/login-direct-mobile.png"), fullPage: true });
 });
 
-test("Firebase Google option explains the exact campus domains", async ({ page }) => {
+test("Firebase Google option has its logo without redundant domain guidance", async ({ page }) => {
   await page.route("**/api/v1/auth/options", route => route.fulfill({ json: { data: { registration_enabled: true, email_delivery_enabled: false, email_domains: ["students.uin-suska.ac.id", "uin-suska.ac.id"], firebase: { apiKey: "test-public-key", projectId: "simeyo-test", appId: "test-app", authDomain: "simeyo-test.firebaseapp.com" } } } }));
   await page.goto("/login");
   await expect(page.getByRole("button", { name: "Lanjutkan dengan Google kampus" })).toBeVisible();
-  await expect(page.getByText(/Email kampus diverifikasi melalui Google/)).toBeVisible();
+  await expect(page.getByText(/Email kampus diverifikasi melalui Google/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Lanjutkan dengan Google kampus" }).locator("svg")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Selamat datang kembali." })).toHaveCSS("text-align", "center");
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate(value => { localStorage.setItem("ruang-theme", value); document.documentElement.setAttribute("data-theme", value); }, theme);
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: path.join(root, `docs/testing/screenshots/login-google-${width}-${theme}.png`), fullPage: true, animations: "disabled" });
+    }
+  }
 });
 
 test("campus registration remains pending and cannot read the campus feed", async ({ page }) => {

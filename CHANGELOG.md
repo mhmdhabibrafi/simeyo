@@ -1,5 +1,7 @@
 # Changelog
 
+- Center the sign-in heading/subtitle and Google button content, add the Google mark and remove redundant campus-domain guidance. Shared Google component also updates Settings. Web lint/build and focused browser acceptance passed at 390/1440 pixels in both themes; screenshots inspected. Authentication/domain verification logic is unchanged.
+
 - Group loaded Activity entries by kind/destination/day and select current follow-request destinations. Add visibility-filtered cursor topic search and separate stories/people/topics with account-scoped search recovery. Add DM pending/inline failure/retry states, preserve newer drafts, deduplicate confirmations and separate calendar days. Fit mobile browser chat to VisualViewport changes; verify real worker offline privacy. Evidence and hardware limits: docs/testing/activity-search-messaging-2026-10-16.md.
 
 - Refine profile hierarchy, metadata, sharing, tabs and empty states. Redesign profile editing with compact photo controls, sticky save, field errors/bio count, preserved failed edits, same-file upload retry and unsaved-change confirmation. Keep existing profile/privacy/media API behavior. Evidence: docs/testing/profile-2026-10-16.md.

@@ -68,10 +68,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         className="mx-auto max-w-lg px-6 py-10 sm:py-16"
       >
         <section className="mx-auto w-full max-w-[420px]">
-          <h2 className="text-3xl font-semibold tracking-tight">
+          <h2 className="text-center text-3xl font-semibold tracking-tight">
             {registerMode ? "Bergabung dengan Simeyo." : "Selamat datang kembali."}
           </h2>
-          <p className="mb-8 mt-3 text-sm leading-6 text-[var(--muted)]">
+          <p className="mb-8 mt-3 text-center text-sm leading-6 text-[var(--muted)]">
             {registerMode
               ? "Buat akun, verifikasi afiliasi, lalu mulai terhubung."
               : "Masuk untuk melanjutkan cerita kampusmu."}
