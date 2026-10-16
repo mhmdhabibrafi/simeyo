@@ -1,5 +1,8 @@
 # Changelog
 
+- Add API-backed sent/read chat checks with bounded read cursors and private realtime invalidation; automatically read loaded Activity entries through an owned/visible batch endpoint. Extend shared/native contracts and clients.
+- Offer PWA installation when the browser reports availability, with session-level postponement. Remove four-image/application 4 MB quotas, raise release transport uploads to 64 MB, retain image validation and use bounded composer previews/swipe galleries. Add route/loading/dialog/button transitions respecting reduced motion. Evidence: docs/testing/experience-2026-10-16.md.
+
 - Align the administrator-approval browser assertion with the compact campus status in Settings, including its destination and removal of completed verification controls. Give the disposable browser CI PostgreSQL health probe an explicit database/user. Application runtime and production images are unchanged; actual rerun evidence is recorded in docs/testing/posting-flow-2026-10-16.md.
 
 - Consolidate verification into account settings with a legacy-route redirect and updated registration/onboarding/notification destinations. Approved users see a compact campus status. Group settings into consistent rows and expandable device/install controls while preserving pending review, privacy and session functionality.
