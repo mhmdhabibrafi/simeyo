@@ -189,10 +189,13 @@ test("profile editing preserves failed changes, focuses field errors and confirm
   let profile = { ...user, bio: "Bio awal" };
   let attempts = 0;
   let submitted: Record<string, unknown> | null = null;
-  await page.route("**/api/v1/me", (route) => {
+  await page.route("**/api/v1/me", async (route) => {
     if (route.request().method() === "PATCH") {
       submitted = route.request().postDataJSON();
-      if (++attempts === 1) return route.fulfill({ status: 422, json: { message: "Periksa profilmu.", errors: { username: ["Username sudah digunakan."] } } });
+      if (++attempts === 1) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return route.fulfill({ status: 422, json: { message: "Periksa profilmu.", errors: { username: ["Username sudah digunakan."] } } });
+      }
       profile = { ...profile, ...submitted };
     }
     return route.fulfill({ json: { data: profile } });

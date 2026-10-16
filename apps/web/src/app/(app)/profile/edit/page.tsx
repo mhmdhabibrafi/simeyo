@@ -31,6 +31,14 @@ export default function Page() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, busy]);
+  useEffect(() => {
+    if (busy || !error) return;
+    const field = Object.keys(errors)[0]?.split(".")[0];
+    (
+      document.getElementById(field || "profile-error") ??
+      document.getElementById("profile-error")
+    )?.focus();
+  }, [busy, error, errors]);
   if (!u) return null;
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -68,19 +76,13 @@ export default function Page() {
           ? Object.values(e.errors).flat().join(" ") || e.message
           : "Profil belum dapat disimpan.",
       );
-      requestAnimationFrame(() => {
-        const field =
-          e instanceof ApiError
-            ? Object.keys(e.errors)[0]?.split(".")[0]
-            : undefined;
-        document.getElementById(field || "profile-error")?.focus();
-      });
     } finally {
       setBusy(false);
     }
   }
   async function upload(file: File | undefined, kind: string) {
     if (!file || busy) return;
+    setErrors({});
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("Gunakan gambar JPEG, PNG, atau WebP.");
       return;
