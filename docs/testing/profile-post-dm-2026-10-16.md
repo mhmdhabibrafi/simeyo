@@ -1,6 +1,6 @@
 # Profile, post and conversation follow-up, 2026-10-16
 
-Work in progress. Existing edit/delete/post APIs were inspected and preserved. Web adds bounded canvas cropping/pan/zoom with explicit save/cancel, supports profile and cover crops, and retains failed crop uploads. Existing image MIME/transport/server reencoding remains authoritative.
+Implemented and deployed as `everyday-eaa424b` from application source `eaa424b`. Existing edit/delete/post APIs were inspected and preserved. Web adds bounded canvas cropping/pan/zoom with explicit save/cancel, supports profile and cover crops, and retains failed crop uploads. Existing image MIME/transport/server reencoding remains authoritative.
 
 Post editing distinguishes an unchanged form from a real edit, preserves draft text, guards close during saving, confirms draft disposal and updates feed/search/pulse caches. Delete confirmation guards busy state and refreshes dependent lists; deleting a detailed story returns to Home. Existing owner-only API policies remain.
 
@@ -8,7 +8,7 @@ DM search is participant/campus/block-authorized, literal and cursor-paginated; 
 
 Navigation stores only coordinates per history entry in browser memory (60 entries), preserves profile tab per account/session, retains feed query caches for 30 minutes and restores when returning while data is available. User scroll/key/touch input cancels automatic restoration. Logout clears navigation memory. No private post/message bodies are persisted to browser storage for navigation.
 
-Actual verification so far: isolated SQLite API **89 tests / 632 assertions passed (22.643 seconds)**; image crop geometry **2 unit tests passed**; initial web lint/type checking/production build passed. Browser interaction and deployment are not yet verified at this checkpoint.
+Actual verification so far: isolated SQLite API **89 tests / 632 assertions passed (22.643 seconds)**; image crop geometry **2 unit tests passed**; initial web lint/type checking/production build passed. This was the initial checkpoint; final deployment and browser evidence is recorded below.
 
 ## Two real account acceptance
 
@@ -21,3 +21,21 @@ Before the final evidence-picker adjustment, all 41 local fixture UI cases passe
 Selected-evidence API validation passed the full isolated suite: **89 tests / 635 assertions (23.672 seconds)**. Six shared contracts passed. After the selected-evidence UI adjustment, four focused local browser cases passed (13.1 seconds), including actual selected message ID, corrupt photo rejection and JPEG pixel/dimension verification. Web lint/type checking/unit/build passed; final server images and public UI are not yet claimed verified.
 
 Private pre-release backup: database `pre-everyday-20261016T160355Z.dump` passed pg_restore inventory validation; media `pre-everyday-20261016T160355Z.media.tar.gz` passed archive inventory validation. These archives stay restricted on the server. Application-key/environment rollback snapshot is retained before migration/deployment; this is not off-host recovery or a production restore drill.
+
+
+## Deployed verification
+
+API/web/worker/Reverb images `everyday-eaa424b` built successfully and are running; gateway was recreated. Only the additive `2026_10_16_100000_create_conversation_reports` migration was pending and was applied successfully (23.21 ms). No reset or seeding ran. Existing volumes, application key and provider configuration were retained. Private environment rollback snapshot is mode 0600.
+
+Trusted server checks passed: root/login/manifest/API health 200, anonymous me 401, hidden env/PHP paths 404, CSRF cookie 204, unprotected mutation attempts 419, certificate validation and actual WebSocket handshake successful. Queue probe passed with zero ready/failed jobs.
+
+Exact application-source CI passed:
+- [Standard checks 38929169136](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38929169136): API/PostgreSQL, web, mobile and production-stack jobs.
+- [Privacy/messaging 38929229522](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38929229522): one communications case (11.2 seconds) and two social cases (18.6 seconds), using disposable PostgreSQL/API/realtime.
+- [Settings/media regression 38929236306](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38929236306): accessibility case (8.6 seconds), sessions/media case including crop save (5.2 seconds), and two social cases (17.1 seconds), using disposable PostgreSQL/API/realtime.
+
+The public-assets browser run uses fictional account/API fixtures and real deployed web assets; it does not prove production-user writes or Google/inbox acceptance. Final result follows below.
+
+PostgreSQL CI also passed 89 tests / 635 assertions. Isolated backup/restore validation restored all 14 migrations, application/Unicode rows, profile/media bytes and an encrypted token with retained key, including wrong-key and overwrite/invalid-archive guards. This isolated drill is separate from the same-host production archive inventory. Mobile CI passed 8 tests; benchmark helper passed 2 tests. No new production load benchmark was run for this change.
+
+Final deployed-web acceptance: **all 42 public-assets fixture UI cases passed (4.4 minutes)**. Includes crop pan/zoom/cancel/corrupt-file rejection and actual outgoing JPEG dimensions/pixels; failed edit/delete retries; selected-message report retry and independent moderator review; blocked cached-story denial; profile tab/scroll restoration; previous feed/profile/settings/PWA/accessibility regressions. Fresh public crop/search/moderation screenshots were inspected. Real API acceptance is supplied separately by the two successful CI runs above.
