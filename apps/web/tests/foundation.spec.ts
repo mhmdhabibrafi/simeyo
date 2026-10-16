@@ -179,8 +179,10 @@ test("registration, signed email verification, onboarding and administrator revi
   await adminContext.close();
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Afiliasi disetujui" }),
+    page.getByText("Kampus terverifikasi", { exact: true }),
   ).toBeVisible();
+  await expect(page).toHaveURL("/settings#account-campus");
+  await expect(page.getByRole("button", { name: "Periksa status", exact: true })).toHaveCount(0);
   expect(
     (
       await page.request.get("/api/v1/campus", {

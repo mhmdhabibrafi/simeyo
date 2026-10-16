@@ -17,7 +17,7 @@ jobs:
         image: postgres:17
         env: {POSTGRES_DB: simeyo_browser_ci, POSTGRES_USER: simeyo_ci, POSTGRES_PASSWORD: ci-browser-isolated-password}
         ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 15
+        options: --health-cmd "pg_isready -U simeyo_ci -d simeyo_browser_ci" --health-interval 5s --health-timeout 5s --health-retries 15
     env:
       TEST_SUITE: ${{ inputs.suite }}
       APP_ENV: local
