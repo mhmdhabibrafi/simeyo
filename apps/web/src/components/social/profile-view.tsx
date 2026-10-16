@@ -11,6 +11,7 @@ import {
   MapPin,
   LockKeyhole,
   MoreHorizontal,
+  Link as LinkIcon,
 } from "lucide-react";
 import { useMe } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -102,46 +103,61 @@ export function ProfileView({ username }: { username?: string }) {
             }
           </div>
         )}
-        <div className="px-6 pt-6">
-          <div className="flex items-start justify-between gap-4">
+        <div className="px-4 pt-5 sm:px-6 sm:pt-6">
+          <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-                {u.name}
+              <h2 className="break-words text-[22px] font-semibold leading-tight tracking-tight sm:text-2xl">
+                {u.name}{" "}
                 {u.verified && (
                   <BadgeCheck
                     size={21}
-                    className="text-[var(--accent)]"
+                    className="inline-block align-[-3px] text-[var(--accent)]"
                     aria-label="Afiliasi terverifikasi"
                   />
                 )}
               </h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">
+              <p className="mt-1.5 break-all text-sm text-[var(--muted)]">
                 @{u.username}
                 {u.private_account && (
                   <LockKeyhole size={13} className="ml-2 inline" />
                 )}
               </p>
             </div>
-            <Avatar name={u.name} url={u.avatar_url} size={80} />
+            <div className="shrink-0">
+              <Avatar name={u.name} url={u.avatar_url} size={80} />
+            </div>
           </div>
-          <p className="mt-5 whitespace-pre-wrap text-sm leading-7">
-            {u.bio || "Belum ada bio. Ceritakan sedikit tentang dirimu."}
-          </p>
-          <div className="mt-5 space-y-3 text-xs text-[var(--muted)]">
+          {u.bio ? (
+            <p className="mt-4 whitespace-pre-wrap break-words text-[15px] leading-6">
+              {u.bio}
+            </p>
+          ) : (
+            owner && (
+              <Link
+                href="/profile/edit"
+                className="mt-3 inline-flex min-h-10 items-center text-sm text-[var(--muted)] hover:underline"
+              >
+                Tambahkan bio singkat tentangmu
+              </Link>
+            )
+          )}
+          <div className="mt-3 space-y-2 text-xs leading-5 text-[var(--muted)]">
             {u.location && (
               <p className="flex items-center gap-2">
-                <MapPin size={15} />
-                {u.location}
+                <MapPin size={14} className="shrink-0" />
+                <span className="break-words min-w-0">{u.location}</span>
               </p>
             )}
             {u.institution && (
               <p className="flex items-center gap-2">
-                <GraduationCap size={16} />
-                {u.institution.name}
+                <GraduationCap size={15} className="shrink-0" />
+                <span className="break-words min-w-0">
+                  {u.institution.name}
+                </span>
               </p>
             )}
             {(u.faculty || u.department || u.cohort) && (
-              <p>
+              <p className="break-words pl-[23px]">
                 {[u.faculty, u.department, u.cohort]
                   .filter(Boolean)
                   .join(" · ")}
@@ -154,14 +170,17 @@ export function ProfileView({ username }: { username?: string }) {
                 href={link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block break-all text-[var(--accent)]"
+                className="flex min-h-8 items-center gap-2 text-[var(--foreground)] hover:underline"
               >
-                {link}
+                <LinkIcon size={14} className="shrink-0 text-[var(--muted)]" />
+                <span className="min-w-0 truncate">
+                  {link.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                </span>
               </a>
             ))}
           </div>
           {u.interests.length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               {u.interests.map((i) => (
                 <span
                   key={i}
@@ -173,18 +192,24 @@ export function ProfileView({ username }: { username?: string }) {
             </div>
           )}
           {relation.data && (
-            <div className="my-6 flex gap-5 text-xs">
-              <Link href={`/u/${u.username}/followers`}>
+            <div className="mt-2 flex flex-wrap gap-x-5 text-sm">
+              <Link
+                className="inline-flex min-h-11 items-center gap-1 hover:underline"
+                href={`/u/${u.username}/followers`}
+              >
                 <strong>{relation.data.followers_count}</strong>{" "}
                 <span className="text-[var(--muted)]">pengikut</span>
               </Link>
-              <Link href={`/u/${u.username}/following`}>
+              <Link
+                className="inline-flex min-h-11 items-center gap-1 hover:underline"
+                href={`/u/${u.username}/following`}
+              >
                 <strong>{relation.data.following_count}</strong>{" "}
                 <span className="text-[var(--muted)]">mengikuti</span>
               </Link>
             </div>
           )}
-          <div className="my-5 flex items-center gap-2 [&>a]:flex-1 [&>a]:justify-center">
+          <div className="mb-5 mt-2 flex items-center gap-2 [&>a]:flex-1 [&>a]:justify-center">
             {owner ? (
               <>
                 <Link
@@ -197,12 +222,20 @@ export function ProfileView({ username }: { username?: string }) {
                   variant="outline"
                   className="min-h-10 flex-1 whitespace-nowrap px-3 text-xs sm:text-sm"
                   onClick={async () => {
+                    const url = `${location.origin}/u/${u.username}`;
                     try {
-                      await navigator.clipboard.writeText(
-                        `${location.origin}/u/${u.username}`,
-                      );
-                      toast("Tautan profil disalin.");
-                    } catch {
+                      if (navigator.share)
+                        await navigator.share({ title: u.name, url });
+                      else {
+                        await navigator.clipboard.writeText(url);
+                        toast("Tautan profil disalin.");
+                      }
+                    } catch (error) {
+                      if (
+                        error instanceof DOMException &&
+                        error.name === "AbortError"
+                      )
+                        return;
                       toast("Tautan profil belum dapat disalin.");
                     }
                   }}
@@ -247,7 +280,11 @@ export function ProfileView({ username }: { username?: string }) {
         </div>
         {u.verified && (
           <>
-            <div className="grid grid-cols-3 border-b border-[var(--border)]">
+            <div
+              role="tablist"
+              aria-label="Cerita profil"
+              className="grid grid-cols-3 border-b border-[var(--border)]"
+            >
               {[
                 { id: "profile", label: "Cerita" },
                 { id: "replies", label: "Balasan" },
@@ -255,31 +292,75 @@ export function ProfileView({ username }: { username?: string }) {
               ].map((t) => (
                 <button
                   key={t.id}
+                  role="tab"
+                  id={`profile-tab-${t.id}`}
+                  aria-controls={`profile-panel-${t.id}`}
+                  aria-selected={tab === t.id}
+                  tabIndex={tab === t.id ? 0 : -1}
                   className={`min-h-12 border-b-2 text-sm ${tab === t.id ? "border-[var(--foreground)] font-semibold" : "border-transparent text-[var(--muted)]"}`}
                   onClick={() => setTab(t.id)}
-                  aria-pressed={tab === t.id}
+                  onKeyDown={(event) => {
+                    const tabs = Array.from(
+                      event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>(
+                        '[role="tab"]',
+                      ),
+                    );
+                    const current = tabs.indexOf(event.currentTarget);
+                    const next =
+                      event.key === "ArrowRight"
+                        ? (current + 1) % tabs.length
+                        : event.key === "ArrowLeft"
+                          ? (current + tabs.length - 1) % tabs.length
+                          : event.key === "Home"
+                            ? 0
+                            : event.key === "End"
+                              ? tabs.length - 1
+                              : -1;
+                    if (next < 0) return;
+                    event.preventDefault();
+                    tabs[next].click();
+                    tabs[next].focus();
+                  }}
                 >
                   {t.label}
                 </button>
               ))}
             </div>
+            {["profile", "replies", "media"]
+              .filter((id) => id !== tab)
+              .map((id) => (
+                <div
+                  key={id}
+                  id={`profile-panel-${id}`}
+                  role="tabpanel"
+                  aria-labelledby={`profile-tab-${id}`}
+                  hidden
+                />
+              ))}
             {owner && <ThreadComposerTrigger />}
-            {u.private_account &&
-            !owner &&
-            relation.data?.follow_state !== "accepted" ? (
-              <div className="p-10 text-center">
-                <LockKeyhole className="mx-auto mb-4 text-[var(--muted)]" />
-                <h3 className="text-sm font-semibold">
-                  Cerita untuk lingkaran terdekat.
-                </h3>
-                <p className="mt-2 text-xs text-[var(--muted)]">
-                  Kirim permintaan mengikuti untuk membaca cerita akun privat
-                  ini.
-                </p>
-              </div>
-            ) : (
-              <Feed key={tab} feed={tab} userId={u.id} />
-            )}
+            <section
+              id={`profile-panel-${tab}`}
+              role="tabpanel"
+              aria-labelledby={`profile-tab-${tab}`}
+              tabIndex={0}
+            >
+              {u.private_account &&
+              !owner &&
+              relation.data?.follow_state !== "accepted" ? (
+                <div className="p-10 text-center">
+                  <LockKeyhole className="mx-auto mb-4 text-[var(--muted)]" />
+                  <h3 className="text-sm font-semibold">
+                    Cerita untuk lingkaran terdekat.
+                  </h3>
+                  <p className="mt-2 text-xs text-[var(--muted)]">
+                    Kirim permintaan mengikuti untuk membaca cerita akun privat
+                    ini.
+                  </p>
+                </div>
+              ) : (
+                <Feed key={tab} feed={tab} userId={u.id} />
+              )}
+            </section>
           </>
         )}
       </div>

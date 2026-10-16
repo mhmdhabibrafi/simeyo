@@ -161,14 +161,26 @@ export function Feed({
           <h2 className="text-sm font-semibold">
             {parentId
               ? "Percakapan masih terbuka."
-              : "Masih ada ruang untuk cerita pertama."}
+              : userId
+                ? feed === "media"
+                  ? "Belum ada foto."
+                  : feed === "replies"
+                    ? "Belum ada balasan."
+                    : "Belum ada cerita."
+                : "Masih ada ruang untuk cerita pertama."}
           </h2>
           <p className="mt-2 text-xs leading-6 text-[var(--muted)]">
             {feed === "following"
               ? "Ikuti teman kampus untuk menemukan cerita mereka."
-              : feed === "bookmarks"
-                ? "Simpan cerita yang ingin kamu baca lagi."
-                : "Mulai dengan satu pertanyaan atau sudut pandang."}
+              : userId
+                ? feed === "media"
+                  ? "Foto yang dibagikan akan tampil di sini."
+                  : feed === "replies"
+                    ? "Balasan dalam percakapan akan tampil di sini."
+                    : "Cerita yang dibagikan akan tampil di sini."
+                : feed === "bookmarks"
+                  ? "Simpan cerita yang ingin kamu baca lagi."
+                  : "Mulai dengan satu pertanyaan atau sudut pandang."}
           </p>
         </div>
       ) : (

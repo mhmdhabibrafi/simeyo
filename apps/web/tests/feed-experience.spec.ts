@@ -149,6 +149,118 @@ async function fixtures(page: Page) {
   });
 }
 
+test("profile and editor fit narrow screens in both themes with accessible tabs and photo controls", async ({ page }) => {
+  test.setTimeout(180000);
+  await fixtures(page);
+  await page.route("**/api/v1/me", (route) => route.fulfill({ json: { data: { ...user, name: "Alya Putri Rahmawati", bio: "Berbagi cerita, desain, dan hal kecil dari kampus.", location: "Pekanbaru, Riau", links: ["https://example.test/cerita"], interests: ["Desain", "Teknologi"] } } }));
+  await page.route("**/api/v1/feed?**", (route) => route.fulfill({ json: { data: [], meta: { next_cursor: null, has_more: false, feed: "profile" } } }));
+  for (const theme of ["light", "dark"]) {
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/profile");
+      await page.evaluate((value) => { localStorage.setItem("ruang-theme", value); document.documentElement.setAttribute("data-theme", value); }, theme);
+      await expect(page.getByRole("heading", { name: /^Alya Putri Rahmawati/ })).toBeVisible();
+      await page.getByRole("tab", { name: "Media", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Belum ada foto.", exact: true })).toBeVisible();
+      await page.keyboard.press("ArrowLeft");
+      await expect(page.getByRole("tab", { name: "Balasan", exact: true })).toHaveAttribute("aria-selected", "true");
+      await page.getByRole("tab", { name: "Cerita", exact: true }).click();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await waitForAnimations(page);
+      expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+      await page.screenshot({ path: path.resolve(`../../docs/testing/screenshots/profile-refined-${width}-${theme}.png`), animations: "disabled" });
+      await page.getByRole("link", { name: "Edit profil", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Edit profil", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Ubah foto profil", exact: true })).toBeVisible();
+      await expect(page.getByLabel("Foto profil", { exact: true })).toHaveClass(/sr-only/);
+      await expect(page.getByRole("button", { name: "Simpan perubahan", exact: true })).toBeDisabled();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await waitForAnimations(page);
+      expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+      await page.screenshot({ path: path.resolve(`../../docs/testing/screenshots/profile-editor-${width}-${theme}.png`), animations: "disabled", fullPage: true });
+      await page.getByLabel("Minat", { exact: true }).scrollIntoViewIfNeeded();
+      await expect(page.getByRole("button", { name: "Simpan perubahan", exact: true })).toBeInViewport();
+    }
+  }
+});
+
+test("profile editing preserves failed changes, focuses field errors and confirms leaving", async ({ page }) => {
+  await fixtures(page);
+  let profile = { ...user, bio: "Bio awal" };
+  let attempts = 0;
+  let submitted: Record<string, unknown> | null = null;
+  await page.route("**/api/v1/me", (route) => {
+    if (route.request().method() === "PATCH") {
+      submitted = route.request().postDataJSON();
+      if (++attempts === 1) return route.fulfill({ status: 422, json: { message: "Periksa profilmu.", errors: { username: ["Username sudah digunakan."] } } });
+      profile = { ...profile, ...submitted };
+    }
+    return route.fulfill({ json: { data: profile } });
+  });
+  await page.goto("/profile/edit");
+  await page.getByLabel("Username", { exact: true }).fill("alya_baru");
+  await page.getByLabel("Bio", { exact: true }).fill("Bio yang sudah saya rapikan.");
+  await page.getByLabel("Akun privat", { exact: true }).check();
+  await page.getByRole("button", { name: "Simpan perubahan", exact: true }).click();
+  await expect(page.getByLabel("Username", { exact: true })).toBeFocused();
+  await expect(page.getByLabel("Username", { exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel("Bio", { exact: true })).toHaveValue("Bio yang sudah saya rapikan.");
+  await page.getByRole("button", { name: "Kembali ke profil", exact: true }).click();
+  await page.getByRole("button", { name: "Lanjut mengedit", exact: true }).click();
+  await page.getByRole("button", { name: "Simpan perubahan", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Simpan perubahan", exact: true })).toBeDisabled();
+  expect(submitted!.private_account).toBe(true);
+  await page.reload();
+  await expect(page.getByLabel("Username", { exact: true })).toHaveValue("alya_baru");
+  await page.getByRole("button", { name: "Kembali ke profil", exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+});
+
+test("profile photos validate locally, retry the same file and preserve unsaved text", async ({ page }) => {
+  await fixtures(page);
+  let uploads = 0;
+  let photoUser = { ...user, avatar_url: null as string | null, cover_url: null as string | null };
+  await page.route("**/api/v1/me", (route) => route.fulfill({ json: { data: photoUser } }));
+  await page.route("**/api/v1/me/media", (route) => {
+    uploads++;
+    if (uploads > 1) photoUser = { ...photoUser, [uploads === 3 ? "cover_url" : "avatar_url"]: "/icons/icon-512.png" };
+    return route.fulfill({ status: uploads === 1 ? 503 : 200, json: uploads === 1 ? { message: "Upload sedang bermasalah." } : { data: photoUser } });
+  });
+  await page.goto("/profile/edit");
+  await page.getByLabel("Bio", { exact: true }).fill("Jangan hilangkan bio yang belum disimpan.");
+  await page.getByLabel("Foto profil", { exact: true }).setInputFiles({ name: "bad.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg/>") });
+  await expect(page.getByRole("alert").filter({ hasText: "Gunakan gambar" })).toBeVisible();
+  expect(uploads).toBe(0);
+  const file = { name: "avatar.png", mimeType: "image/png", buffer: Buffer.from("fixture") };
+  await page.getByLabel("Foto profil", { exact: true }).setInputFiles(file);
+  await expect(page.getByRole("alert").filter({ hasText: "Upload sedang bermasalah" })).toBeVisible();
+  await page.getByLabel("Foto profil", { exact: true }).setInputFiles(file);
+  await expect.poll(() => uploads).toBe(2);
+  await expect(page.locator('img[src="/icons/icon-512.png"]')).toBeVisible();
+  await page.getByLabel("Foto sampul", { exact: true }).setInputFiles(file);
+  await expect(page.getByAltText("Sampul profil saat ini", { exact: true })).toHaveAttribute("src", "/icons/icon-512.png");
+  await expect(page.getByLabel("Bio", { exact: true })).toHaveValue("Jangan hilangkan bio yang belum disimpan.");
+  await expect(page.getByRole("button", { name: "Simpan perubahan", exact: true })).toBeEnabled();
+});
+
+test("profile sharing uses the native sheet, ignores cancellation and falls back to copying", async ({ page }) => {
+  await fixtures(page);
+  await page.goto("/profile");
+  await page.evaluate(() => Object.defineProperty(navigator, "share", { configurable: true, value: async (data: ShareData) => { document.documentElement.dataset.sharedUrl = data.url; } }));
+  await page.getByRole("button", { name: "Bagikan profil", exact: true }).click();
+  expect(await page.evaluate(() => document.documentElement.dataset.sharedUrl)).toMatch(/\/u\/alya_pengujian$/);
+  await page.evaluate(() => Object.defineProperty(navigator, "share", { configurable: true, value: async () => { throw new DOMException("Canceled", "AbortError"); } }));
+  await page.getByRole("button", { name: "Bagikan profil", exact: true }).click();
+  await expect(page.getByText("Tautan profil belum dapat disalin.", { exact: true })).toHaveCount(0);
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (value: string) => { document.documentElement.dataset.copiedUrl = value; } } });
+  });
+  await page.getByRole("button", { name: "Bagikan profil", exact: true }).click();
+  await expect(page.getByText("Tautan profil disalin.", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.dataset.copiedUrl)).toMatch(/\/u\/alya_pengujian$/);
+});
+
 test("text drafts survive reload, retain audience and are removed on discard or successful submission", async ({ page }) => {
   await fixtures(page);
   let unloadPrompts = 0;

@@ -212,6 +212,7 @@ button:disabled {
 .sidebar-header { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
 .sidebar-footer { display: flex; justify-content: center; }
 .feed-surface { background: var(--surface); }
+.feed-surface[data-profile-editor="true"] { overflow: clip; }
 @media (min-width: 768px) {
   .app-frame { padding-left: 96px; }
   .feed-surface { border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: calc(100dvh - 64px); }

@@ -2,6 +2,8 @@
 
 **Satu kampus. Banyak cerita.**
 
+Profile update: compact identity metadata, accessible profile tabs and a redesigned editor with dedicated photo controls, sticky saving, field feedback and unsaved-change confirmation. Photos save independently of text. See [profile verification](docs/testing/profile-2026-10-16.md).
+
 Feed/draft update: local text/audience recovery, account/context separation and logout cleanup; stable home reading with a user-controlled new-story notice and connection feedback. Photos must be selected again after reopening. See [implementation and actual checks](docs/testing/feed-drafts-2026-10-16.md).
 
 Photo viewer update: previous/next attachment controls, position counts, keyboard navigation and restored dialog focus. See [verification and deployment](docs/testing/gallery-2026-10-16.md).

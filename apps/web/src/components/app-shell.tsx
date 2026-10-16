@@ -250,6 +250,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main
+          data-profile-editor={pathname === "/profile/edit"}
           key={pathname}
           id="main"
           className={`page-enter min-h-[calc(100dvh-8rem)] ${pathname.startsWith("/messages") || pathname === "/home" || pathname === "/profile" || /^\/u\/[^/]+$/.test(pathname) ? "" : "feed-surface md:mt-4"}`}
@@ -281,7 +282,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
           </Link>
         ))}
       </nav>
-      {user.verified && !pathname.startsWith("/messages") && (
+      {user.verified && !pathname.startsWith("/messages") && pathname !== "/profile/edit" && (
         <button
           type="button"
           onClick={openComposer}
