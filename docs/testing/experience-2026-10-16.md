@@ -20,6 +20,14 @@ Application source: **e4bbb57**. These changes extend existing messaging, notifi
 - Exact-source [standard CI](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38874434835) passed all four jobs, including **82 API tests / 551 assertions** on PostgreSQL, contracts/native checks and the production-shaped topology/recovery/load checks.
 - The first [full browser run](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38874439787) failed in the new test's direct API poll: its request lacked the stateful browser Origin header and returned an authentication response instead of an unread count. Test-only source **48d192d** supplies Origin/Accept and checks the HTTP status before reading the count. It also explicitly checks Activity becomes read before clicking a notification. Application runtime remains e4bbb57. [Full rerun 38875245495](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38875245495) is still running at this checkpoint.
 
+### Completed browser follow-up
+
+The 48d192d rerun completed **34 passing tests** across the first eight files: public accessibility 1, account security 5, campus 1, communications 1, presentation fixtures 20, foundation 4, media/pagination 1 and moderation 1. This includes actual persisted messages, private Reverb delivery, sender read checks and automatic Activity read. It then failed the authenticated-accessibility snapshot while the logout dialog was still fading in; the sampled description contrast was 3.79 during that transition.
+
+Test-only source **934b6cf** waits for finite UI animations/transitions before sampling contrast and asserts final dialog opacity is 1. Infinite loading animations are excluded from the wait. No accessibility rule was disabled and no application animation or color was changed. A supplemental public-assets Settings/logout check passed (14.5 seconds) in light theme with the settled dialog; the earlier dark-theme check also passed (35.9 seconds).
+
+[Targeted continuation 38877126108](https://github.com/mhmdhabibrafi/simeyo/actions/runs/38877126108) completed successfully on 934b6cf, executing the remaining three files/four tests: authenticated accessibility, device-session/media and both social/privacy flows. **All 38 distinct browser cases are therefore verified across the 34-case run and four-case continuation.** This is not represented as one successful full workflow: both earlier failed runs are retained above. Runtime-source comparison from e4bbb57 through 934b6cf is empty; the deployed application remains experience-e4bbb57.
+
 ## Deployment checkpoint
 
 Fresh private production archive `pre-experience-e4bbb57-20261016T083333Z.dump` passed inventory validation. SHA-256: `e97bc0d1b880efa901d11e597079179b5c67e1f19162be4a740d8299508f3e59`. This validates the archive structure; no production restore was performed. Existing data, media volumes, application keys and Firebase/Resend settings are preserved.
