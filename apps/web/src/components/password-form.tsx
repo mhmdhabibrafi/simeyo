@@ -2,7 +2,8 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Brand } from "./brand";
+import { AuthLayout } from "./auth-layout";
+import { ArrowLeft, ArrowRight, CircleCheck, MailCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { api, ApiError } from "@/lib/api";
 import { useAuthOptions } from "@/lib/auth";
@@ -40,22 +41,21 @@ function Form({ reset }: { reset: boolean }) {
     }
   }
   return (
-    <main id="main" className="mx-auto w-full max-w-md px-6 py-12">
-      <Brand />
-      <h1 className="mb-3 mt-12 text-3xl font-semibold tracking-tight">
-        {reset ? "Kata sandi baru." : "Kembali ke ruangmu."}
-      </h1>
-      <p className="mb-7 text-sm leading-7 text-[var(--muted)]">
-        {reset
-          ? "Gunakan minimal 12 karakter, huruf besar, huruf kecil, dan angka."
-          : "Masukkan email akunmu. Kami akan mengirim tautan pemulihan jika email terdaftar."}
-      </p>
+    <AuthLayout
+      title={reset ? "Kata sandi baru." : "Lupa kata sandi?"}
+      description={reset ? "Gunakan minimal 12 karakter, huruf besar, huruf kecil, dan angka." : "Masukkan email akunmu untuk menerima tautan pemulihan kata sandi."}
+      linkHref="/login"
+      linkLabel="Kembali masuk"
+    >
       {message ? (
         <div
           role="status"
-          className="rounded-xl bg-[var(--soft)] p-5 text-sm leading-7"
+          className="rounded-2xl border border-[var(--border)] bg-[var(--soft)] p-6 text-center"
         >
-          {message}
+          <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface)]">
+            {reset ? <CircleCheck size={24} aria-hidden="true" /> : <MailCheck size={24} aria-hidden="true" />}
+          </span>
+          <p className="text-sm leading-6">{message}</p>
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-5">
@@ -105,16 +105,17 @@ function Form({ reset }: { reset: boolean }) {
               : reset
                 ? "Simpan kata sandi"
                 : "Kirim tautan pemulihan"}
+            <ArrowRight size={17} aria-hidden="true" />
           </Button>
         </form>
       )}
       <Link
         href="/login"
-        className="mt-7 inline-flex min-h-11 items-center text-sm text-[var(--accent)]"
+        className={message ? "mt-6 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--accent-foreground)] hover:bg-[var(--accent-hover)]" : "mt-6 flex min-h-11 items-center justify-center gap-2 text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)]"}
       >
-        ← Kembali ke halaman masuk
+        <ArrowLeft size={17} aria-hidden="true" /> Kembali ke halaman masuk
       </Link>
-    </main>
+    </AuthLayout>
   );
 }
 export function PasswordForm({ reset = false }: { reset?: boolean }) {

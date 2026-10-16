@@ -107,3 +107,51 @@ test("campus registration remains pending and cannot read the campus feed", asyn
   expect((await page.request.get("/api/v1/feed", { headers: { Origin: "http://localhost:3000" } })).status()).toBe(403);
   await page.screenshot({ path: path.join(root, "docs/testing/screenshots/account-pending-verification.png"), fullPage: true });
 });
+
+
+test("recovery and reset share the auth layout before and after submission", async ({ page }) => {
+  await page.route("**/api/v1/auth/options", route => route.fulfill({ json: { data: { registration_enabled: true, email_delivery_enabled: true, email_domains: [] } } }));
+  await page.route("**/sanctum/csrf-cookie", route => route.fulfill({ status: 204 }));
+  await page.route("**/api/v1/auth/forgot-password", route => route.fulfill({ json: { message: "Jika email terdaftar, tautan pemulihan akan dikirim." } }));
+  await page.route("**/api/v1/auth/reset-password", route => route.fulfill({ json: { message: "Kata sandi berhasil diperbarui." } }));
+  for (const reset of [false, true]) {
+    for (const theme of ["light", "dark"]) {
+      for (const width of [390, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(reset ? "/reset-password?token=synthetic-test&email=fixture%40students.uin-suska.ac.id" : "/forgot-password");
+        await page.evaluate(value => { localStorage.setItem("ruang-theme", value); document.documentElement.setAttribute("data-theme", value); }, theme);
+        await expect(page.getByRole("heading", { name: reset ? "Kata sandi baru." : "Lupa kata sandi?" })).toHaveCSS("text-align", "center");
+        await expect(page.locator("header").getByRole("link", { name: "Kembali masuk", exact: true })).toHaveAttribute("href", "/login");
+        await expect(page.locator("footer")).toContainText(`${new Date().getFullYear()} Simeyo`);
+        await page.getByLabel("Email", { exact: true }).fill("fixture@students.uin-suska.ac.id");
+        if (reset) {
+          await page.getByLabel("Kata sandi baru", { exact: true }).fill("SyntheticPassword123");
+          await page.getByLabel("Ulangi kata sandi", { exact: true }).fill("SyntheticPassword123");
+        }
+        const submit = page.getByRole("button", { name: reset ? "Simpan kata sandi" : "Kirim tautan pemulihan", exact: true });
+        await expect(submit).toBeEnabled();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await page.screenshot({ path: path.join(root, `docs/testing/screenshots/auth-${reset ? "reset" : "recovery"}-${width}-${theme}.png`), fullPage: true, animations: "disabled" });
+        await submit.click();
+        await expect(page.getByRole("status")).toContainText(reset ? "Kata sandi berhasil diperbarui." : "Jika email terdaftar");
+        await expect(page.getByRole("link", { name: "Kembali ke halaman masuk", exact: true })).toHaveAttribute("href", "/login");
+        await expect(page.locator("footer")).toBeVisible();
+        await page.screenshot({ path: path.join(root, `docs/testing/screenshots/auth-${reset ? "reset" : "recovery"}-success-${width}-${theme}.png`), fullPage: true, animations: "disabled" });
+      }
+    }
+  }
+});
+
+test("recovery preserves the entered email after a failed request and supports retry", async ({ page }) => {
+  await page.route("**/api/v1/auth/options", route => route.fulfill({ json: { data: { registration_enabled: true, email_delivery_enabled: true, email_domains: [] } } }));
+  await page.route("**/sanctum/csrf-cookie", route => route.fulfill({ status: 204 }));
+  let calls = 0;
+  await page.route("**/api/v1/auth/forgot-password", route => ++calls === 1 ? route.fulfill({ status: 503, json: { message: "Silakan coba lagi." } }) : route.fulfill({ json: { message: "Jika email terdaftar, tautan pemulihan akan dikirim." } }));
+  await page.goto("/forgot-password");
+  await page.getByLabel("Email", { exact: true }).fill("fixture@students.uin-suska.ac.id");
+  await page.getByRole("button", { name: "Kirim tautan pemulihan", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Silakan coba lagi." })).toHaveText("Silakan coba lagi.");
+  await expect(page.getByLabel("Email", { exact: true })).toHaveValue("fixture@students.uin-suska.ac.id");
+  await page.getByRole("button", { name: "Kirim tautan pemulihan", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Jika email terdaftar");
+});

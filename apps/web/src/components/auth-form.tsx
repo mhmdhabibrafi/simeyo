@@ -10,8 +10,7 @@ import { useAuthOptions } from "@/lib/auth";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { Brand } from "./brand";
-import { ThemeToggle } from "./providers";
+import { AuthLayout } from "./auth-layout";
 import { FirebaseSignIn } from "./firebase-sign-in";
 import { api, ApiError } from "@/lib/api";
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
@@ -48,34 +47,12 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     }
   });
   return (
-    <div className="min-h-dvh">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-7">
-        <Brand />
-        <div className="flex items-center gap-4">
-          <ThemeToggle />
-          <Link
-            href={registerMode ? "/login" : "/register"}
-            className="text-sm font-medium"
-          >
-            {registerMode
-              ? "Sudah punya akun? Masuk"
-              : "Belum bergabung? Daftar"}
-          </Link>
-        </div>
-      </header>
-      <main
-        id="main"
-        className="mx-auto max-w-lg px-6 py-10 sm:py-16"
-      >
-        <section className="mx-auto w-full max-w-[420px]">
-          <h2 className="text-center text-3xl font-semibold tracking-tight">
-            {registerMode ? "Bergabung dengan Simeyo." : "Selamat datang kembali."}
-          </h2>
-          <p className="mb-8 mt-3 text-center text-sm leading-6 text-[var(--muted)]">
-            {registerMode
-              ? "Buat akun, verifikasi afiliasi, lalu mulai terhubung."
-              : "Masuk untuk melanjutkan cerita kampusmu."}
-          </p>
+    <AuthLayout
+      title={registerMode ? "Bergabung dengan Simeyo." : "Selamat datang kembali."}
+      description={registerMode ? "Buat akun, verifikasi afiliasi, lalu mulai terhubung." : "Masuk untuk melanjutkan cerita kampusmu."}
+      linkHref={registerMode ? "/login" : "/register"}
+      linkLabel={registerMode ? "Sudah punya akun? Masuk" : "Belum bergabung? Daftar"}
+    >
           <FirebaseSignIn />
           <form onSubmit={submit} className="space-y-5" noValidate>
             {registerMode && (policy.isPending || policy.isError || !policy.data?.registration_enabled || !policy.data?.email_delivery_enabled) && <div className="rounded-xl border border-[var(--border)] p-4 text-sm leading-6">
@@ -203,18 +180,6 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               <ArrowRight size={17} />
             </Button>
           </form>
-          <footer className="mt-10 border-t border-[var(--border)] pt-6 text-center">
-            <p className="text-xs font-medium tracking-wide text-[var(--foreground)]">
-              &copy; {new Date().getFullYear()} Simeyo
-            </p>
-            <p className="mx-auto mt-3 max-w-[300px] text-xs leading-5 text-[var(--muted)]">
-              Platform komunitas independen.
-              <br />
-              Tidak mewakili layanan resmi universitas.
-            </p>
-          </footer>
-        </section>
-      </main>
-    </div>
+    </AuthLayout>
   );
 }

@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { RefreshCw, ShieldCheck } from "lucide-react";
-import { useQueryClient, useIsFetching } from "@tanstack/react-query";
+import { ShieldCheck } from "lucide-react";
 import { useMe } from "@/lib/auth";
 import { ThreadComposerTrigger } from "./thread-composer";
 import { Feed } from "./feed";
@@ -18,23 +17,12 @@ export function HomeFeed() {
     }
     return "for-you";
   });
-  const client = useQueryClient();
-  const refreshing = useIsFetching({ queryKey: ["feed", tab] }) > 0;
   return (
     <>
       <header className="flex h-12 items-center justify-between px-4 sm:px-6 md:h-16">
         <div className="min-w-0 pr-3">
           <h1 className="text-lg font-semibold tracking-tight">Beranda</h1>
         </div>
-        <button
-          type="button"
-          disabled={refreshing}
-          onClick={() => client.invalidateQueries({ queryKey: ["feed", tab] })}
-          className="icon-button text-[var(--muted)]"
-          aria-label="Muat ulang feed"
-        >
-          <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
-        </button>
       </header>
       <div className="feed-surface">
         {!u?.verified || !u.email_verified ? (

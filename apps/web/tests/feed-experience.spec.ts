@@ -446,6 +446,7 @@ test("feed announces new stories without replacing reading content until request
   await page.clock.runFor(1000);
   newer = true;
   await page.clock.fastForward(61000);
+  await expect(page.getByRole("button", { name: "Muat ulang feed", exact: true })).toHaveCount(0);
   const refresh = page.getByRole("button", { name: "Lihat cerita baru", exact: true });
   await expect(refresh).toBeVisible();
   await expect(page.locator('article[data-post-id="999"]')).toHaveCount(0);

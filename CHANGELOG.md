@@ -1,5 +1,7 @@
 # Changelog
 
+- Share one auth layout across login, registration, recovery and reset, including header/theme control, centered titles, consistent width and copyright footer. Refine submitted recovery/reset feedback and login return action. Remove the home header refresh icon; retain new-story notices and failure retry. Evidence: docs/testing/auth-consistency-2026-10-16.md.
+
 - Remove redundant domain guidance from registration and avoid an empty information card when registration/email are available. Keep actual availability/error feedback and server-side verification rules.
 
 - Refine the shared login/registration footer with a subtle divider, centered copyright with automatic year and compact independent-platform attribution. Lint/build and focused responsive browser acceptance passed; desktop/mobile light/dark screenshots inspected.
