@@ -203,6 +203,14 @@ export function PostCard({
           ? "Cerita dari akun ini akan lebih jarang muncul di Untukmu."
           : "Cerita disembunyikan dari beranda.",
       );
+      client.removeQueries({
+        type: "inactive",
+        predicate: (query) =>
+          query.queryKey[0] === "feed" &&
+          ["for-you", "following", "campus"].includes(
+            String(query.queryKey[1]),
+          ),
+      });
       await client.invalidateQueries({
         predicate: (q) =>
           q.queryKey[0] === "feed" &&

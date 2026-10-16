@@ -207,7 +207,7 @@ test("private follow approval, follow feed, mute and bilateral block are persist
   await login(viewer, users.b.email);
   await viewer.goto(`http://localhost:3000/u/${users.a.username}`);
   await expect(
-    viewer.getByText("Cerita untuk lingkaran terdekat."),
+    viewer.getByRole("heading", { name: "Akun ini privat", exact: true }),
   ).toBeVisible();
   await viewer.getByRole("button", { name: "Ikuti", exact: true }).click();
   await expect(

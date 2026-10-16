@@ -18,7 +18,13 @@ export function FeedPreferences() {
     onSuccess: () => {
       setConfirm(false);
       client.invalidateQueries({ queryKey: ["feed-preferences"] });
-      client.invalidateQueries({ queryKey: ["feed"] });
+      client.removeQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "feed" &&
+          ["for-you", "following", "campus"].includes(
+            String(query.queryKey[1]),
+          ),
+      });
       client.removeQueries({ queryKey: ["feed-latest"] });
     },
   });
