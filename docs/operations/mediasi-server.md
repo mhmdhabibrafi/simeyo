@@ -1,5 +1,8 @@
 # Mediasi server installation — 2026-10-15
 
+Authentication footer update (2026-10-16): source 6be858f deployed on web as footer-6be858f; gateway recreated. API/worker/Reverb remain activity-b1bce71. Shared login/registration footer now has a subtle divider, centered copyright with automatic year and compact attribution. Lint/build passed; focused local and public-assets browser cases passed (3.4 and 3.6 seconds), checking 390/1440 light/dark layouts. Fresh footer screenshots inspected. Server TLS/security/health/CSRF and actual WSS passed. No database/API/authentication change; real provider login was not repeated. Exact-source standard CI 38918776679 is in progress, not claimed passed.
+
+
 Google sign-in presentation (2026-10-16): source 31d67b5 is deployed on web as login-31d67b5; gateway recreated, API/worker/Reverb retain activity-b1bce71. Headings/subtitle are centered; shared Google button has a color mark and no redundant domain paragraph. Lint and production build passed. Focused local browser case passed (3.2 seconds) and public-assets case passed (6.6 seconds), each checking 390/1440 widths in both themes, icon visibility, centered heading, removed guidance and no overflow. Fresh screenshots inspected. Trusted server TLS/security/health/CSRF and actual WSS handshake passed. This is presentation acceptance; real Google provider login was not repeated. Exact-source standard CI 38918142088 was started; no pending result is claimed passed.
 
 
