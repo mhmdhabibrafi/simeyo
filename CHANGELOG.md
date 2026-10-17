@@ -1,5 +1,7 @@
 # Changelog
 
+- Add actual offline profile-save recovery and lost-response composer tests, including a real API/database post retry that verifies one persisted row. Record release-candidate acceptance and current dependency audits in docs/testing/release-candidate-2026-10-17.md.
+
 - Polish responsive web/PWA profile editing: recover validated session drafts, apply authoritative save/photo responses, protect pending actions, match transparent crop previews to JPEG, and preserve image geometry on failure. Unify secondary headers and visible-viewport dialog sizing; add useful empty/error recovery actions and mobile long-text checks. Evidence: docs/testing/mobile-readiness-2026-10-17.md.
 
 - Add persisted home feed hiding/reduced-author ranking with reset, network-free URL cards, scoped follower search, private typing expiry and global unread message badges. Add reduced-motion controls and a redesigned mobile profile/banner editor with explicit crop/save/removal. Add restricted same-host backup and local service/error alarms; owner chose server-only storage. Verification: docs/testing/daily-use-2026-10-17.md.

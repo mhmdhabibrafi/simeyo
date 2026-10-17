@@ -1,5 +1,7 @@
 # Release security review — 2026-10-15
 
+Latest release-candidate evaluation and fresh dependency metadata: [2026-10-17 evidence](../testing/release-candidate-2026-10-17.md). Real campus-account/provider and physical-device acceptance remain open; older checkpoint counts below are historical.
+
 This is an engineering review with recorded tests, not a completed production certification or an independent penetration test. v0.4.0/v1.0.0 acceptance remains open.
 
 Latest follow-up evidence supersedes older counts below: 79 local backend tests / 522 assertions, successful PostgreSQL CI, 28 full browser tests and 3 focused privacy/messaging regressions. Cached conversations are hidden after access errors and cleared after blocking. The isolated sustained-load run completed 960 requests with zero failures and endpoint p95 67–193 ms; backup/media/key recovery passed in CI. See [exact source, deployment and testing scope](../testing/maturity-2026-10-15.md).

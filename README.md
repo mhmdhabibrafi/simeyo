@@ -1,5 +1,7 @@
 # Simeyo
 
+Web/PWA acceptance candidate **v1.0.0-rc.1**: [actual results and remaining acceptance gates](docs/testing/release-candidate-2026-10-17.md). Physical-device and real campus-account testing is deferred to the owner; stable v1.0.0 acceptance remains open.
+
 Responsive profile/editing and mobile readiness follow-up: [implementation and verification](docs/testing/mobile-readiness-2026-10-17.md). Physical-device acceptance remains separate from browser viewport testing.
 
 Daily-use improvements and revised mobile photo/banner editing: [scope and verification](docs/testing/daily-use-2026-10-17.md). Server-only backup automation and local alarms are tracked there separately from off-host recovery and real-device acceptance.
