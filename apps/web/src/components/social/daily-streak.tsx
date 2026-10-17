@@ -14,7 +14,7 @@ export function DailyStreak({ userId }: { userId: number }) {
   if (q.isPending)
     return (
       <div
-        className="skeleton mt-4 h-24 rounded-2xl"
+        className="skeleton my-3 h-5 w-36 rounded"
         aria-label="Memuat runtutan"
       />
     );
@@ -24,7 +24,7 @@ export function DailyStreak({ userId }: { userId: number }) {
         type="button"
         disabled={q.isFetching}
         aria-busy={q.isFetching}
-        className="mt-4 min-h-11 text-sm text-[var(--muted)] underline"
+        className="min-h-11 text-xs text-[var(--muted)] underline"
         onClick={() => q.refetch()}
       >
         Coba muat runtutan lagi
@@ -32,28 +32,26 @@ export function DailyStreak({ userId }: { userId: number }) {
     );
   const s = q.data;
   return (
-    <section
-      aria-label="Runtutan harian"
-      className="mt-4 rounded-2xl bg-[var(--soft)] p-4"
-    >
-      <div className="flex items-start gap-3">
-        <Flame size={22} className="mt-0.5 shrink-0" aria-hidden="true" />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">
+    <section aria-label="Runtutan harian" className="text-xs">
+      <details>
+        <summary className="flex min-h-11 max-w-full cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-1 rounded-lg text-[var(--muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
+          <Flame size={15} className="shrink-0" aria-hidden="true" />
+          <span className="font-medium text-[var(--foreground)]">
             {s.current_days
               ? `${s.current_days} hari berturut-turut`
-              : "Mulai runtutanmu"}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+              : "Mulai runtutan"}
+          </span>
+          {s.longest_days > 0 && <span>Terbaik {s.longest_days} hari</span>}
+        </summary>
+        <div className="max-w-sm pb-2 leading-5 text-[var(--muted)]">
+          <p>
             {s.completed_today
               ? "Hari ini sudah terisi. Sampai besok!"
               : "Bagikan cerita atau balasan hari ini untuk melanjutkan."}
           </p>
-          <p className="mt-2 text-xs text-[var(--muted)]">
-            Terbaik {s.longest_days} hari · Berganti hari pukul 00.00 WIB
-          </p>
+          <p>Berganti hari pukul 00.00 WIB.</p>
         </div>
-      </div>
+      </details>
     </section>
   );
 }

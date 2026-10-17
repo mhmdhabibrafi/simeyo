@@ -172,6 +172,10 @@ test("own daily streak retries, updates after posting and fits mobile themes", a
   const streak=page.getByRole("region",{name:"Runtutan harian"});
   await expect(streak).toContainText("2 hari berturut-turut");
   await expect(streak).toContainText("Terbaik 5 hari");
+  expect((await streak.boundingBox())!.height).toBeLessThanOrEqual(44);
+  await streak.locator("summary").click();
+  await expect(streak.getByText("Berganti hari pukul 00.00 WIB.",{exact:true})).toBeVisible();
+  await streak.locator("summary").click();
   await page.getByRole("button",{name:"Tulis cerita",exact:true}).click();
   await page.getByRole("dialog").getByLabel("Tulis cerita",{exact:true}).fill("Cerita untuk hari ini");
   await page.getByRole("dialog").getByRole("button",{name:"Bagikan",exact:true}).click();
