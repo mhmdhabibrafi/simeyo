@@ -28,6 +28,39 @@ function fixture() {
     ),
   ) as Record<"a" | "b", { id: number; email: string; username: string }>;
 }
+test("real persisted post survives a lost response without duplicate rows", async ({ page }) => {
+  const users = fixture();
+  await login(page, users.a.email);
+  const ids: number[] = [];
+  const keys: string[] = [];
+  await page.route("**/api/v1/posts", async route => {
+    if (route.request().method() !== "POST") return route.continue();
+    keys.push(route.request().postDataJSON().client_id);
+    // Persist through the actual API before losing only the browser response.
+    const response = await route.fetch();
+    expect(response.status()).toBe(201);
+    ids.push((await response.json()).data.id);
+    if (ids.length === 1) return route.abort("connectionreset");
+    return route.fulfill({ response });
+  });
+  const story = `Retry after accepted response ${Date.now()}`;
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Tulis cerita", { exact: true }).fill(story);
+  await dialog.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("Cerita belum tersimpan");
+  await expect(dialog.getByLabel("Tulis cerita", { exact: true })).toHaveValue(story);
+  await dialog.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(ids).toHaveLength(2);
+  expect(ids[0]).toBe(ids[1]);
+  expect(keys[0]).toBe(keys[1]);
+  const response = await page.request.get(`/api/v1/feed?user_id=${users.a.id}`);
+  expect(response.status()).toBe(200);
+  const rows = (await response.json()).data as { id: number; body: string }[];
+  expect(rows.filter(row => row.body === story).map(row => row.id)).toEqual([ids[0]]);
+});
+
 test("real social posting, interactions, rollback, reply, quote, edit, report and deletion", async ({
   page,
 }) => {

@@ -155,6 +155,67 @@ async function fixtures(page: Page) {
   });
 }
 
+test("offline profile save preserves changes across reload and reconnect", async ({ page, context }) => {
+  await fixtures(page);
+  let owner = { ...user, bio: "" };
+  let writes = 0;
+  await page.route("**/api/v1/me", route => {
+    if (route.request().method() === "PATCH") {
+      writes++;
+      owner = { ...owner, ...route.request().postDataJSON() };
+    }
+    return route.fulfill({ json: { data: owner } });
+  });
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/profile/edit");
+  const bio = page.getByLabel("Bio", { exact: true });
+  await bio.fill("Draft saat koneksi terputus.");
+  // Bypass the fixture so the offline transport is actually exercised.
+  await page.route("**/sanctum/csrf-cookie", route => route.continue());
+  try {
+    await context.setOffline(true);
+    await page.getByRole("button", { name: "Simpan perubahan", exact: true }).click();
+    await expect(page.locator("#profile-error")).toContainText("Profil belum dapat disimpan");
+    await expect(bio).toHaveValue("Draft saat koneksi terputus.");
+    await expect(bio).toBeEnabled();
+    expect(writes).toBe(0);
+  } finally {
+    await context.setOffline(false);
+  }
+  await page.route("**/sanctum/csrf-cookie", route => route.fulfill({ status: 204 }));
+  page.on("dialog", dialog => dialog.accept());
+  await page.reload();
+  await expect(bio).toHaveValue("Draft saat koneksi terputus.");
+  await page.getByRole("button", { name: "Simpan perubahan", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Profil disimpan." })).toBeVisible();
+  expect(writes).toBe(1);
+  await page.getByRole("button", { name: "Kembali ke profil", exact: true }).click();
+  await expect(page.getByText(owner.bio, { exact: true })).toBeVisible();
+});
+
+test("lost post response retains retry identity", async ({ page }) => {
+  await fixtures(page);
+  const requests: string[] = [];
+  await page.route("**/api/v1/posts", route => {
+    const payload = route.request().postDataJSON();
+    requests.push(payload.client_id);
+    if (requests.length === 1) return route.abort("connectionreset");
+    return route.fulfill({ json: { data: { ...post, body: payload.body } } });
+  });
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  const body = dialog.getByLabel("Tulis cerita", { exact: true });
+  await body.fill("Respons hilang setelah cerita diterima.");
+  await dialog.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("Cerita belum tersimpan");
+  await expect(body).toHaveValue("Respons hilang setelah cerita diterima.");
+  await dialog.getByRole("button", { name: "Bagikan", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(requests).toHaveLength(2);
+  expect(requests[0]).toBe(requests[1]);
+});
+
 test("profile draft survives failure and reload, prevents double submit and applies saved data without a second GET", async ({page}) => {
   await fixtures(page);page.on("dialog",dialog=>dialog.accept());
   let owner={...user};let writes=0;let denyReads=false;let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
