@@ -55,7 +55,9 @@ test("real persisted post survives a lost response without duplicate rows", asyn
   expect(ids).toHaveLength(2);
   expect(ids[0]).toBe(ids[1]);
   expect(keys[0]).toBe(keys[1]);
-  const response = await page.request.get(`/api/v1/feed?user_id=${users.a.id}`);
+  const response = await page.request.get(`/api/v1/feed?user_id=${users.a.id}`, {
+    headers: { Origin: "http://localhost:3000", Accept: "application/json" },
+  });
   expect(response.status()).toBe(200);
   const rows = (await response.json()).data as { id: number; body: string }[];
   expect(rows.filter(row => row.body === story).map(row => row.id)).toEqual([ids[0]]);
