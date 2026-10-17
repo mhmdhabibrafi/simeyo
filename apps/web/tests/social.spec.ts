@@ -28,12 +28,79 @@ function fixture() {
     ),
   ) as Record<"a" | "b", { id: number; email: string; username: string }>;
 }
-test("real persisted post survives a lost response without duplicate rows", async ({ page }) => {
+test("real gallery upload retains chosen order after reload and opens private photos", async ({
+  page,
+}) => {
+  const users = fixture();
+  await login(page, users.a.email);
+  const story = `Galeri urut ${Date.now()}`;
+  await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Tulis cerita", { exact: true }).fill(story);
+  const png = readFileSync(
+    path.join(root, "apps/web/public/icons/icon-512.png"),
+  );
+  await dialog
+    .getByLabel("Lampirkan gambar")
+    .setInputFiles(
+      [1, 2, 3].map((n) => ({
+        name: `ordered-${n}.png`,
+        mimeType: "image/png",
+        buffer: png,
+      })),
+    );
+  await expect(dialog.getByAltText("Pratinjau lampiran")).toHaveCount(3);
+  await expect(
+    dialog.getByRole("button", { name: "Bagikan", exact: true }),
+  ).toBeEnabled();
+  await dialog
+    .getByRole("button", { name: "Geser gambar 3 ke kiri", exact: true })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Geser gambar 2 ke kiri", exact: true })
+    .click();
+  const save = page.waitForResponse(
+    (r) => r.url().endsWith("/api/v1/posts") && r.request().method() === "POST",
+  );
+  await dialog.getByRole("button", { name: "Bagikan", exact: true }).click();
+  const response = await save;
+  expect(response.status()).toBe(201);
+  const ids = response.request().postDataJSON().media_ids as number[];
+  const saved = (await response.json()).data;
+  expect(saved.media.map((m: { id: number }) => m.id)).toEqual(ids);
+  expect(ids[0]).toBeGreaterThan(ids[2]);
+  await page.reload();
+  const card = page.locator("article[data-post-id]").filter({ hasText: story });
+  await expect(card).toBeVisible();
+  const src = await card
+    .getByRole("region", { name: "Galeri gambar cerita", exact: true })
+    .locator("img")
+    .evaluateAll((imgs) => imgs.map((img) => img.getAttribute("src")));
+  expect(src.map((url) => Number(url!.split("/").at(-1)))).toEqual(ids);
+  await card
+    .getByRole("button", { name: "Lihat gambar cerita", exact: true })
+    .first()
+    .click();
+  await expect
+    .poll(() =>
+      page
+        .getByAltText("Gambar cerita diperbesar 1 dari 3")
+        .evaluate(
+          (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+        ),
+    )
+    .toBe(true);
+  await page.keyboard.press("Escape");
+});
+
+test("real persisted post survives a lost response without duplicate rows", async ({
+  page,
+}) => {
   const users = fixture();
   await login(page, users.a.email);
   const ids: number[] = [];
   const keys: string[] = [];
-  await page.route("**/api/v1/posts", async route => {
+  await page.route("**/api/v1/posts", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     keys.push(route.request().postDataJSON().client_id);
     // Persist through the actual API before losing only the browser response.
@@ -48,19 +115,28 @@ test("real persisted post survives a lost response without duplicate rows", asyn
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Tulis cerita", { exact: true }).fill(story);
   await dialog.getByRole("button", { name: "Bagikan", exact: true }).click();
-  await expect(dialog.getByRole("alert")).toContainText("Cerita belum tersimpan");
-  await expect(dialog.getByLabel("Tulis cerita", { exact: true })).toHaveValue(story);
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Cerita belum tersimpan",
+  );
+  await expect(dialog.getByLabel("Tulis cerita", { exact: true })).toHaveValue(
+    story,
+  );
   await dialog.getByRole("button", { name: "Bagikan", exact: true }).click();
   await expect(dialog).toBeHidden();
   expect(ids).toHaveLength(2);
   expect(ids[0]).toBe(ids[1]);
   expect(keys[0]).toBe(keys[1]);
-  const response = await page.request.get(`/api/v1/feed?user_id=${users.a.id}`, {
-    headers: { Origin: "http://localhost:3000", Accept: "application/json" },
-  });
+  const response = await page.request.get(
+    `/api/v1/feed?user_id=${users.a.id}`,
+    {
+      headers: { Origin: "http://localhost:3000", Accept: "application/json" },
+    },
+  );
   expect(response.status()).toBe(200);
   const rows = (await response.json()).data as { id: number; body: string }[];
-  expect(rows.filter(row => row.body === story).map(row => row.id)).toEqual([ids[0]]);
+  expect(rows.filter((row) => row.body === story).map((row) => row.id)).toEqual(
+    [ids[0]],
+  );
 });
 
 test("real social posting, interactions, rollback, reply, quote, edit, report and deletion", async ({
@@ -71,7 +147,10 @@ test("real social posting, interactions, rollback, reply, quote, edit, report an
   await login(page, users.a.email);
   const story = `Cerita kampus browser ${Date.now()}`;
   await page.getByRole("button", { name: "Tulis cerita", exact: true }).click();
-  await page.getByRole("dialog").getByLabel("Tulis cerita", { exact: true }).fill(story);
+  await page
+    .getByRole("dialog")
+    .getByLabel("Tulis cerita", { exact: true })
+    .fill(story);
   await page.getByRole("button", { name: "Bagikan", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Cerita dibagikan.");
   const card = page.locator("article[data-post-id]").filter({ hasText: story });
@@ -233,8 +312,11 @@ test("private follow approval, follow feed, mute and bilateral block are persist
   await author.getByRole("button", { name: "Simpan perubahan" }).click();
   await expect(author.getByRole("status")).toContainText("Profil disimpan");
   await author.goto("http://localhost:3000/home");
-  await author.getByRole("button", { name: "Tulis cerita", exact: true }).click();
-  await author.getByRole("dialog")
+  await author
+    .getByRole("button", { name: "Tulis cerita", exact: true })
+    .click();
+  await author
+    .getByRole("dialog")
     .getByLabel("Tulis cerita", { exact: true })
     .fill("Cerita privat yang harus dilindungi.");
   await author.getByRole("button", { name: "Bagikan", exact: true }).click();

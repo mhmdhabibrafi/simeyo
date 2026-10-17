@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { BackButton } from "@/components/ui/back-button";
 import { useRouter } from "next/navigation";
+import { MediaViewer } from "@/components/media-viewer";
 import { ProfileCover } from "@/components/profile-cover";
 import { DailyStreak } from "./daily-streak";
 import { useState } from "react";
@@ -47,6 +48,7 @@ export function ProfileView({ username }: { username?: string }) {
     (!!u?.verified && !!u.email_verified) || (!!username && !!u),
   );
   const tabKey = `simeyo-profile-tab:${me.data?.id}:${username ?? "me"}`;
+  const [avatarOpen, setAvatarOpen] = useState(false);
   const [tab, updateTab] = useState(() => {
     try {
       const saved = sessionStorage.getItem(tabKey);
@@ -110,6 +112,16 @@ export function ProfileView({ username }: { username?: string }) {
     );
   return (
     <>
+      {u.avatar_url && (
+        <MediaViewer
+          open={avatarOpen}
+          onOpenChange={setAvatarOpen}
+          images={[{ url: u.avatar_url, width: 800, height: 800 }]}
+          index={0}
+          onIndexChange={() => {}}
+          title="Foto profil"
+        />
+      )}
       <header className="page-header">
         {username && <BackButton />}
         <h1 className="text-lg font-semibold">{owner ? "Profilmu" : u.name}</h1>
@@ -151,7 +163,18 @@ export function ProfileView({ username }: { username?: string }) {
               data-profile-avatar
               className={`self-start shrink-0 rounded-full border-4 border-[var(--surface)] bg-[var(--surface)] ${u.cover_url ? "-mt-14" : ""}`}
             >
-              <Avatar name={u.name} url={u.avatar_url} size={80} />
+              {u.avatar_url ? (
+                <button
+                  type="button"
+                  aria-label="Lihat foto profil"
+                  className="block rounded-full focus-visible:outline focus-visible:outline-offset-4"
+                  onClick={() => setAvatarOpen(true)}
+                >
+                  <Avatar name={u.name} url={u.avatar_url} size={80} />
+                </button>
+              ) : (
+                <Avatar name={u.name} url={u.avatar_url} size={80} />
+              )}
             </div>
           </div>
           {u.bio ? (
@@ -248,7 +271,11 @@ export function ProfileView({ username }: { username?: string }) {
               </Link>
             </div>
           )}
-          {owner && u.verified && u.email_verified && <div className="mb-4"><DailyStreak userId={u.id} /></div>}
+          {owner && u.verified && u.email_verified && (
+            <div className="mb-4">
+              <DailyStreak userId={u.id} />
+            </div>
+          )}
           <div className="mb-5 mt-2 flex items-center gap-2 [&>a]:flex-1 [&>a]:justify-center">
             {owner ? (
               <>

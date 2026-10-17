@@ -1259,6 +1259,8 @@ paths:
                   format: uuid
                 media_ids:
                   type: array
+                  description: Ordered owned unattached media IDs. Stored and returned in the
+                    supplied order.
                   uniqueItems: true
                   items:
                     type: integer

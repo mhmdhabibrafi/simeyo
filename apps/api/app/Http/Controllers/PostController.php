@@ -70,7 +70,10 @@ class PostController extends Controller
             foreach ($dependencies as $source) {
                 DB::table('post_dependencies')->insert(['post_id' => $p->id, 'source_id' => $source]);
             }
-            PostMedia::whereIn('id', $ids)->update(['post_id' => $p->id]);
+            $ownedMedia = $media->keyBy('id');
+            foreach ($ids as $position => $id) {
+                $ownedMedia[$id]->forceFill(['post_id' => $p->id, 'position' => $position])->save();
+            }
             app(DailyStreak::class)->record($r->user()->id);
             app(PostEntities::class)->sync($p);
             if ($parent) {

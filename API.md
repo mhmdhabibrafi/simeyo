@@ -1,5 +1,7 @@
 # API
 
+Gallery order: POST /api/v1/posts stores media_ids in the supplied order and returns that order in posts, feeds and quotes. Uploaded IDs must still be owned, unattached and distinct. Changing media_ids order changes the existing client_id retry fingerprint; accepted posts are not silently reordered. One additive post_media.position migration is required; historical rows default to zero and use ID order. See docs/testing/media-experience-2026-10-17.md.
+
 Daily streak: GET /api/v1/me/streak returns the approved signed-in campus member's current_days, longest_days, completed_today, timezone (Asia/Jakarta) and next_reset_at. It is read-only; successful new post/reply creation updates the count transactionally. No historical backfill or public per-user streak endpoint. See docs/api/openapi.yaml and docs/testing/streak-2026-10-17.md.
 
 Prefix `/api/v1`. See [OpenAPI](docs/api/openapi.yaml) and generated [TypeScript contracts](packages/api-contracts/src/generated.ts). `npm run contracts` regenerates both from `infrastructure/scripts/write-openapi.mjs`; the shared Zod schemas validate user responses and forms and are checked against the generated user type.

@@ -1,5 +1,7 @@
 # Changelog
 
+- Add a shared photo viewer with swipe/pinch/zoom/pan, count/retry and accessible close controls, including profile avatar viewing. Add per-file upload progress and retry with stable slots, plus composer photo sorting persisted through post_media.position. Historical media order is retained. Evidence: docs/testing/media-experience-2026-10-17.md.
+
 - Add private daily posting streak (Runtutan) on the web profile, with WIB day boundaries, best/current counts, failure retry and refresh after posting. Persist atomically with new posts/replies; retries/editing do not inflate counts. Evidence: docs/testing/streak-2026-10-17.md.
 
 - Add actual offline profile-save recovery and lost-response composer tests, including a real API/database post retry that verifies one persisted row. Record release-candidate acceptance and current dependency audits in docs/testing/release-candidate-2026-10-17.md.

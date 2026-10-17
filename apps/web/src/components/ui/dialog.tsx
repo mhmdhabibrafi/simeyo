@@ -19,7 +19,7 @@ export function ConfirmDialog({
   description: string;
   children: React.ReactNode;
   className?: string;
-  variant?: "default" | "composer";
+  variant?: "default" | "composer" | "media";
   busy?: boolean;
 }) {
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -61,18 +61,22 @@ export function ConfirmDialog({
         >
           <DialogPrimitive.Title
             className={
-              variant === "composer"
-                ? "border-b border-[var(--border)] px-20 py-5 text-center text-base font-semibold"
-                : "pr-8 text-xl font-semibold"
+              variant === "media"
+                ? "sr-only"
+                : variant === "composer"
+                  ? "border-b border-[var(--border)] px-20 py-5 text-center text-base font-semibold"
+                  : "pr-8 text-xl font-semibold"
             }
           >
             {title}
           </DialogPrimitive.Title>
           <DialogPrimitive.Description
             className={
-              variant === "composer"
+              variant === "media"
                 ? "sr-only"
-                : "my-4 text-sm leading-6 text-[var(--muted)]"
+                : variant === "composer"
+                  ? "sr-only"
+                  : "my-4 text-sm leading-6 text-[var(--muted)]"
             }
           >
             {description}

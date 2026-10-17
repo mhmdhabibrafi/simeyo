@@ -156,6 +156,61 @@ async function fixtures(page: Page) {
   });
 }
 
+test("photo viewer supports swipe, pinch, zoom, retry and profile avatar without changing banner ratio", async ({page})=>{
+  await fixtures(page);
+  const photos=[1,2,3].map(id=>({id,url:`/viewer-${id}.png`,width:800,height:600}));
+  let failLast=true;
+  await page.route("**/viewer-*.png",route=>failLast&&route.request().url().endsWith("viewer-3.png") ? route.fulfill({status:503,body:"Unavailable"}) : route.fulfill({path:path.join(__dirname,"../../../apps/web/public/icons/icon-512.png")}));
+  await page.route("**/api/v1/feed?**",route=>route.fulfill({json:{data:[{...post,media:photos}],meta:{next_cursor:null,has_more:false,feed:"campus"}}}));
+  await page.route("**/api/v1/me",route=>route.fulfill({json:{data:{...user,avatar_url:"/viewer-1.png",cover_url:"/viewer-2.png"}}}));
+  await page.setViewportSize({width:320,height:700});await page.goto("/home");
+  await page.getByRole("region",{name:"Galeri gambar cerita",exact:true}).getByRole("button").first().click();
+  const viewer=page.getByRole("dialog");
+  const stage=viewer.getByLabel("Gambar diperbesar; geser atau gunakan panah kiri dan kanan",{exact:true});
+  const bounds=(await stage.boundingBox())!;
+  await page.mouse.move(bounds.x+bounds.width*.8,bounds.y+bounds.height/2);await page.mouse.down();await page.mouse.move(bounds.x+bounds.width*.2,bounds.y+bounds.height/2,{steps:8});await page.mouse.up();
+  await expect(viewer.getByRole("status")).toHaveText("2 / 3");
+  await viewer.getByRole("button",{name:"Perbesar foto",exact:true}).click();
+  await expect(viewer.getByLabel("Perbesaran foto",{exact:true})).toHaveText("150%");
+  await page.keyboard.press("ArrowRight");await expect(viewer.getByRole("status")).toHaveText("2 / 3");
+  await viewer.getByRole("button",{name:"Atur ulang zoom",exact:true}).click();
+  const cdp=await page.context().newCDPSession(page);await cdp.send("Emulation.setTouchEmulationEnabled",{enabled:true,maxTouchPoints:2});
+  const x=bounds.x+bounds.width/2,y=bounds.y+bounds.height/2;
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:x-25,y,id:1},{x:x+25,y,id:2}]});
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:x-60,y,id:1},{x:x+60,y,id:2}]});
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+  await expect(viewer.getByLabel("Perbesaran foto",{exact:true})).not.toHaveText("100%");
+  await viewer.getByRole("button",{name:"Atur ulang zoom",exact:true}).click();
+  for(const theme of ["light","dark"]){await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);await waitForAnimations(page);expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);expect(await viewer.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);await page.screenshot({path:path.join(__dirname,"../../../docs/testing/screenshots",`photo-viewer-320-${theme}.png`)});}
+  await viewer.getByRole("button",{name:"Gambar berikutnya",exact:true}).click();
+  await expect(viewer.getByRole("button",{name:"Coba muat foto lagi",exact:true})).toBeVisible();failLast=false;
+  await viewer.getByRole("button",{name:"Coba muat foto lagi",exact:true}).click();
+  await expect.poll(()=>viewer.getByAltText("Gambar cerita diperbesar 3 dari 3").evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBe(true);
+  await viewer.getByRole("button",{name:"Tutup",exact:true}).click();
+  await page.goto("/profile");const cover=page.getByAltText("Sampul profil",{exact:true});const box=(await cover.boundingBox())!;expect(box.width/box.height).toBeCloseTo(3,1);
+  await page.getByRole("button",{name:"Lihat foto profil",exact:true}).click();await expect(page.getByAltText("Foto profil diperbesar 1 dari 1")).toBeVisible();await page.keyboard.press("Escape");await expect(page.getByRole("button",{name:"Lihat foto profil",exact:true})).toBeFocused();
+});
+
+test("composer retries one failed file and submits the reordered successful gallery",async({page})=>{
+  await fixtures(page);const attempts=new Map<string,number>();let release!:()=>void;const gate=new Promise<void>(r=>{release=r;});
+  await page.route("**/api/v1/media/posts",async route=>{
+    const text=route.request().postDataBuffer()!.toString();const name=/filename="([^"]+)"/.exec(text)![1];attempts.set(name,(attempts.get(name)??0)+1);
+    if(name==="first.png"&&attempts.get(name)===1)await gate;
+    if(name==="second.png"&&attempts.get(name)===1)return route.fulfill({status:503,json:{message:"Upload kedua gagal"}});
+    const id=name==="first.png"?1:name==="second.png"?2:3;return route.fulfill({json:{data:{id,url:"/icons/icon-512.png",width:512,height:512}}});
+  });
+  let submitted:number[]=[];await page.route("**/api/v1/posts",route=>{submitted=route.request().postDataJSON().media_ids;return route.fulfill({json:{data:post}});});
+  await page.setViewportSize({width:320,height:700});await page.goto("/home");await page.getByRole("button",{name:"Tulis cerita",exact:true}).click();const dialog=page.getByRole("dialog");
+  await dialog.getByLabel("Lampirkan gambar").setInputFiles(["first.png","second.png","third.png"].map(name=>({name,mimeType:"image/png",buffer:Buffer.from("synthetic image bytes")})));
+  await expect(dialog.getByRole("progressbar",{name:"Progres first.png",exact:true})).toBeVisible();await expect(dialog.getByRole("button",{name:/^Mengunggah/})).toBeDisabled();release();
+  await expect(dialog.getByRole("button",{name:"Coba unggah second.png",exact:true})).toBeVisible();await expect(dialog.getByAltText("Pratinjau lampiran")).toHaveCount(2);
+  await dialog.getByRole("button",{name:"Coba unggah second.png",exact:true}).click();await expect(dialog.getByAltText("Pratinjau lampiran")).toHaveCount(3);
+  expect([...attempts.entries()]).toEqual([["first.png",1],["second.png",2],["third.png",1]]);
+  await dialog.getByRole("button",{name:"Geser gambar 3 ke kiri",exact:true}).click();
+  await dialog.getByRole("button",{name:"Geser gambar 2 ke kiri",exact:true}).click();
+  await dialog.getByRole("button",{name:"Bagikan",exact:true}).click();await expect(dialog).toBeHidden();expect(submitted).toEqual([3,1,2]);
+});
+
 test("own daily streak retries, updates after posting and fits mobile themes", async ({ page }) => {
   await fixtures(page);
   let failed = true;

@@ -2036,6 +2036,7 @@ export interface paths {
                         community_id?: number | null;
                         /** Format: uuid */
                         client_id?: string | null;
+                        /** @description Ordered owned unattached media IDs. Stored and returned in the supplied order. */
                         media_ids?: number[];
                     };
                 };

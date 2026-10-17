@@ -16,6 +16,33 @@ use Tests\TestCase;
 
 class SocialCoreTest extends TestCase
 {
+    public function test_gallery_order_survives_read_quote_retry_and_legacy_default_positions(): void
+    {
+        $u = $this->member();
+        $make = fn () => PostMedia::create(['user_id' => $u->id, 'path' => 'synthetic/'.Str::uuid().'.jpg', 'width' => 10, 'height' => 10, 'bytes' => 100]);
+        $a = $make();
+        $b = $make();
+        $c = $make();
+        $ids = [$c->id, $a->id, $b->id];
+        $draft = ['body' => 'Urutan galeri', 'visibility' => 'campus', 'media_ids' => $ids, 'client_id' => (string) Str::uuid()];
+        $response = $this->actingAs($u)->postJson('/api/v1/posts', $draft)->assertCreated();
+        $id = $response->json('data.id');
+        $this->assertSame($ids, array_column($response->json('data.media'), 'id'));
+        $this->assertSame($ids, array_column($this->getJson('/api/v1/posts/'.$id)->assertOk()->json('data.media'), 'id'));
+        $this->assertSame($ids, array_column($this->postJson('/api/v1/posts', $draft)->assertCreated()->json('data.media'), 'id'));
+        $this->postJson('/api/v1/posts', array_replace($draft, ['media_ids' => array_reverse($ids)]))->assertConflict();
+        foreach ($ids as $position => $mediaId) {
+            $this->assertDatabaseHas('post_media', ['id' => $mediaId, 'post_id' => $id, 'position' => $position]);
+        }
+        $quote = $this->postJson('/api/v1/posts', ['body' => 'Kutip', 'visibility' => 'campus', 'quote_id' => $id])->assertCreated();
+        $this->assertSame($ids, array_column($quote->json('data.quote.media'), 'id'));
+        $legacy = $this->fixturePost($u);
+        $d = $make();
+        $e = $make();
+        PostMedia::whereIn('id', [$d->id, $e->id])->update(['post_id' => $legacy->id]);
+        $this->assertSame([$d->id, $e->id], array_column($this->getJson('/api/v1/posts/'.$legacy->id)->assertOk()->json('data.media'), 'id'));
+    }
+
     public function test_feed_preferences_are_private_reversible_and_rank_reduced_authors_lower(): void
     {
         $viewer = $this->member();

@@ -9,10 +9,12 @@ import {
   Check,
   Globe2,
   Users,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import Image from "next/image";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, uploadWithProgress } from "@/lib/api";
 import { useMe } from "@/lib/auth";
 import { clearDraft, draftKey, readDraft, saveDraft } from "@/lib/drafts";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,13 @@ import {
   mediaSchema,
   type Media,
 } from "../../../../../packages/api-contracts/src/social";
+type Attachment = {
+  key: string;
+  file: File;
+  media?: Media;
+  progress: number;
+  status: "queued" | "uploading" | "done" | "failed";
+};
 type ComposerProps = {
   parentId?: number;
   communityId?: number;
@@ -93,10 +102,18 @@ function ComposerEditor({
   function persist(text: string, audience: "campus" | "followers") {
     setSaved(saveDraft(storageKey, text, audience));
   }
-  const [images, setImages] = useState<Media[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const images = attachments.flatMap((item) =>
+    item.media ? [item.media] : [],
+  );
+  const pendingFiles = attachments
+    .filter((item) => !item.media)
+    .map((item) => item.file);
+  const actionLock = useRef(false);
+  const uploadController = useRef<AbortController | null>(null);
+  useEffect(() => () => uploadController.current?.abort(), []);
   const [busy, setBusy] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(!compact || !!restored);
   const file = useRef<HTMLInputElement>(null);
@@ -128,8 +145,69 @@ function ComposerEditor({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, busy, images.length, pendingFiles.length, saved, restored]);
+  function moveImage(id: number, delta: number) {
+    if (actionLock.current || pendingFiles.length) return;
+    setAttachments((old) => {
+      const next = [...old],
+        index = next.findIndex((item) => item.media?.id === id),
+        target = index + delta;
+      if (index < 0 || target < 0 || target >= next.length) return old;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+  async function processUploads(selected: Attachment[]) {
+    if (!selected.length || actionLock.current) return;
+    actionLock.current = true;
+    setBusy(true);
+    setError("");
+    const controller = new AbortController();
+    uploadController.current = controller;
+    const update = (key: string, patch: Partial<Attachment>) =>
+      setAttachments((old) =>
+        old.map((item) => (item.key === key ? { ...item, ...patch } : item)),
+      );
+    try {
+      for (const [index, item] of selected.entries()) {
+        if (controller.signal.aborted) break;
+        setUploadProgress(
+          `Mengunggah gambar ${index + 1} dari ${selected.length}...`,
+        );
+        update(item.key, { status: "uploading", progress: 0 });
+        const data = new FormData();
+        data.set("image", item.file);
+        try {
+          const r = await uploadWithProgress<{ data: unknown }>(
+            "media/posts",
+            data,
+            (percent) => update(item.key, { progress: percent }),
+            controller.signal,
+          );
+          update(item.key, {
+            media: mediaSchema.parse(r.data),
+            progress: 100,
+            status: "done",
+          });
+        } catch (e) {
+          if (controller.signal.aborted) break;
+          update(item.key, { status: "failed" });
+          setError(
+            e instanceof ApiError
+              ? Object.values(e.errors).flat().join(" ") || e.message
+              : "Upload belum berhasil.",
+          );
+        }
+      }
+    } finally {
+      actionLock.current = false;
+      setBusy(false);
+      setUploadProgress("");
+      uploadController.current = null;
+      if (file.current) file.current.value = "";
+    }
+  }
   async function upload(files: FileList | File[] | null) {
-    if (!files || busy) return;
+    if (!files || actionLock.current) return;
     const selected = Array.from(files);
     if (!selected.length) return;
     setExpanded(true);
@@ -143,43 +221,24 @@ function ComposerEditor({
       if (file.current) file.current.value = "";
       return;
     }
-    setBusy(true);
-    setPendingFiles(selected);
-    setError("");
-    try {
-      for (const [index, image] of selected.entries()) {
-        setUploadProgress(
-          `Mengunggah gambar ${index + 1} dari ${selected.length}…`,
-        );
-        const data = new FormData();
-        data.set("image", image);
-        const r = await api<{ data: unknown }>("media/posts", {
-          method: "POST",
-          body: data,
-        });
-        setImages((old) => [...old, mediaSchema.parse(r.data)]);
-        setPendingFiles(selected.slice(index + 1));
-      }
-    } catch (e) {
-      setError(
-        e instanceof ApiError
-          ? Object.values(e.errors).flat().join(" ") || e.message
-          : "Upload belum berhasil.",
-      );
-    } finally {
-      setBusy(false);
-      setUploadProgress("");
-      if (file.current) file.current.value = "";
-    }
+    const items: Attachment[] = selected.map((image) => ({
+      key: crypto.randomUUID(),
+      file: image,
+      progress: 0,
+      status: "queued",
+    }));
+    setAttachments((old) => [...old, ...items]);
+    await processUploads(items);
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (
-      busy ||
+      actionLock.current ||
       pendingFiles.length ||
       (!body.trim() && !images.length && !existingImageCount)
     )
       return;
+    actionLock.current = true;
     setBusy(true);
     setError("");
     try {
@@ -209,7 +268,7 @@ function ComposerEditor({
       clearDraft(storageKey);
       setSaved(null);
       setBody("");
-      setImages([]);
+      setAttachments([]);
       if (compact) setExpanded(false);
       await Promise.all([
         client.invalidateQueries({ queryKey: ["daily-streak"] }),
@@ -227,6 +286,7 @@ function ComposerEditor({
           : "Cerita belum tersimpan. Coba lagi.",
       );
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   }
@@ -273,7 +333,7 @@ function ComposerEditor({
           />
           {images.length > 0 && (
             <div className="col-start-2 mb-4 grid max-h-64 grid-cols-2 gap-2 overflow-y-auto rounded-xl">
-              {images.map((m) => (
+              {images.map((m, index) => (
                 <div key={m.id} className="relative">
                   <Image
                     unoptimized
@@ -285,23 +345,55 @@ function ComposerEditor({
                   />
                   <button
                     type="button"
-                    className="absolute right-1 top-1 rounded-full bg-black/60 p-2 text-white"
+                    className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-full bg-black/70 text-white"
                     aria-label="Hapus lampiran"
                     disabled={busy}
                     onClick={async () => {
+                      if (actionLock.current) return;
+                      actionLock.current = true;
                       setBusy(true);
                       try {
                         await api(`media/posts/${m.id}`, { method: "DELETE" });
-                        setImages(images.filter((i) => i.id !== m.id));
+                        setAttachments((old) =>
+                          old.filter((item) => item.media?.id !== m.id),
+                        );
                       } catch {
                         setError("Lampiran belum dapat dihapus.");
                       } finally {
+                        actionLock.current = false;
                         setBusy(false);
                       }
                     }}
                   >
                     <X size={14} />
                   </button>
+                  <div className="flex items-center justify-between gap-1 py-1">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Geser gambar ${index + 1} ke kiri`}
+                      disabled={busy || !!pendingFiles.length || index === 0}
+                      onClick={() => moveImage(m.id, -1)}
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <span className="text-xs tabular-nums text-[var(--muted)]">
+                      {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Geser gambar ${index + 1} ke kanan`}
+                      disabled={
+                        busy ||
+                        !!pendingFiles.length ||
+                        index === images.length - 1
+                      }
+                      onClick={() => moveImage(m.id, 1)}
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -445,6 +537,49 @@ function ComposerEditor({
               {uploadProgress}
             </p>
           )}
+          {(uploadProgress || pendingFiles.length > 0) && (
+            <ul
+              aria-label="Progres unggahan foto"
+              className="col-span-2 mt-3 space-y-2"
+            >
+              {attachments.map((item) => (
+                <li key={item.key} className="text-xs">
+                  <div className="flex min-w-0 items-center justify-between gap-2">
+                    <span className="min-w-0 truncate">{item.file.name}</span>
+                    <span className="shrink-0 text-[var(--muted)]">
+                      {item.status === "done"
+                        ? "Terunggah"
+                        : item.status === "failed"
+                          ? "Gagal"
+                          : item.status === "queued"
+                            ? "Menunggu"
+                            : item.progress === 100
+                              ? "Memproses..."
+                              : `${item.progress}%`}
+                    </span>
+                  </div>
+                  {item.status === "uploading" && (
+                    <progress
+                      className="mt-1 h-1 w-full accent-[var(--foreground)]"
+                      max={100}
+                      value={item.progress}
+                      aria-label={`Progres ${item.file.name}`}
+                    />
+                  )}
+                  {item.status === "failed" && !busy && (
+                    <button
+                      type="button"
+                      className="min-h-11 underline"
+                      aria-label={`Coba unggah ${item.file.name}`}
+                      onClick={() => processUploads([item])}
+                    >
+                      Coba foto ini lagi
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
           {!busy && pendingFiles.length > 0 && (
             <div className="col-span-2 mt-3 rounded-xl bg-[var(--soft)] p-3 text-sm">
               <p className="break-words">
@@ -455,7 +590,9 @@ function ComposerEditor({
                 <button
                   type="button"
                   className="min-h-10 underline"
-                  onClick={() => upload(pendingFiles)}
+                  onClick={() =>
+                    processUploads(attachments.filter((item) => !item.media))
+                  }
                 >
                   Coba unggah lagi
                 </button>
@@ -463,7 +600,7 @@ function ComposerEditor({
                   type="button"
                   className="min-h-10 text-[var(--muted)]"
                   onClick={() => {
-                    setPendingFiles([]);
+                    setAttachments((old) => old.filter((item) => !!item.media));
                     setError("");
                   }}
                 >
