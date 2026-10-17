@@ -1,5 +1,12 @@
 import { z } from "zod";
 import type {components} from "./generated";
+export const streakSchema = z.object({
+  current_days: z.number().int().nonnegative(),
+  longest_days: z.number().int().nonnegative(),
+  completed_today: z.boolean(),
+  timezone: z.literal("Asia/Jakarta"),
+  next_reset_at: z.string().datetime({ offset: true }),
+});
 
 export const authenticationOptionsSchema = z.object({
   firebase: z.object({ apiKey: z.string(), authDomain: z.string(), projectId: z.string(), appId: z.string() }).nullable().optional(),

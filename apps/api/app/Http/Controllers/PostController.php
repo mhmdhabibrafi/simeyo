@@ -7,6 +7,7 @@ use App\Models\Post;
 use App\Models\PostMedia;
 use App\Services\CampusActivity;
 use App\Services\CampusSpaces;
+use App\Services\DailyStreak;
 use App\Services\PostEntities;
 use App\Services\PostVisibility;
 use Illuminate\Http\Request;
@@ -70,6 +71,7 @@ class PostController extends Controller
                 DB::table('post_dependencies')->insert(['post_id' => $p->id, 'source_id' => $source]);
             }
             PostMedia::whereIn('id', $ids)->update(['post_id' => $p->id]);
+            app(DailyStreak::class)->record($r->user()->id);
             app(PostEntities::class)->sync($p);
             if ($parent) {
                 app(CampusActivity::class)->send($parent->author, $r->user(), 'replies', ['post_id' => $p->id]);

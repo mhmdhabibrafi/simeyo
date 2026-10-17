@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BackButton } from "@/components/ui/back-button";
 import { useRouter } from "next/navigation";
 import { ProfileCover } from "@/components/profile-cover";
+import { DailyStreak } from "./daily-streak";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Menu from "@radix-ui/react-dropdown-menu";
@@ -247,6 +248,7 @@ export function ProfileView({ username }: { username?: string }) {
               </Link>
             </div>
           )}
+          {owner && u.verified && u.email_verified && <div className="mb-4"><DailyStreak userId={u.id} /></div>}
           <div className="mb-5 mt-2 flex items-center gap-2 [&>a]:flex-1 [&>a]:justify-center">
             {owner ? (
               <>

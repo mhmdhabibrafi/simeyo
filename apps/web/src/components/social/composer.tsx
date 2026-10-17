@@ -212,6 +212,7 @@ function ComposerEditor({
       setImages([]);
       if (compact) setExpanded(false);
       await Promise.all([
+        client.invalidateQueries({ queryKey: ["daily-streak"] }),
         client.invalidateQueries({ queryKey: ["feed"] }),
         client.invalidateQueries({ queryKey: ["post"] }),
         client.invalidateQueries({ queryKey: ["post-search"] }),

@@ -1,5 +1,7 @@
 # Simeyo
 
+Daily posting streak (Runtutan): [rules, implementation and actual testing](docs/testing/streak-2026-10-17.md).
+
 Web/PWA acceptance candidate **v1.0.0-rc.1**: [actual results and remaining acceptance gates](docs/testing/release-candidate-2026-10-17.md). Physical-device and real campus-account testing is deferred to the owner; stable v1.0.0 acceptance remains open.
 
 Responsive profile/editing and mobile readiness follow-up: [implementation and verification](docs/testing/mobile-readiness-2026-10-17.md). Physical-device acceptance remains separate from browser viewport testing.

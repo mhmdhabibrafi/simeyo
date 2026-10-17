@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {authFormSchema,registrationSchema,userSchema} from '../src/index.ts';
+import {authFormSchema,registrationSchema,userSchema,streakSchema} from '../src/index.ts';
+test('daily streak rejects negative counts and client timezone substitutions',()=>{
+ const s={current_days:2,longest_days:5,completed_today:false,timezone:'Asia/Jakarta',next_reset_at:'2026-10-18T00:00:00+07:00'};
+ assert.equal(streakSchema.parse(s).current_days,2);
+ assert.equal(streakSchema.safeParse({...s,current_days:-1}).success,false);
+ assert.equal(streakSchema.safeParse({...s,timezone:'UTC'}).success,false);
+});
 import {messagesSchema,notificationsSchema,conversationReportsSchema,typingSchema,unreadMessagesSchema} from '../src/communications.ts';
 import {topicSearchSchema} from '../src/campus.ts';
 const valid={name:'Nadia Putri',username:'nadia',email:'nadia@example.test',password:'SecurePassword123',password_confirmation:'SecurePassword123'};

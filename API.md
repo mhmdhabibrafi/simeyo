@@ -1,5 +1,7 @@
 # API
 
+Daily streak: GET /api/v1/me/streak returns the approved signed-in campus member's current_days, longest_days, completed_today, timezone (Asia/Jakarta) and next_reset_at. It is read-only; successful new post/reply creation updates the count transactionally. No historical backfill or public per-user streak endpoint. See docs/api/openapi.yaml and docs/testing/streak-2026-10-17.md.
+
 Prefix `/api/v1`. See [OpenAPI](docs/api/openapi.yaml) and generated [TypeScript contracts](packages/api-contracts/src/generated.ts). `npm run contracts` regenerates both from `infrastructure/scripts/write-openapi.mjs`; the shared Zod schemas validate user responses and forms and are checked against the generated user type.
 
 Implemented modules: web/native authentication, verification email/recovery, own sessions, current user/profile, academic catalog/onboarding, affiliation submissions, administrator review, private profile media. Detailed route inventory is available using `php artisan route:list --path=api/v1`.

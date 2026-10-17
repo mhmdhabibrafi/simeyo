@@ -16,6 +16,7 @@ use App\Http\Controllers\PushDeviceController;
 use App\Http\Controllers\SocialGraphController;
 use App\Http\Controllers\VerificationController;
 use App\Models\Institution;
+use App\Services\DailyStreak;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -48,6 +49,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('me/media/{kind}', [MediaController::class, 'destroy'])->whereIn('kind', ['avatar', 'cover']);
         Route::post('me/media', [MediaController::class, 'upload'])->middleware('throttle:profile-media');
         Route::middleware('campus')->group(function () {
+            Route::get('me/streak', fn (Request $r) => ['data' => app(DailyStreak::class)->summary($r->user()->id)]);
             Route::get('push-config', fn () => ['data' => ['enabled' => (bool) config('push.enabled')]]);
             Route::get('push-devices', [PushDeviceController::class, 'index']);
             Route::put('push-devices', [PushDeviceController::class, 'store'])->middleware('throttle:profile-media');

@@ -1140,6 +1140,79 @@ export interface paths {
         };
         trace?: never;
     };
+    "/me/streak": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Own daily posting streak. Approved campus members only; Asia/Jakarta midnight. Successful new posts/replies count once per calendar day. No historical backfill. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Own daily posting streak. Approved campus members only; Asia/Jakarta midnight. Successful new posts/replies count once per calendar day. No historical backfill. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["DailyStreak"];
+                        };
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Permission or verification requirement not met */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/institutions": {
         parameters: {
             query?: never;
@@ -7364,6 +7437,15 @@ export interface components {
             interests?: string[];
             academic_visible?: boolean;
             private_account?: boolean;
+        };
+        DailyStreak: {
+            current_days: number;
+            longest_days: number;
+            completed_today: boolean;
+            /** @constant */
+            timezone: "Asia/Jakarta";
+            /** Format: date-time */
+            next_reset_at: string;
         };
         Post: {
             id: number;

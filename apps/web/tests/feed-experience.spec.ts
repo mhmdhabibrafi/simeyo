@@ -96,6 +96,7 @@ async function fixtures(page: Page) {
   );
   await page.route("**/api/v1/**", (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/me/streak")) return route.fulfill({json:{data:{current_days:0,longest_days:0,completed_today:false,timezone:"Asia/Jakarta",next_reset_at:"2026-10-18T00:00:00+07:00"}}});
     if (url.pathname.endsWith("/conversations/unread")) return route.fulfill({json:{data:{unread_count:0}}});
     if (url.pathname.endsWith("/typing")) return route.fulfill(route.request().method()==="PUT" ? {status:204} : {json:{data:{typing:false}}});
     if (url.pathname.endsWith("/feed/preferences")) return route.fulfill({json:{data:{hidden_count:0,reduced_authors_count:0}}});
@@ -154,6 +155,43 @@ async function fixtures(page: Page) {
     });
   });
 }
+
+test("own daily streak retries, updates after posting and fits mobile themes", async ({ page }) => {
+  await fixtures(page);
+  let failed = true;
+  let complete = false;
+  await page.route("**/api/v1/me/streak", route => failed
+    ? route.fulfill({status:503,json:{message:"Try again"}})
+    : route.fulfill({json:{data:{current_days:complete?3:2,longest_days:5,completed_today:complete,timezone:"Asia/Jakarta",next_reset_at:"2026-10-18T00:00:00+07:00"}}}));
+  await page.route("**/api/v1/posts", route => { complete = true; return route.fulfill({json:{data:post}}); });
+  await page.setViewportSize({width:320,height:700});
+  await page.goto("/profile");
+  await expect(page.getByRole("button",{name:"Coba muat runtutan lagi"})).toBeVisible();
+  failed=false;
+  await page.getByRole("button",{name:"Coba muat runtutan lagi"}).click();
+  const streak=page.getByRole("region",{name:"Runtutan harian"});
+  await expect(streak).toContainText("2 hari berturut-turut");
+  await expect(streak).toContainText("Terbaik 5 hari");
+  await page.getByRole("button",{name:"Tulis cerita",exact:true}).click();
+  await page.getByRole("dialog").getByLabel("Tulis cerita",{exact:true}).fill("Cerita untuk hari ini");
+  await page.getByRole("dialog").getByRole("button",{name:"Bagikan",exact:true}).click();
+  await expect(streak).toContainText("3 hari berturut-turut");
+  await expect(streak).toContainText("Hari ini sudah terisi");
+  await page.getByRole("button",{name:"Tutup pemberitahuan",exact:true}).click();
+  await page.getByRole("heading",{name:"Profilmu",exact:true}).click();
+  await page.evaluate(()=>window.scrollTo(0,0));
+  for (const theme of ["light","dark"]) {
+    await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+    await waitForAnimations(page);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+    await page.screenshot({path:path.join(__dirname,"../../../docs/testing/screenshots",`streak-320-${theme}.png`),fullPage:true});
+  }
+  await page.route("**/api/v1/profiles/other",route=>route.fulfill({json:{data:{...user,id:902,username:"other",name:"Other"}}}));
+  await page.goto("/u/other");
+  await expect(page.getByRole("heading",{name:"Other",exact:true})).toBeVisible();
+  await expect(page.getByRole("region",{name:"Runtutan harian"})).toHaveCount(0);
+});
 
 test("offline profile save preserves changes across reload and reconnect", async ({ page, context }) => {
   await fixtures(page);
