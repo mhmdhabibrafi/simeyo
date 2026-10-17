@@ -22,7 +22,7 @@ export function ProfilePeople({
   });
   return (
     <>
-      <header className="flex items-center gap-3 border-b border-[var(--border)] p-4">
+      <header className="page-header">
         <BackButton />
         <h1 className="min-w-0 break-words text-base font-semibold">
           {relation === "following" ? "Mengikuti" : "Pengikut"} · @{username}

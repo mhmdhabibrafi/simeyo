@@ -155,6 +155,40 @@ async function fixtures(page: Page) {
   });
 }
 
+test("profile draft survives failure and reload, prevents double submit and applies saved data without a second GET", async ({page}) => {
+  await fixtures(page);page.on("dialog",dialog=>dialog.accept());
+  let owner={...user};let writes=0;let denyReads=false;let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
+  await page.route("**/api/v1/me",async route=>{
+    if(route.request().method()==="PATCH") {writes++;const values=route.request().postDataJSON();if(writes===1){await gate;return route.fulfill({status:503,json:{message:"Koneksi terputus. Coba simpan lagi."}});}owner={...owner,...values};denyReads=true;return route.fulfill({json:{data:owner}});}
+    return denyReads?route.fulfill({status:503,json:{message:"Read unavailable"}}):route.fulfill({json:{data:owner}});
+  });
+  await page.setViewportSize({width:320,height:640});await page.goto("/profile/edit");await page.getByLabel("Nama tampilan",{exact:true}).fill("Alya Baru");await page.getByLabel("Bio",{exact:true}).fill("Tulisan penting yang belum disimpan.");await page.getByLabel("Akun privat",{exact:true}).check();
+  await page.locator("#profile-form").evaluate((form:HTMLFormElement)=>{form.requestSubmit();form.requestSubmit();});await expect.poll(()=>writes).toBe(1);await expect(page.getByLabel("Bio",{exact:true})).toBeDisabled();await expect(page.getByRole("button",{name:"Kembali ke profil",exact:true})).toBeDisabled();release();await expect(page.locator("#profile-error")).toContainText("Koneksi terputus");
+  await page.reload();await expect(page.getByLabel("Bio",{exact:true})).toHaveValue("Tulisan penting yang belum disimpan.");await expect(page.getByLabel("Akun privat",{exact:true})).toBeChecked();await expect(page.getByText("Draft dipulihkan. Periksa kembali sebelum menyimpan.",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Simpan perubahan",exact:true}).click();await expect(page.getByRole("button",{name:"Simpan perubahan",exact:true})).toBeDisabled();expect(writes).toBe(2);expect(await page.evaluate(()=>sessionStorage.getItem("simeyo-profile-draft:901"))).toBeNull();await page.getByRole("button",{name:"Kembali ke profil",exact:true}).click();await expect(page.getByRole("heading",{name:/Alya Baru/})).toBeVisible();
+});
+
+test("transparent crop preview matches exported JPEG and photo save locks dismiss controls",async({page})=>{
+  await fixtures(page);let owner={...user,avatar_url:null as string|null};await page.route("**/api/v1/me",route=>route.fulfill({json:{data:owner}}));let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});let pixels:number[]=[];let uploads=0;
+  await page.route("**/api/v1/me/media",async route=>{uploads++;const bytes=route.request().postDataBuffer()!;const first=bytes.indexOf(Buffer.from([255,216,255])),last=bytes.lastIndexOf(Buffer.from([255,217]));pixels=await page.evaluate(async data=>{const img=await createImageBitmap(await(await fetch("data:image/jpeg;base64,"+data)).blob());const c=document.createElement("canvas");c.width=img.width;c.height=img.height;const ctx=c.getContext("2d")!;ctx.drawImage(img,0,0);return [...ctx.getImageData(300,300,1,1).data];},bytes.subarray(first,last+2).toString("base64"));await gate;owner={...owner,avatar_url:"/icons/icon-512.png"};return route.fulfill({json:{data:{url:owner.avatar_url}}});});
+  await page.setViewportSize({width:390,height:640});await page.goto("/profile/edit");const png=await page.evaluate(()=>{const c=document.createElement("canvas");c.width=600;c.height=600;const ctx=c.getContext("2d")!;ctx.fillStyle="rgba(255,0,0,0.5)";ctx.fillRect(0,0,600,600);return c.toDataURL("image/png").split(",")[1];});await page.getByLabel("Foto profil",{exact:true}).setInputFiles({name:"alpha.png",mimeType:"image/png",buffer:Buffer.from(png,"base64")});const dialog=page.getByRole("dialog");await expect(dialog.getByRole("button",{name:"Simpan foto",exact:true})).toBeEnabled();await dialog.getByLabel("Perbesaran foto").fill("2");const preview=await dialog.getByRole("img").evaluate((c:HTMLCanvasElement)=>[...c.getContext("2d")!.getImageData(300,300,1,1).data]);expect(preview[3]).toBe(255);expect(preview[1]).toBeGreaterThan(120);await dialog.getByRole("button",{name:"Simpan foto",exact:true}).click();await expect.poll(()=>uploads).toBe(1);await expect(dialog.getByRole("button",{name:"Tutup",exact:true})).toBeDisabled();await page.keyboard.press("Escape");await expect(dialog).toBeVisible();release();await expect(dialog).toBeHidden();expect(Math.abs(pixels[1]-preview[1])).toBeLessThan(4);expect(pixels[3]).toBe(255);await expect(page.locator('img[src$="/icons/icon-512.png"]')).toBeVisible();
+});
+
+test("mobile crop sheet fits the visible keyboard viewport in both themes",async({page})=>{
+  await page.addInitScript(()=>{const viewport=new EventTarget();Object.assign(viewport,{height:360,width:320,offsetTop:30,scale:1});Object.defineProperty(window,"visualViewport",{configurable:true,value:viewport});});await fixtures(page);await page.setViewportSize({width:320,height:640});await page.goto("/profile/edit");
+  for(const theme of ["light","dark"]){await page.evaluate(value=>document.documentElement.dataset.theme=value,theme);await page.getByLabel("Foto sampul",{exact:true}).setInputFiles({name:"cover.png",mimeType:"image/png",buffer:readFileSync(path.resolve("public/icons/icon-512.png"))});const dialog=page.getByRole("dialog");const save=dialog.getByRole("button",{name:"Simpan foto",exact:true});await expect(save).toBeEnabled();await save.scrollIntoViewIfNeeded();const box=(await dialog.boundingBox())!;expect(box.y).toBeGreaterThanOrEqual(29);expect(box.y+box.height).toBeLessThanOrEqual(391);const button=(await save.boundingBox())!;expect(button.y+button.height).toBeLessThanOrEqual(391);expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);await page.screenshot({path:path.resolve(`../../docs/testing/screenshots/profile-keyboard-${theme}.png`),animations:"disabled"});await dialog.getByRole("button",{name:"Tutup",exact:true}).click();}
+});
+
+test("long mobile profiles reserve photo space and can retry unavailable cover images and profile data",async({page})=>{
+  await fixtures(page);let fail=true;let imageCalls=0;const longName="A".repeat(80);const owner={...user,id:902,name:longName,username:"long_profile",bio:"x".repeat(500),avatar_url:"/broken-avatar.jpg",cover_url:"/cover-retry.png",links:["https://example.test/"+"x".repeat(210)]};await page.route("**/api/v1/profiles/long_profile",route=>fail?route.fulfill({status:503,json:{message:"Unavailable"}}):route.fulfill({json:{data:owner}}));await page.route("**/broken-avatar.jpg",route=>route.fulfill({status:404}));await page.route("**/cover-retry.png",route=>{imageCalls++;return imageCalls===1?route.fulfill({status:503}):route.fulfill({contentType:"image/png",body:readFileSync(path.resolve("public/icons/icon-512.png"))});});await page.route("**/api/v1/feed?**",route=>route.fulfill({json:{data:[],meta:{next_cursor:null,has_more:false,feed:"profile"}}}));
+  await page.setViewportSize({width:320,height:640});await page.goto("/u/long_profile");await expect(page.getByRole("alert").filter({hasText:"Profil tidak ditemukan"})).toBeVisible();fail=false;await page.getByRole("button",{name:"Coba lagi",exact:true}).click();await expect(page.getByRole("heading",{name:longName,exact:true}).first()).toBeVisible();const retry=page.getByRole("button",{name:"Coba muat sampul lagi",exact:true});await expect(retry).toBeVisible();const initial=(await retry.boundingBox())!;await retry.click();const cover=page.getByAltText("Sampul profil",{exact:true});await expect(cover).toBeVisible();const loaded=(await cover.boundingBox())!;expect(Math.abs(loaded.height-initial.height)).toBeLessThan(1);expect((await page.getByRole("heading",{level:2}).first().boundingBox())!.height).toBeLessThan(90);expect((await page.locator("[data-profile-avatar]").boundingBox())!.y).toBeLessThan(loaded.y+loaded.height);await expect(page.locator('img[src$="/broken-avatar.jpg"]')).toHaveCount(0);
+  for(const theme of ["light","dark"]){await page.evaluate(value=>document.documentElement.dataset.theme=value,theme);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await waitForAnimations(page);expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);await page.screenshot({path:path.resolve(`../../docs/testing/screenshots/profile-long-${theme}.png`),animations:"disabled"});}
+});
+
+test("empty following and bookmarks offer useful navigation instead of dead ends",async({page})=>{
+  await fixtures(page);await page.route("**/api/v1/feed?**",route=>route.fulfill({json:{data:[],meta:{next_cursor:null,has_more:false,feed:"following"}}}));await page.setViewportSize({width:390,height:640});await page.goto("/home");await page.getByRole("tab",{name:"Mengikuti",exact:true}).click();await page.getByRole("link",{name:"Temukan teman",exact:true}).click();await expect(page).toHaveURL(/\/explore$/);await page.goto("/bookmarks");await page.getByRole("link",{name:"Jelajahi cerita",exact:true}).click();await expect(page).toHaveURL(/\/home$/);
+});
+
 test("home feedback persists, retries safely, previews links without fetching and can be reset", async ({page}) => {
   await fixtures(page); let hidden=false;let attempts=0;let reset=0;const outside:string[]=[];
   await page.route("https://example.test/**",route=>{outside.push(route.request().url());return route.abort();});
@@ -228,7 +262,7 @@ test("profile cropping previews pan and zoom, cancels safely and uploads the sel
     expect(start).toBeGreaterThan(0);
     dimensions = await page.evaluate(async base64 => { const image = await createImageBitmap(await (await fetch("data:image/jpeg;base64,"+base64)).blob()); const canvas=document.createElement("canvas");canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext("2d")!;ctx.drawImage(image,0,0);const size = [image.width,image.height,...ctx.getImageData(0,0,1,1).data]; image.close(); return size; }, data.subarray(start,end+2).toString("base64"));
     owner = { ...owner, avatar_url: "/icons/icon-512.png" };
-    await route.fulfill({ json: { data: owner } });
+    await route.fulfill({ json: { data: {url:owner.avatar_url} } });
   });
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/profile/edit");
   await page.getByLabel("Foto profil", { exact: true }).setInputFiles({ name: "broken.png", mimeType: "image/png", buffer: Buffer.from("not an image") });
@@ -564,7 +598,7 @@ test("profile photos validate locally, retry the same file and preserve unsaved 
   await page.route("**/api/v1/me/media", (route) => {
     uploads++;
     if (uploads > 1) photoUser = { ...photoUser, [uploads === 3 ? "cover_url" : "avatar_url"]: "/icons/icon-512.png" };
-    return route.fulfill({ status: uploads === 1 ? 503 : 200, json: uploads === 1 ? { message: "Upload sedang bermasalah." } : { data: photoUser } });
+    return route.fulfill({ status: uploads === 1 ? 503 : 200, json: uploads === 1 ? { message: "Upload sedang bermasalah." } : { data: {url:"/icons/icon-512.png"} } });
   });
   await page.goto("/profile/edit");
   await page.getByLabel("Bio", { exact: true }).fill("Jangan hilangkan bio yang belum disimpan.");
@@ -577,10 +611,10 @@ test("profile photos validate locally, retry the same file and preserve unsaved 
   await expect(page.getByRole("alert").filter({ hasText: "Upload sedang bermasalah" })).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Simpan foto", exact: true }).click();
   await expect.poll(() => uploads).toBe(2);
-  await expect(page.locator('img[src="/icons/icon-512.png"]')).toBeVisible();
+  await expect(page.locator('img[src$="/icons/icon-512.png"]')).toBeVisible();
   await page.getByLabel("Foto sampul", { exact: true }).setInputFiles(file);
   await page.getByRole("dialog").getByRole("button", { name: "Simpan foto", exact: true }).click();
-  await expect(page.getByAltText("Sampul profil saat ini", { exact: true })).toHaveAttribute("src", "/icons/icon-512.png");
+  await expect(page.getByAltText("Sampul profil saat ini", { exact: true })).toHaveAttribute("src", /\/icons\/icon-512\.png$/);
   await expect(page.getByLabel("Bio", { exact: true })).toHaveValue("Jangan hilangkan bio yang belum disimpan.");
   await expect(page.getByRole("button", { name: "Simpan perubahan", exact: true })).toBeEnabled();
 });

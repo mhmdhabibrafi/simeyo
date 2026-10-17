@@ -1,4 +1,7 @@
 "use client";
+import Link from "next/link";
+import { useMe } from "@/lib/auth";
+import { useThreadComposer } from "./thread-composer";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
@@ -26,6 +29,8 @@ export function Feed({
   parentId?: number;
   communityId?: number;
 }) {
+  const { data: me } = useMe();
+  const openComposer = useThreadComposer();
   const sentinel = useRef<HTMLDivElement>(null);
   const isHomeFeed =
     !userId &&
@@ -183,9 +188,34 @@ export function Feed({
                   ? "Simpan cerita yang ingin kamu baca lagi."
                   : "Mulai dengan satu pertanyaan atau sudut pandang."}
           </p>
+          {feed === "following" ? (
+            <Link
+              href="/explore"
+              className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-[var(--border)] px-4 text-sm font-semibold"
+            >
+              Temukan teman
+            </Link>
+          ) : feed === "bookmarks" ? (
+            <Link
+              href="/home"
+              className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-[var(--border)] px-4 text-sm font-semibold"
+            >
+              Jelajahi cerita
+            </Link>
+          ) : (
+            !parentId &&
+            (!userId || userId === me?.id) &&
+            me?.verified && (
+              <Button variant="outline" className="mt-4" onClick={openComposer}>
+                Tulis cerita pertama
+              </Button>
+            )
+          )}
         </div>
       ) : (
-        posts.map((post) => <PostCard key={post.id} post={post} feedControls={isHomeFeed} />)
+        posts.map((post) => (
+          <PostCard key={post.id} post={post} feedControls={isHomeFeed} />
+        ))
       )}
       <div ref={sentinel} className="flex justify-center p-6">
         {query.hasNextPage && (

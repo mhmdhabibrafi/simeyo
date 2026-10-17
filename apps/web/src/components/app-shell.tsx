@@ -1,5 +1,6 @@
 "use client";
 import { NavigationMemory, clearNavigationMemory } from "./navigation-memory";
+import { clearProfileDraft } from "@/lib/profile-draft";
 import { clearDraft } from "@/lib/drafts";
 import Link from "next/link";
 import Image from "next/image";
@@ -41,9 +42,11 @@ export function Avatar({
   url?: string | null;
   size?: number;
 }) {
-  return url ? (
+  const [failed, setFailed] = useState<string | null>(null);
+  return url && failed !== url ? (
     <Image
       unoptimized
+      onError={() => setFailed(url)}
       src={url}
       alt=""
       width={size}
@@ -87,26 +90,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
     if (error instanceof ApiError && error.status === 401)
       router.replace("/login");
   }, [error, router]);
-  useEffect(() => {
-    if (!pathname.startsWith("/messages")) return;
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-    const update = () => {
-      if (viewport.scale === 1)
-        document.documentElement.style.setProperty(
-          "--message-viewport-height",
-          `${Math.round(viewport.height)}px`,
-        );
-    };
-    update();
-    viewport.addEventListener("resize", update);
-    return () => {
-      viewport.removeEventListener("resize", update);
-      document.documentElement.style.removeProperty(
-        "--message-viewport-height",
-      );
-    };
-  }, [pathname]);
+
   if (isPending)
     return (
       <main
@@ -174,6 +158,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
     try {
       await api("auth/logout", { method: "POST" });
       clearDraft();
+      clearProfileDraft();
       clearNavigationMemory();
       try {
         Object.keys(sessionStorage)

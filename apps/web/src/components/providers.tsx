@@ -10,6 +10,36 @@ import {
 import { Moon, Sun, X } from "lucide-react";
 import { MotionPreference } from "./accessibility";
 import { PwaProvider } from "./pwa";
+function ViewportSizing() {
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      if (viewport.scale !== 1) return;
+      const style = document.documentElement.style;
+      style.setProperty(
+        "--app-viewport-height",
+        `${Math.round(viewport.height)}px`,
+      );
+      style.setProperty(
+        "--app-viewport-top",
+        `${Math.round(viewport.offsetTop)}px`,
+      );
+      style.setProperty(
+        "--message-viewport-height",
+        `${Math.round(viewport.height)}px`,
+      );
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, []);
+  return null;
+}
 const ToastContext = createContext<(message: string) => void>(() => {});
 export function useToast() {
   return useContext(ToastContext);
@@ -36,11 +66,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <ToastContext.Provider value={setToast}>
-        <MotionPreference /><PwaProvider>{children}</PwaProvider>
+        <ViewportSizing />
+        <MotionPreference />
+        <PwaProvider>{children}</PwaProvider>
         {toast && (
           <div
             role="status"
-            className="fixed bottom-24 left-1/2 z-[80] flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded-2xl bg-[var(--foreground)] px-5 py-4 text-sm text-[var(--surface)] shadow-lg"
+            className="toast-message fixed left-1/2 z-[80] flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded-2xl bg-[var(--foreground)] px-5 py-4 text-sm text-[var(--surface)] shadow-lg"
           >
             {toast}
             <button

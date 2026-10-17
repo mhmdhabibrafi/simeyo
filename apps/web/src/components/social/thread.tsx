@@ -18,7 +18,7 @@ export function Thread({ id }: { id: number }) {
   });
   return (
     <>
-      <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-[var(--border)] bg-[var(--surface)]/95 px-5 py-4 backdrop-blur">
+      <header className="page-header bg-[var(--surface)]">
         <BackButton />
         <h1 className="text-lg font-semibold">Percakapan</h1>
       </header>

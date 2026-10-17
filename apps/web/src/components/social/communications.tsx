@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BackButton } from "@/components/ui/back-button";
 import { ConversationActions } from "./conversation-actions";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -1026,17 +1027,35 @@ export function CommunicationSettings() {
   };
   return (
     <>
-      <header className="border-b border-[var(--border)] px-6 py-5">
+      <header className="page-header">
+        <BackButton fallback="/settings" label="Kembali ke pengaturan" />
         <h1 className="text-lg font-semibold">Komunikasi</h1>
       </header>
       <div className="space-y-6 p-6">
-        {q.isError && <p role="alert">Preferensi belum dapat dimuat.</p>}
+        {q.isError && (
+          <div>
+            <p role="alert">Preferensi belum dapat dimuat.</p>
+            <Button
+              variant="outline"
+              className="mt-3"
+              disabled={q.isFetching}
+              onClick={() => q.refetch()}
+            >
+              Coba lagi
+            </Button>
+          </div>
+        )}
+        {m.isPending && (
+          <p aria-live="polite" className="text-xs text-[var(--muted)]">
+            Menyimpan preferensi...
+          </p>
+        )}
         {q.data && (
           <>
             <label className="block text-sm">
               Siapa yang boleh mengirim pesan?
               <select
-                className="input mt-3 w-full"
+                className="field mt-3 w-full"
                 value={q.data.dm_policy}
                 disabled={m.isPending}
                 onChange={(e) => m.mutate({ dm_policy: e.target.value })}

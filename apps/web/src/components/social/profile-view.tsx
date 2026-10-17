@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { BackButton } from "@/components/ui/back-button";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { ProfileCover } from "@/components/profile-cover";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Menu from "@radix-ui/react-dropdown-menu";
@@ -69,7 +69,7 @@ export function ProfileView({ username }: { username?: string }) {
   const toast = useToast();
   const client = useQueryClient();
   async function edge(kind: string, method: string) {
-    if (!u) return;
+    if (!u || busy) return;
     setBusy(true);
     try {
       await api(`relationships/${u.id}/${kind}`, { method });
@@ -86,12 +86,21 @@ export function ProfileView({ username }: { username?: string }) {
       setBusy(false);
     }
   }
-  if (!u)
+  if ((username && q.isError) || !u)
     return (
       <div className="p-8">
         {q.isError ? (
           <p role="alert">
             Profil tidak ditemukan atau tidak dapat kamu akses.
+            <span className="mt-4 block">
+              <Button
+                variant="outline"
+                onClick={() => q.refetch()}
+                disabled={q.isFetching}
+              >
+                Coba lagi
+              </Button>
+            </span>
           </p>
         ) : (
           <div className="skeleton h-52" />
@@ -100,23 +109,14 @@ export function ProfileView({ username }: { username?: string }) {
     );
   return (
     <>
-      <header className="flex h-12 items-center gap-3 px-5 md:h-16 md:px-6">
+      <header className="page-header">
         {username && <BackButton />}
         <h1 className="text-lg font-semibold">{owner ? "Profilmu" : u.name}</h1>
       </header>
       <div className="feed-surface">
         {u.cover_url && (
           <div className="aspect-[3/1] overflow-hidden">
-            {
-              <Image
-                unoptimized
-                width={1200}
-                height={400}
-                src={u.cover_url}
-                alt="Sampul profil"
-                className="h-full w-full object-cover"
-              />
-            }
+            <ProfileCover url={u.cover_url} alt="Sampul profil" />
           </div>
         )}
         <div
@@ -124,12 +124,17 @@ export function ProfileView({ username }: { username?: string }) {
         >
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <h2 className="break-words text-[22px] font-semibold leading-tight tracking-tight sm:text-2xl">
-                {u.name}{" "}
+              <h2 className="flex items-start gap-1.5 text-[22px] font-semibold leading-tight tracking-tight sm:text-2xl">
+                <span
+                  title={u.name}
+                  className="min-w-0 line-clamp-3 [overflow-wrap:anywhere]"
+                >
+                  {u.name}
+                </span>
                 {u.verified && (
                   <BadgeCheck
                     size={21}
-                    className="inline-block align-[-3px] text-[var(--accent)]"
+                    className="mt-1 shrink-0 text-[var(--accent)]"
                     aria-label="Afiliasi terverifikasi"
                   />
                 )}
@@ -142,7 +147,8 @@ export function ProfileView({ username }: { username?: string }) {
               </p>
             </div>
             <div
-              className={`shrink-0 rounded-full border-4 border-[var(--surface)] bg-[var(--surface)] ${u.cover_url ? "-mt-14" : ""}`}
+              data-profile-avatar
+              className={`self-start shrink-0 rounded-full border-4 border-[var(--surface)] bg-[var(--surface)] ${u.cover_url ? "-mt-14" : ""}`}
             >
               <Avatar name={u.name} url={u.avatar_url} size={80} />
             </div>
@@ -253,7 +259,10 @@ export function ProfileView({ username }: { username?: string }) {
                 <Button
                   variant="outline"
                   className="min-h-10 flex-1 whitespace-nowrap px-3 text-xs sm:text-sm"
+                  disabled={busy}
                   onClick={async () => {
+                    if (busy) return;
+                    setBusy(true);
                     const url = `${location.origin}/u/${u.username}`;
                     try {
                       if (navigator.share)
@@ -269,6 +278,8 @@ export function ProfileView({ username }: { username?: string }) {
                       )
                         return;
                       toast("Tautan profil belum dapat disalin.");
+                    } finally {
+                      setBusy(false);
                     }
                   }}
                 >
@@ -276,12 +287,16 @@ export function ProfileView({ username }: { username?: string }) {
                 </Button>
               </>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <FollowButton user={u} />
                 <MessageButton userId={u.id} />
                 <Menu.Root>
                   <Menu.Trigger asChild>
-                    <button className="icon-button" aria-label="Opsi akun">
+                    <button
+                      className="icon-button"
+                      aria-label="Opsi akun"
+                      disabled={busy}
+                    >
                       <MoreHorizontal size={20} />
                     </button>
                   </Menu.Trigger>
@@ -396,6 +411,7 @@ export function ProfileView({ username }: { username?: string }) {
         )}
       </div>
       <ConfirmDialog
+        busy={busy}
         open={block}
         onOpenChange={setBlock}
         title={`Blokir ${u.name}?`}

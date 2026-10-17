@@ -59,19 +59,21 @@ export function PhotoCropper({
       pan.x,
       pan.y,
     );
-    canvas.current
-      .getContext("2d")
-      ?.drawImage(
-        image,
-        crop.x,
-        crop.y,
-        crop.width,
-        crop.height,
-        0,
-        0,
-        600,
-        600 / aspect,
-      );
+    const context = canvas.current.getContext("2d");
+    if (!context) return;
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, 600, 600 / aspect);
+    context.drawImage(
+      image,
+      crop.x,
+      crop.y,
+      crop.width,
+      crop.height,
+      0,
+      0,
+      600,
+      600 / aspect,
+    );
   }, [image, aspect, zoom, pan]);
   async function save() {
     if (!image || locked) return;
@@ -129,7 +131,8 @@ export function PhotoCropper({
   return (
     <ConfirmDialog
       open
-      className="max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[94dvh] max-sm:w-full max-sm:translate-y-0 max-sm:rounded-b-none max-sm:pb-[max(24px,env(safe-area-inset-bottom))]"
+      busy={locked}
+      className="max-sm:bottom-0 max-sm:top-auto photo-sheet max-sm:w-full max-sm:translate-y-0 max-sm:rounded-b-none max-sm:pb-[max(24px,env(safe-area-inset-bottom))]"
       onOpenChange={(open) => {
         if (!open && !locked) onClose();
       }}
@@ -190,6 +193,9 @@ export function PhotoCropper({
           });
         }}
         onPointerUp={() => {
+          drag.current = null;
+        }}
+        onLostPointerCapture={() => {
           drag.current = null;
         }}
         onPointerCancel={() => {

@@ -302,3 +302,15 @@ button:active:not(:disabled) { scale: .98; }
   main[data-profile-editor="true"] { border: 0; border-radius: 0; min-height: 100dvh; }
   main[data-profile-editor="true"] .field { font-size: 16px; }
 }
+
+.page-header { display: flex; min-height: 64px; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.page-header h1 { min-width: 0; font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-dialog { max-height: calc(var(--app-viewport-height, 100dvh) - 24px); top: calc(var(--app-viewport-top, 0px) + var(--app-viewport-height, 100dvh) / 2); }
+@media (min-width: 640px) { .page-header { padding-inline: 24px; } }
+@media (max-width: 639px) {
+  .app-dialog.photo-sheet, .app-dialog[data-layout="composer"] { top: auto; bottom: max(0px, calc(100dvh - var(--app-viewport-height, 100dvh) - var(--app-viewport-top, 0px))); }
+}
+
+.toast-message { bottom: max(96px, calc(100dvh - var(--app-viewport-height, 100dvh) - var(--app-viewport-top, 0px) + 16px)); }
+
+@media (max-width: 767px) { .field, textarea, input[type="search"] { font-size: 16px; } }

@@ -1,5 +1,7 @@
 # Changelog
 
+- Polish responsive web/PWA profile editing: recover validated session drafts, apply authoritative save/photo responses, protect pending actions, match transparent crop previews to JPEG, and preserve image geometry on failure. Unify secondary headers and visible-viewport dialog sizing; add useful empty/error recovery actions and mobile long-text checks. Evidence: docs/testing/mobile-readiness-2026-10-17.md.
+
 - Add persisted home feed hiding/reduced-author ranking with reset, network-free URL cards, scoped follower search, private typing expiry and global unread message badges. Add reduced-motion controls and a redesigned mobile profile/banner editor with explicit crop/save/removal. Add restricted same-host backup and local service/error alarms; owner chose server-only storage. Verification: docs/testing/daily-use-2026-10-17.md.
 
 - Add photo crop/pan/zoom previews with explicit save/cancel and retry, improve post edit/discard/delete flows, restore profile tabs/history reading position, and add private DM search/block/report actions. Add an evidence-only campus moderation queue with independent audited review and an additive conversation_reports table. Real-account acceptance is explicitly deferred by the owner; see docs/testing/profile-post-dm-2026-10-16.md for actual verification.

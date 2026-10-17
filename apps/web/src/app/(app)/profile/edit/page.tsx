@@ -1,9 +1,20 @@
 "use client";
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { ProfileCover } from "@/components/profile-cover";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, ImagePlus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  userSchema,
+  type User,
+} from "../../../../../../../packages/api-contracts/src";
+import {
+  profileValues,
+  readProfileDraft,
+  saveProfileDraft,
+  clearProfileDraft,
+  type ProfileValues,
+} from "@/lib/profile-draft";
 import { useMe } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -12,7 +23,46 @@ import { Avatar } from "@/components/app-shell";
 import { PhotoCropper } from "@/components/photo-cropper";
 import { ConfirmDialog } from "@/components/ui/dialog";
 export default function Page() {
-  const { data: u } = useMe();
+  const { data: user } = useMe();
+  return user ? (
+    <ProfileEditor key={user.id} u={user} />
+  ) : (
+    <div className="skeleton m-5 h-64" aria-label="Memuat profil" />
+  );
+}
+function ProfileEditor({ u }: { u: User }) {
+  const [baseline, setBaseline] = useState(() => profileValues(u));
+  const [restored] = useState(() => readProfileDraft(u.id));
+  const [values, setValues] = useState<ProfileValues>(
+    () => restored ?? baseline,
+  );
+  const dirty = JSON.stringify(values) !== JSON.stringify(baseline);
+  const [draftSaved, setDraftSaved] = useState(true);
+  const actionLock = useRef(false);
+  function change<K extends keyof ProfileValues>(
+    key: K,
+    value: ProfileValues[K],
+  ) {
+    const next = { ...values, [key]: value };
+    setValues(next);
+    if (JSON.stringify(next) === JSON.stringify(baseline))
+      clearProfileDraft(u.id);
+    else setDraftSaved(saveProfileDraft(u.id, next));
+  }
+  async function photoChanged(kind: string, url: string | null) {
+    await Promise.all([
+      client.cancelQueries({ queryKey: ["me"] }),
+      client.cancelQueries({ queryKey: ["profile"] }),
+    ]);
+    if (client.getQueryData<User>(["me"])?.id !== u.id) return;
+    const field = kind === "avatar" ? "avatar_url" : "cover_url";
+    client.setQueryData<User>(["me"], (old) =>
+      old ? { ...old, [field]: url } : old,
+    );
+    client.setQueriesData<User>({ queryKey: ["profile"] }, (old) =>
+      old?.id === u.id ? { ...old, [field]: url } : old,
+    );
+  }
   const client = useQueryClient();
   const toast = useToast();
   const router = useRouter();
@@ -25,9 +75,7 @@ export default function Page() {
   const [removePhoto, setRemovePhoto] = useState<"avatar" | "cover" | null>(
     null,
   );
-  const [dirty, setDirty] = useState(false);
   const [leave, setLeave] = useState(false);
-  const [bioLength, setBioLength] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [error, setError] = useState("");
   useEffect(() => {
@@ -40,42 +88,52 @@ export default function Page() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, busy]);
   useEffect(() => {
-    if (busy || !error || crop) return;
+    if (busy || !error || crop || removePhoto) return;
     const field = Object.keys(errors)[0]?.split(".")[0];
     (
       document.getElementById(field || "profile-error") ??
       document.getElementById("profile-error")
     )?.focus();
-  }, [busy, error, errors, crop]);
-  if (!u) return null;
+  }, [busy, error, errors, crop, removePhoto]);
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (busy) return;
+    if (actionLock.current) return;
+    actionLock.current = true;
     setBusy(true);
     setError("");
     setErrors({});
-    const form = new FormData(e.currentTarget);
-    const values = {
-      name: form.get("name"),
-      username: form.get("username"),
-      bio: form.get("bio"),
-      location: form.get("location"),
-      links: String(form.get("links") || "")
+    const payload = {
+      ...values,
+      links: values.links
         .split("\n")
         .map((v) => v.trim())
         .filter(Boolean),
-      interests: String(form.get("interests") || "")
+      interests: values.interests
         .split(",")
         .map((v) => v.trim())
         .filter(Boolean),
-      academic_visible: form.get("academic_visible") === "on",
-      private_account: form.get("private_account") === "on",
     };
     try {
-      await api("me", { method: "PATCH", body: JSON.stringify(values) });
-      await client.invalidateQueries({ queryKey: ["me"] });
-      await client.invalidateQueries({ queryKey: ["profile"] });
-      setDirty(false);
+      const response = await api<{ data: unknown }>("me", {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      const saved = userSchema.parse(response.data);
+      await Promise.all([
+        client.cancelQueries({ queryKey: ["me"] }),
+        client.cancelQueries({ queryKey: ["profile"] }),
+      ]);
+      if (client.getQueryData<User>(["me"])?.id !== u.id) return;
+      client.setQueryData(["me"], saved);
+      client.setQueriesData<User>({ queryKey: ["profile"] }, (old) =>
+        old?.id === saved.id ? saved : old,
+      );
+      if (saved.username !== u.username)
+        client.removeQueries({ queryKey: ["profile", u.username] });
+      const canonical = profileValues(saved);
+      setBaseline(canonical);
+      setValues(canonical);
+      clearProfileDraft(u.id);
       toast("Profil disimpan.");
     } catch (e) {
       if (e instanceof ApiError) setErrors(e.errors);
@@ -85,16 +143,18 @@ export default function Page() {
           : "Profil belum dapat disimpan.",
       );
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   }
   async function upload(file: File | undefined, kind: string) {
-    if (!file || busy) return false;
+    if (!file || actionLock.current) return false;
     setErrors({});
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("Gunakan gambar JPEG, PNG, atau WebP.");
       return false;
     }
+    actionLock.current = true;
     setBusy(true);
     setUploading(kind);
     setError("");
@@ -102,9 +162,13 @@ export default function Page() {
     form.set("kind", kind);
     form.set("image", file);
     try {
-      await api("me/media", { method: "POST", body: form });
-      await client.invalidateQueries({ queryKey: ["me"] });
-      await client.invalidateQueries({ queryKey: ["profile"] });
+      const result = await api<{ data: { url: string } }>("me/media", {
+        method: "POST",
+        body: form,
+      });
+      if (typeof result.data?.url !== "string" || !result.data.url)
+        throw new Error("Foto belum dapat dikonfirmasi.");
+      await photoChanged(kind, result.data.url);
       toast("Foto diperbarui.");
       return true;
     } catch (e) {
@@ -117,6 +181,7 @@ export default function Page() {
     } finally {
       setBusy(false);
       setUploading("");
+      actionLock.current = false;
     }
   }
   return (
@@ -135,7 +200,7 @@ export default function Page() {
           }}
         />
       )}
-      <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 backdrop-blur sm:px-6">
+      <header className="page-header sticky top-0 z-30 justify-between bg-[var(--surface)]/95 backdrop-blur">
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
@@ -146,28 +211,32 @@ export default function Page() {
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="whitespace-nowrap text-base font-semibold sm:text-lg">Edit profil</h1>
+          <h1 className="whitespace-nowrap text-base font-semibold sm:text-lg">
+            Edit profil
+          </h1>
         </div>
         <Button
           form="profile-form"
           disabled={busy || !dirty}
           className="min-h-11 px-4 text-xs sm:text-sm"
         >
-          {busy && !uploading ? "Menyimpan…" : <><span className="sm:hidden" aria-hidden="true">Simpan</span><span className="sr-only sm:not-sr-only">Simpan perubahan</span></>}
+          {busy && !uploading ? (
+            "Menyimpan…"
+          ) : (
+            <>
+              <span className="sm:hidden" aria-hidden="true">
+                Simpan
+              </span>
+              <span className="sr-only sm:not-sr-only">Simpan perubahan</span>
+            </>
+          )}
         </Button>
       </header>
       <div className="px-4 pb-8 pt-5 sm:px-6">
         <section aria-label="Foto profil dan sampul" className="mb-7">
           <div className="relative aspect-[3/1] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--soft)]">
             {u.cover_url ? (
-              <Image
-                unoptimized
-                src={u.cover_url}
-                alt="Sampul profil saat ini"
-                width={1600}
-                height={533}
-                className="h-full w-full object-cover"
-              />
+              <ProfileCover url={u.cover_url} alt="Sampul profil saat ini" />
             ) : (
               <div className="flex h-full items-center justify-center pb-5 text-[var(--muted)]">
                 <ImagePlus size={28} strokeWidth={1.4} aria-hidden="true" />
@@ -226,8 +295,8 @@ export default function Page() {
             )}
           </div>
           <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
-            Ketuk foto untuk mengubahnya. Foto dan sampul langsung tersimpan
-            setelah crop dikonfirmasi.
+            Ketuk foto untuk mengubahnya. Foto dan sampul disimpan terpisah
+            melalui tombol Simpan foto.
           </p>
           {(["avatar", "cover"] as const).map((kind) => (
             <input
@@ -268,7 +337,26 @@ export default function Page() {
             </p>
           )}
         </section>
-        {error && (
+        <p
+          aria-live="polite"
+          className="mb-5 text-xs leading-5 text-[var(--muted)]"
+        >
+          {busy
+            ? uploading
+              ? "Foto sedang disimpan. Tunggu sampai selesai."
+              : "Menyimpan perubahan..."
+            : dirty
+              ? draftSaved
+                ? "Belum disimpan. Draft tersedia di sesi perangkat ini."
+                : "Belum disimpan. Draft perangkat tidak tersedia; tetap di halaman ini sampai berhasil."
+              : "Perubahan profil sudah tersimpan."}
+        </p>
+        {restored && dirty && (
+          <p className="mb-4 text-xs text-[var(--muted)]">
+            Draft dipulihkan. Periksa kembali sebelum menyimpan.
+          </p>
+        )}
+        {error && !crop && !removePhoto && (
           <p
             id="profile-error"
             tabIndex={-1}
@@ -278,12 +366,7 @@ export default function Page() {
             {error}
           </p>
         )}
-        <form
-          id="profile-form"
-          key={u.id}
-          onSubmit={save}
-          onChange={() => setDirty(true)}
-        >
+        <form id="profile-form" key={u.id} onSubmit={save} aria-busy={busy}>
           <fieldset disabled={busy} className="min-w-0 space-y-5">
             <legend className="sr-only">Informasi profil</legend>
             <h2 className="text-sm font-semibold">Tentang kamu</h2>
@@ -336,24 +419,31 @@ export default function Page() {
                     <textarea
                       id={f.name}
                       name={f.name}
-                      defaultValue={f.value}
+                      value={String(values[f.name as keyof ProfileValues])}
+                      onChange={(event) =>
+                        change(
+                          f.name as keyof ProfileValues,
+                          event.target.value,
+                        )
+                      }
                       maxLength={f.max}
                       className="field min-h-24 resize-y"
                       aria-invalid={Object.keys(errors).some(
                         (key) => key === f.name || key.startsWith(f.name + "."),
                       )}
                       aria-describedby={`${f.name}-hint`}
-                      onChange={
-                        f.name === "bio"
-                          ? (event) => setBioLength(event.target.value.length)
-                          : undefined
-                      }
                     />
                   ) : (
                     <input
                       id={f.name}
                       name={f.name}
-                      defaultValue={f.value}
+                      value={String(values[f.name as keyof ProfileValues])}
+                      onChange={(event) =>
+                        change(
+                          f.name as keyof ProfileValues,
+                          event.target.value,
+                        )
+                      }
                       maxLength={f.max}
                       required={["name", "username"].includes(f.name)}
                       className="field"
@@ -383,7 +473,7 @@ export default function Page() {
                       (f.name === "username"
                         ? "3–24 karakter: huruf kecil, angka, atau garis bawah."
                         : f.name === "bio"
-                          ? `${bioLength ?? u.bio?.length ?? 0}/500`
+                          ? `${values.bio.length}/500`
                           : f.name === "links"
                             ? "Satu tautan https:// per baris, maksimal 5."
                             : f.name === "interests"
@@ -406,7 +496,10 @@ export default function Page() {
               <input
                 name="academic_visible"
                 type="checkbox"
-                defaultChecked={u.academic_visible}
+                checked={values.academic_visible}
+                onChange={(event) =>
+                  change("academic_visible", event.target.checked)
+                }
                 className="h-4 w-4 accent-[var(--accent)]"
               />
             </label>
@@ -421,7 +514,10 @@ export default function Page() {
                 name="private_account"
                 aria-label="Akun privat"
                 type="checkbox"
-                defaultChecked={u.private_account}
+                checked={values.private_account}
+                onChange={(event) =>
+                  change("private_account", event.target.checked)
+                }
                 className="h-4 w-4 accent-[var(--accent)]"
               />
             </label>
@@ -433,6 +529,7 @@ export default function Page() {
         </form>
       </div>
       <ConfirmDialog
+        busy={busy}
         open={!!removePhoto}
         onOpenChange={(open) => {
           if (!open && !busy) setRemovePhoto(null);
@@ -461,17 +558,19 @@ export default function Page() {
             variant="danger"
             disabled={busy}
             onClick={async () => {
+              if (actionLock.current) return;
+              actionLock.current = true;
               setBusy(true);
               setError("");
               try {
                 await api(`me/media/${removePhoto}`, { method: "DELETE" });
-                await client.invalidateQueries({ queryKey: ["me"] });
-                await client.invalidateQueries({ queryKey: ["profile"] });
+                await photoChanged(removePhoto!, null);
                 setRemovePhoto(null);
                 toast("Foto dihapus.");
               } catch {
                 setError("Foto belum dapat dihapus. Coba lagi.");
               } finally {
+                actionLock.current = false;
                 setBusy(false);
               }
             }}
@@ -490,7 +589,14 @@ export default function Page() {
           <Button variant="outline" onClick={() => setLeave(false)}>
             Lanjut mengedit
           </Button>
-          <Button onClick={() => router.push("/profile")}>Tinggalkan</Button>
+          <Button
+            onClick={() => {
+              clearProfileDraft(u.id);
+              router.push("/profile");
+            }}
+          >
+            Tinggalkan
+          </Button>
         </div>
       </ConfirmDialog>
     </>

@@ -60,7 +60,7 @@ test("one browser revokes another session and profile image stays authenticated"
     .toBe(true);
   const src = await image.getAttribute("src");
   const anonymous = await browser.newContext();
-  const response = await anonymous.request.get(`http://localhost:3000${src}`, {
+  const response = await anonymous.request.get(new URL(src!, "http://localhost:3000").toString(), {
     headers: { Accept: "application/json" },
   });
   expect(response.status()).toBe(401);
@@ -77,7 +77,7 @@ test("one browser revokes another session and profile image stays authenticated"
   await first.getByRole("button",{name:"Hapus sampul",exact:true}).click();
   await first.getByRole("dialog").getByRole("button",{name:"Hapus foto",exact:true}).click();
   await expect(cover).toHaveCount(0);
-  const removed=await first.request.get(`http://localhost:3000${coverSrc}`,{headers:{Accept:"application/json"}});
+  const removed=await first.request.get(new URL(coverSrc!, "http://localhost:3000").toString(),{headers:{Accept:"application/json"}});
   expect(removed.status()).toBe(404);
   await first.reload();
   await expect(first.getByAltText("Sampul profil saat ini",{exact:true})).toHaveCount(0);

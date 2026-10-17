@@ -78,13 +78,26 @@ export function FollowButton({ user }: { user: User }) {
     onSuccess: (data) => {
       client.setQueryData(["relationship", user.id], data);
       client.invalidateQueries({ queryKey: ["feed"] });
+      client.invalidateQueries({ queryKey: ["people"] });
     },
   });
   if (me?.id === user.id) return null;
+  if (q.isError)
+    return (
+      <Button
+        variant="outline"
+        disabled={q.isFetching}
+        onClick={() => q.refetch()}
+        className="min-h-11 px-3 text-xs"
+      >
+        Coba muat hubungan lagi
+      </Button>
+    );
   return (
     <Button
       variant={q.data?.follow_state ? "outline" : "default"}
-      className="min-h-10 px-4 text-xs"
+      className="min-h-11 px-4 text-xs"
+      aria-busy={m.isPending}
       disabled={m.isPending || q.isPending || q.isError}
       onClick={() => m.mutate({ remove: !!q.data?.follow_state })}
     >
